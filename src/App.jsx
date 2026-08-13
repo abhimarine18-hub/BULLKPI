@@ -2735,7 +2735,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
   const summedTotal = getSummedTotal();
   const isTallied = summedTotal === (Math.round(parseFloat(totalTargetInput) || 0));
 
-  const canSubmit = name.trim() && owner;
+  const canSubmit = name.trim();
 
   const handleSubmit = () => {
     onSubmit({
