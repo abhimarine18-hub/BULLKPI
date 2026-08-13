@@ -2322,16 +2322,8 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
   const [holidaysEnabled, setHolidaysEnabled] = useState(kpi.holidaysEnabled ?? true);
   const [customHolidays, setCustomHolidays] = useState(kpi.customHolidays || {});
   
-  // Leave states mock data (simulated as coming from mobile app)
-  const [dailyLeave] = useState(kpi.dailyLeave || {
-    "2026-04-15": true,
-    "2026-06-18": true,
-    "2026-10-12": true
-  });
-  const [dailyPartialLeave] = useState(kpi.dailyPartialLeave || {
-    "2026-04-22": true,
-    "2026-08-10": true
-  });
+  const [dailyLeave] = useState({});
+  const [dailyPartialLeave] = useState({});
 
   // Monthly Allocation state
   const [monthlyAlloc, setMonthlyAlloc] = useState(() => {
@@ -3138,8 +3130,6 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                                         +Hol
                                       </button>
                                     )}
-                                    {isLeave && <span className="text-[8px] bg-rose-200 text-rose-800 px-1 rounded">Leave</span>}
-                                    {isPartialLeave && <span className="text-[8px] bg-orange-200 text-orange-800 px-1 rounded">P.Leave</span>}
                                     {isTimeKpi && dayTarget > 0 && (
                                       <span className="text-[9px] text-teal-700 font-extrabold tracking-tighter">Deadline</span>
                                     )}
