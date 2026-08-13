@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS kpis (
   drive_by VARCHAR(255) DEFAULT '',
   monitor_by VARCHAR(255) DEFAULT '',
   kra VARCHAR(255),
+  description TEXT DEFAULT '',
   history JSONB DEFAULT '[]'::jsonb,
   daily_actual JSONB DEFAULT '{}'::jsonb,
   revised_alloc JSONB DEFAULT '{}'::jsonb,
