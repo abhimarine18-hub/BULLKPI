@@ -2302,6 +2302,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
   const [description, setDescription] = useState(kpi.description || "");
   const [unit, setUnit] = useState(kpi.unit);
   const isTimeKpi = unit.trim().toLowerCase() === "time";
+  const [targetType, setTargetType] = useState(kpi.targetType || "monthly");
   
   // Inline creation states for team/member
   const [showAddTeam, setShowAddTeam] = useState(false);
@@ -2758,7 +2759,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
       revisedAlloc,
       customHolidays,
       holidaysEnabled,
-      targetType: "daily",
+      targetType,
       targetsList: Object.entries(dailyAlloc).filter(([_, val]) => val > 0).map(([dStr, val]) => ({ id: dStr, label: dStr, targetValue: val, targetDate: dStr }))
     });
     onClose();
@@ -2778,8 +2779,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
         </div>
 
         {/* 2-Column Main Content Grid */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-8 gap-6 min-h-0 mb-4">
-          
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-8 gap-6 min-h-0 mb-4">          
           {/* LEFT COLUMN: KPI METADATA DETAILS (takes 2/8 columns) */}
           <div className="lg:col-span-2 space-y-4 overflow-y-auto pr-3 lg:border-r lg:border-slate-100 pb-2">
             <div>
@@ -2789,58 +2789,119 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
 
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1 block uppercase tracking-wider">Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="KPI expectations, metrics, and details..." />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="KPI expectations, metrics, and details..." />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-bold text-slate-600 mb-1 block uppercase tracking-wider">Unit</label>
-                <select value={unit.trim()} onChange={(e) => setUnit(e.target.value)} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
-                  <option value="Nos">Nos</option>
-                  <option value="%">%</option>
-                  <option value="Time">Time</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-600 mb-1 block uppercase tracking-wider">Direction</label>
-                <select value={direction} onChange={(e) => setDirection(e.target.value)} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
-                  <option value="higher font-semibold">Higher is better</option>
-                  <option value="lower font-semibold">Lower is better</option>
-                </select>
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-600 mb-1 block uppercase tracking-wider">Unit</label>
+              <select value={unit.trim()} onChange={(e) => setUnit(e.target.value)} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                <option value="Nos">Nos</option>
+                <option value="%">%</option>
+                <option value="Time">Time</option>
+              </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-600 mb-1 block uppercase tracking-wider">Direction</label>
+              <select value={direction} onChange={(e) => setDirection(e.target.value)} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                <option value="higher font-semibold">Higher is better</option>
+                <option value="lower font-semibold">Lower is better</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Team</label>
+                <button 
+                  onClick={() => setShowAddTeam(!showAddTeam)} 
+                  className="text-[10px] text-teal-600 hover:text-teal-700 font-bold hover:underline"
+                  type="button"
+                >
+                  + Add Team
+                </button>
+              </div>
+              {showAddTeam ? (
+                <div className="space-y-1.5 p-2 bg-orange-50/40 rounded-xl border border-orange-100">
+                  <input 
+                    type="text" 
+                    value={newTeamName} 
+                    onChange={(e) => setNewTeamName(e.target.value)} 
+                    placeholder="New team name..." 
+                    className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-300"
+                  />
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => {
+                        if (newTeamName.trim()) {
+                          const newT = { id: Date.now(), name: newTeamName, members: [] };
+                          if (onAddVertical) onAddVertical(newT);
+                          setTeam(newTeamName);
+                          setOwner("");
+                          setNewTeamName("");
+                          setShowAddTeam(false);
+                        }
+                      }}
+                      className="bg-teal-500 hover:bg-teal-600 text-white text-[10px] font-bold px-2 py-1 rounded"
+                      type="button"
+                    >
+                      Save
+                    </button>
+                    <button 
+                      onClick={() => setShowAddTeam(false)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-1 rounded"
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <select value={team} onChange={(e) => { setTeam(e.target.value); setOwner(""); }} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                  {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                </select>
+              )}
+            </div>
+
+            <div className="border-t border-orange-100 pt-3 space-y-3">
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Team</label>
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Do (Owner) <span className="text-rose-500">*</span></label>
                   <button 
-                    onClick={() => setShowAddTeam(!showAddTeam)} 
+                    onClick={() => setShowAddMember(!showAddMember)} 
                     className="text-[10px] text-teal-600 hover:text-teal-700 font-bold hover:underline"
                     type="button"
                   >
-                    + Add Team
+                    + Add Owner
                   </button>
                 </div>
-                {showAddTeam ? (
+                {showAddMember ? (
                   <div className="space-y-1.5 p-2 bg-orange-50/40 rounded-xl border border-orange-100">
                     <input 
                       type="text" 
-                      value={newTeamName} 
-                      onChange={(e) => setNewTeamName(e.target.value)} 
-                      placeholder="New team name..." 
+                      value={newMemberName} 
+                      onChange={(e) => setNewMemberName(e.target.value)} 
+                      placeholder="Name..." 
+                      className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-300"
+                    />
+                    <input 
+                      type="text" 
+                      value={newMemberDesignation} 
+                      onChange={(e) => setNewMemberDesignation(e.target.value)} 
+                      placeholder="Designation..." 
                       className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-300"
                     />
                     <div className="flex gap-1">
                       <button 
                         onClick={() => {
-                          if (newTeamName.trim()) {
-                            const newT = { id: Date.now(), name: newTeamName, members: [] };
-                            if (onAddVertical) onAddVertical(newT);
-                            setTeam(newTeamName);
-                            setOwner("");
-                            setNewTeamName("");
-                            setShowAddTeam(false);
+                          if (newMemberName.trim()) {
+                            const selectedTeamObj = teams.find(t => t.name === team);
+                            if (selectedTeamObj && onAddMember) {
+                              const newM = { id: Date.now(), name: newMemberName, designation: newMemberDesignation };
+                              onAddMember(selectedTeamObj.id, newM);
+                              setOwner(newMemberName);
+                              setNewMemberName("");
+                              setShowAddMember(false);
+                            }
                           }
                         }}
                         className="bg-teal-500 hover:bg-teal-600 text-white text-[10px] font-bold px-2 py-1 rounded"
@@ -2849,7 +2910,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                         Save
                       </button>
                       <button 
-                        onClick={() => setShowAddTeam(false)}
+                        onClick={() => setShowAddMember(false)}
                         className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-1 rounded"
                         type="button"
                       >
@@ -2858,92 +2919,47 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                     </div>
                   </div>
                 ) : (
-                  <select value={team} onChange={(e) => { setTeam(e.target.value); setOwner(""); }} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
-                    {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  <select value={owner} onChange={(e) => setOwner(e.target.value)} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                    <option value="">Select owner (Do)...</option>
+                    {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                   </select>
                 )}
               </div>
 
-              <div className="border-t border-orange-100 pt-3 space-y-3">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Owner of the KPI:</span>
-                
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Do (Owner) <span className="text-rose-500">*</span></label>
-                    <button 
-                      onClick={() => setShowAddMember(!showAddMember)} 
-                      className="text-[10px] text-teal-600 hover:text-teal-700 font-bold hover:underline"
-                      type="button"
-                    >
-                      + Add Owner
-                    </button>
-                  </div>
-                  {showAddMember ? (
-                    <div className="space-y-1.5 p-2 bg-orange-50/40 rounded-xl border border-orange-100">
-                      <input 
-                        type="text" 
-                        value={newMemberName} 
-                        onChange={(e) => setNewMemberName(e.target.value)} 
-                        placeholder="Name..." 
-                        className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-300"
-                      />
-                      <input 
-                        type="text" 
-                        value={newMemberDesignation} 
-                        onChange={(e) => setNewMemberDesignation(e.target.value)} 
-                        placeholder="Designation..." 
-                        className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-300"
-                      />
-                      <div className="flex gap-1">
-                        <button 
-                          onClick={() => {
-                            if (newMemberName.trim()) {
-                              const selectedTeamObj = teams.find(t => t.name === team);
-                              if (selectedTeamObj && onAddMember) {
-                                const newM = { id: Date.now(), name: newMemberName, designation: newMemberDesignation };
-                                onAddMember(selectedTeamObj.id, newM);
-                                setOwner(newMemberName);
-                                setNewMemberName("");
-                                setShowAddMember(false);
-                              }
-                            }
-                          }}
-                          className="bg-teal-500 hover:bg-teal-600 text-white text-[10px] font-bold px-2 py-1 rounded"
-                          type="button"
-                        >
-                          Save
-                        </button>
-                        <button 
-                          onClick={() => setShowAddMember(false)}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-1 rounded"
-                          type="button"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <select value={owner} onChange={(e) => setOwner(e.target.value)} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
-                      <option value="">Select owner (Do)...</option>
-                      {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-                    </select>
-                  )}
-                </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Drive (Optional)</label>
+                <select value={driveBy} onChange={(e) => setDriveBy(e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                  <option value="">Select Drive...</option>
+                  {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                </select>
+              </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Drive (Optional)</label>
-                  <select value={driveBy} onChange={(e) => setDriveBy(e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
-                    <option value="">Select Drive...</option>
-                    {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Monitor (Optional)</label>
-                  <select value={monitorBy} onChange={(e) => setMonitorBy(e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
-                    <option value="">Select Monitor...</option>
-                    {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Monitor (Optional)</label>
+                <select value={monitorBy} onChange={(e) => setMonitorBy(e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                  <option value="">Select Monitor...</option>
+                  {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="border-t border-orange-100 pt-3">
+              <label className="text-[11px] font-bold text-slate-600 mb-1.5 block uppercase tracking-wider">Target Casing Type</label>
+              <div className="flex bg-orange-50 p-1 rounded-xl border border-orange-100/50">
+                {["monthly", "weekly", "daily"].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setTargetType(type)}
+                    className={`flex-1 text-center py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                      targetType === type 
+                        ? "bg-white text-teal-650 shadow-sm border border-orange-100" 
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -2997,8 +3013,12 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                         <input
                           type="text"
                           value={formatIndianNumber(val)}
+                          onChange={(e) => handleMonthlyChange(m, parseIndianNumber(e.target.value))}
+                          disabled={targetType !== "monthly"}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-full text-center border border-orange-200 rounded-lg py-1 text-xs focus:outline-none bg-white font-bold text-slate-800 mb-1"
+                          className={`w-full text-center border border-orange-200 rounded-lg py-1 text-xs focus:outline-none font-bold mb-1 ${
+                            targetType === "monthly" ? "bg-white text-slate-850" : "bg-slate-50 text-slate-400 cursor-not-allowed"
+                          }`}
                           placeholder="T:0"
                           title="Monthly Target"
                         />
@@ -3152,7 +3172,10 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                                           type="text"
                                           value={formatIndianNumber(dayTarget)}
                                           onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
-                                          className="w-12 text-center text-xs focus:outline-none bg-transparent font-bold text-slate-800 border-b border-dashed border-slate-100"
+                                          disabled={targetType !== "daily"}
+                                          className={`w-12 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed border-slate-100 ${
+                                            targetType === "daily" ? "text-slate-800" : "text-slate-400 cursor-not-allowed"
+                                          }`}
                                           placeholder="T:0"
                                           title="Original Target"
                                         />
@@ -3187,7 +3210,10 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                                     type="text"
                                     value={formatIndianNumber(weekVal)}
                                     onChange={(e) => handleWeeklyChange(r, parseIndianNumber(e.target.value), selectedMonth)}
-                                    className="w-full text-center text-xs focus:outline-none bg-transparent font-extrabold text-teal-900 leading-none h-4 border-b border-dashed border-teal-100"
+                                    disabled={targetType !== "weekly"}
+                                    className={`w-full text-center text-xs focus:outline-none bg-transparent font-extrabold leading-none h-4 border-b border-dashed border-teal-100 ${
+                                      targetType === "weekly" ? "text-teal-900" : "text-slate-400 cursor-not-allowed"
+                                    }`}
                                     placeholder="T:0"
                                     title="Weekly Target"
                                   />
