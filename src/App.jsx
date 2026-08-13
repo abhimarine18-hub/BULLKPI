@@ -2302,7 +2302,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
   const [description, setDescription] = useState(kpi.description || "");
   const [unit, setUnit] = useState(kpi.unit);
   const isTimeKpi = unit.trim().toLowerCase() === "time";
-  const [targetType, setTargetType] = useState(kpi.targetType || "monthly");
+  const [distributeEnabled, setDistributeEnabled] = useState(kpi.targetType !== "monthly");
   
   // Inline creation states for team/member
   const [showAddTeam, setShowAddTeam] = useState(false);
@@ -2759,7 +2759,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
       revisedAlloc,
       customHolidays,
       holidaysEnabled,
-      targetType,
+      targetType: distributeEnabled ? "daily" : "monthly",
       targetsList: Object.entries(dailyAlloc).filter(([_, val]) => val > 0).map(([dStr, val]) => ({ id: dStr, label: dStr, targetValue: val, targetDate: dStr }))
     });
     onClose();
@@ -2942,26 +2942,6 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                 </select>
               </div>
             </div>
-
-            <div className="border-t border-orange-100 pt-3">
-              <label className="text-[11px] font-bold text-slate-600 mb-1.5 block uppercase tracking-wider">Target Casing Type</label>
-              <div className="flex bg-orange-50 p-1 rounded-xl border border-orange-100/50">
-                {["monthly", "weekly", "daily"].map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setTargetType(type)}
-                    className={`flex-1 text-center py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                      targetType === type 
-                        ? "bg-white text-teal-650 shadow-sm border border-orange-100" 
-                        : "text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* RIGHT COLUMN: TARGET SCHEDULING & DISTRIBUTION (takes 6/8 columns) */}
@@ -2990,7 +2970,18 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
 
             {/* Scrollable Month Line Editor (Grid: fits all 12 on one screen width) */}
             <div className="shrink-0">
-              <label className="text-xs font-bold text-slate-600 block mb-2 uppercase tracking-wider">Monthly Targets & Achievements (FY 2026-27) *</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs font-bold text-slate-600 block uppercase tracking-wider">Monthly Targets & Achievements (FY 2026-27) *</label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-600 select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={distributeEnabled} 
+                    onChange={(e) => setDistributeEnabled(e.target.checked)} 
+                    className="w-4 h-4 rounded border-orange-200 text-teal-600 focus:ring-teal-300"
+                  />
+                  Enable Distribute (Daily/Weekly)
+                </label>
+              </div>
               <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5">
                 {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
                   const val = monthlyAlloc[m] || 0;
@@ -3030,9 +3021,8 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
             </div>
 
             {/* Selected Month Breakdown Sub-view (Unified Calendar Grid with Weekly Total) */}
-            <div className={`flex-1 flex flex-col min-h-0 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 overflow-hidden transition-all duration-300 ${
-              targetType === "monthly" ? "opacity-45 pointer-events-none select-none" : ""
-            }`}>
+            {distributeEnabled && (
+              <div className="flex-1 flex flex-col min-h-0 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 overflow-hidden">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-2 shrink-0 mb-3">
                 <div>
                   <h4 className="text-sm font-bold text-slate-800">
@@ -3171,10 +3161,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                                           type="text"
                                           value={formatIndianNumber(dayTarget)}
                                           onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
-                                          disabled={targetType !== "daily"}
-                                          className={`w-12 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed border-slate-100 ${
-                                            targetType === "daily" ? "text-slate-800" : "text-slate-400 cursor-not-allowed"
-                                          }`}
+                                          className="w-12 text-center text-xs focus:outline-none bg-transparent font-bold text-slate-800 border-b border-dashed border-slate-100"
                                           placeholder="T:0"
                                           title="Original Target"
                                         />
@@ -3205,17 +3192,9 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                                 </div>
                               ) : (
                                 <>
-                                  <input
-                                    type="text"
-                                    value={formatIndianNumber(weekVal)}
-                                    onChange={(e) => handleWeeklyChange(r, parseIndianNumber(e.target.value), selectedMonth)}
-                                    disabled={targetType !== "weekly"}
-                                    className={`w-full text-center text-xs focus:outline-none bg-transparent font-extrabold leading-none h-4 border-b border-dashed border-teal-100 ${
-                                      targetType === "weekly" ? "text-teal-900" : "text-slate-400 cursor-not-allowed"
-                                    }`}
-                                    placeholder="T:0"
-                                    title="Weekly Target"
-                                  />
+                                  <div className="w-full text-center text-xs font-extrabold text-teal-900 leading-none h-4" title="Weekly Target (Derived)">
+                                    T: {formatIndianNumber(weekVal) || "0"}
+                                  </div>
                                   <div className="w-full text-center text-xs font-bold text-emerald-800 leading-none h-4" title="Weekly Achievement (Read-only)">
                                     {weekActVal > 0 ? `A:${formatIndianNumber(weekActVal)}` : "A:0"}
                                   </div>
@@ -3232,6 +3211,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                 </div>
               </div>
             </div>
+            )}
           </div>
         </div>
 
