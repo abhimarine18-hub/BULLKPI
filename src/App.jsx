@@ -2363,7 +2363,8 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
   const [weeklyActual, setWeeklyActual] = useState(kpi.weeklyActual || {});
 
   const selectedTeamObj = teams.find(t => t.name === team);
-  const ownerOptions = selectedTeamObj ? selectedTeamObj.members : teams.flatMap(t => t.members);
+  const allMembers = teams.flatMap(t => t.members);
+  const ownerOptions = allMembers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i);
 
   // Helper check holiday
   const checkIsHoliday = (dateStr) => {
