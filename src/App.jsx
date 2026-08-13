@@ -3646,7 +3646,41 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                   </div>
 
                   {/* Scrollable list of all teams and their hierarchy trees */}
-                  <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+                  <div className="flex-1 overflow-y-auto pr-1">
+                    {/* Head of Organization (MD / CEO) */}
+                    <div className="flex flex-col items-center mb-6 pt-2 shrink-0">
+                      <div 
+                        onClick={() => {
+                          if (activeMemberFilter === "Managing Director") {
+                            setActiveMemberFilter(null);
+                          } else {
+                            setActiveMemberFilter("Managing Director");
+                          }
+                        }}
+                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer shadow-md hover:shadow-lg w-full max-w-[240px] relative group ${
+                          activeMemberFilter === "Managing Director"
+                            ? "bg-teal-50 border-teal-500 ring-2 ring-teal-105"
+                            : "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-700 hover:scale-[1.02]"
+                        }`}
+                        style={{ fontFamily: "'Google Sans', sans-serif" }}
+                      >
+                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-[8px] text-white px-2 py-0.5 rounded-full uppercase font-black tracking-widest shadow-sm">
+                          Head
+                        </div>
+                        <span className="font-extrabold text-sm block">Managing Director</span>
+                        <span className={`text-[11px] block mt-0.5 font-medium ${activeMemberFilter === "Managing Director" ? "text-slate-500" : "text-teal-100"}`}>
+                          MD / CEO · 15 yrs exp
+                        </span>
+                      </div>
+                      
+                      {/* Tree branches connector lines */}
+                      <div className="w-0.5 h-6 bg-slate-350"></div>
+                      <div className="h-0.5 w-[80%] bg-slate-200 rounded-full"></div>
+                      <div className="w-0.5 h-3 bg-slate-200"></div>
+                    </div>
+
+                    {/* Scrollable list of all teams and their hierarchy trees */}
+                    <div className="flex flex-wrap gap-4 justify-center">
                     {teams.map(t => {
                       const leadMember = t.members.find(m => m.name === t.lead) || t.members[0];
 
@@ -3726,6 +3760,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 </div>
 
