@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2
 } from "lucide-react";
 
 /* ---------------- Shared data (single source of truth) ---------------- */
@@ -3248,7 +3248,7 @@ const ADMIN_NAV = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi }) {
+function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -3455,13 +3455,22 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                           </td>
                           <td className="px-4 py-2"><StatusBadge status={getStatus(kpi)} /></td>
                           <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                            <button 
-                              onClick={() => setEditingKpi(kpi)} 
-                              className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
-                              title="Edit KPI Targets"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
+                            <div className="flex justify-end gap-1.5">
+                              <button 
+                                onClick={() => setEditingKpi(kpi)} 
+                                className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
+                                title="Edit KPI Targets"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => onDeleteKpi && onDeleteKpi(kpi.id)} 
+                                className="text-rose-600 hover:text-rose-800 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
+                                title="Delete KPI"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -3487,12 +3496,20 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                           {kpi.driveBy && <div><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
                           {kpi.monitorBy && <div><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }}
-                          className="text-teal-600 hover:text-teal-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-teal-50 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }}
+                            className="text-teal-600 hover:text-teal-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-teal-50 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDeleteKpi && onDeleteKpi(kpi.id); }}
+                            className="text-rose-600 hover:text-rose-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -4523,6 +4540,13 @@ export default function App() {
     }).eq('id', updatedKpi.id);
   }
 
+  async function handleDeleteKpi(id) {
+    if (window.confirm("Are you sure you want to delete this KPI? This action cannot be undone.")) {
+      setKpis((prev) => prev.filter((k) => k.id !== id));
+      await supabase.from('kpis').delete().eq('id', id);
+    }
+  }
+
   async function handleAddProject(newProject) {
     const isNew = typeof newProject.id === "string" && newProject.id.startsWith("temp-");
     
@@ -4621,6 +4645,7 @@ export default function App() {
             onAddProject={handleAddProject}
             onUpdateProjectStage={handleUpdateProjectStage}
             onEditKpi={handleEditKpi}
+            onDeleteKpi={handleDeleteKpi}
           />
         ) : (
           <EmployeeApp kpis={kpis} onLog={handleLog} teams={teams} />
