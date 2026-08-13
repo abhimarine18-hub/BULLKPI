@@ -1951,9 +1951,11 @@ function AddPlayerModal({ teams, defaultTeamId, onClose, onSubmit }) {
 }
 
 function AddTeamModal({ teams, onClose, onSubmit }) {
-  const [form, setForm] = useState({ title: "", description: "" });
+  const [form, setForm] = useState({ title: "", description: "", lead: "" });
+  const [showCustomLead, setShowCustomLead] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const canSubmit = form.title.trim();
+  const allEmployees = teams.flatMap((t) => t.members.map((m) => ({ ...m, team: t.name })));
+  const canSubmit = form.title.trim() && form.lead;
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
@@ -1971,10 +1973,38 @@ function AddTeamModal({ teams, onClose, onSubmit }) {
             <label className="text-xs text-slate-500 mb-1 block">Description</label>
             <textarea value={form.description} onChange={set("description")} rows={2} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="What does this team cover?" />
           </div>
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-xs text-slate-500 block">Team Lead <span className="text-rose-500">*</span></label>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setShowCustomLead(!showCustomLead);
+                  setForm({ ...form, lead: "" });
+                }}
+                className="text-[10px] text-teal-600 hover:text-teal-700 font-bold hover:underline"
+              >
+                {showCustomLead ? "Select Existing Lead" : "+ Add New Lead Name"}
+              </button>
+            </div>
+            {showCustomLead ? (
+              <input 
+                value={form.lead} 
+                onChange={set("lead")} 
+                className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" 
+                placeholder="Enter lead name..." 
+              />
+            ) : (
+              <select value={form.lead} onChange={set("lead")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
+                <option value="">Select a lead...</option>
+                {allEmployees.map((m) => <option key={m.id} value={m.name}>{m.name} · {m.designation} ({m.team})</option>)}
+              </select>
+            )}
+          </div>
         </div>
         <button
           disabled={!canSubmit}
-          onClick={() => { onSubmit({ id: Date.now(), name: form.title, description: form.description, lead: "", members: [] }); onClose(); }}
+          onClick={() => { onSubmit({ id: Date.now(), name: form.title, description: form.description, lead: form.lead, members: [] }); onClose(); }}
           className="w-full bg-teal-500 hover:bg-teal-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-xl transition-colors mt-4"
         >
           Add Team
@@ -3646,41 +3676,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                   </div>
 
                   {/* Scrollable list of all teams and their hierarchy trees */}
-                  <div className="flex-1 overflow-y-auto pr-1">
-                    {/* Head of Organization (MD / CEO) */}
-                    <div className="flex flex-col items-center mb-6 pt-2 shrink-0">
-                      <div 
-                        onClick={() => {
-                          if (activeMemberFilter === "Managing Director") {
-                            setActiveMemberFilter(null);
-                          } else {
-                            setActiveMemberFilter("Managing Director");
-                          }
-                        }}
-                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer shadow-md hover:shadow-lg w-full max-w-[240px] relative group ${
-                          activeMemberFilter === "Managing Director"
-                            ? "bg-teal-50 border-teal-500 ring-2 ring-teal-105"
-                            : "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-700 hover:scale-[1.02]"
-                        }`}
-                        style={{ fontFamily: "'Google Sans', sans-serif" }}
-                      >
-                        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-[8px] text-white px-2 py-0.5 rounded-full uppercase font-black tracking-widest shadow-sm">
-                          Head
-                        </div>
-                        <span className="font-extrabold text-sm block">Managing Director</span>
-                        <span className={`text-[11px] block mt-0.5 font-medium ${activeMemberFilter === "Managing Director" ? "text-slate-500" : "text-teal-100"}`}>
-                          MD / CEO · 15 yrs exp
-                        </span>
-                      </div>
-                      
-                      {/* Tree branches connector lines */}
-                      <div className="w-0.5 h-6 bg-slate-350"></div>
-                      <div className="h-0.5 w-[80%] bg-slate-200 rounded-full"></div>
-                      <div className="w-0.5 h-3 bg-slate-200"></div>
-                    </div>
-
-                    {/* Scrollable list of all teams and their hierarchy trees */}
-                    <div className="flex flex-wrap gap-4 justify-center">
+                  <div className="flex-1 overflow-y-auto space-y-6 pr-1">
                     {teams.map(t => {
                       const leadMember = t.members.find(m => m.name === t.lead) || t.members[0];
 
@@ -3760,7 +3756,6 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                         </div>
                       );
                     })}
-                    </div>
                   </div>
                 </div>
 
