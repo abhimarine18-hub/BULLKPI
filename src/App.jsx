@@ -3014,11 +3014,8 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
                           type="text"
                           value={formatIndianNumber(val)}
                           onChange={(e) => handleMonthlyChange(m, parseIndianNumber(e.target.value))}
-                          disabled={targetType !== "monthly"}
                           onClick={(e) => e.stopPropagation()}
-                          className={`w-full text-center border border-orange-200 rounded-lg py-1 text-xs focus:outline-none font-bold mb-1 ${
-                            targetType === "monthly" ? "bg-white text-slate-850" : "bg-slate-50 text-slate-400 cursor-not-allowed"
-                          }`}
+                          className="w-full text-center border border-orange-200 rounded-lg py-1 text-xs focus:outline-none bg-white font-bold text-slate-800 mb-1"
                           placeholder="T:0"
                           title="Monthly Target"
                         />
@@ -3033,7 +3030,9 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
             </div>
 
             {/* Selected Month Breakdown Sub-view (Unified Calendar Grid with Weekly Total) */}
-            <div className="flex-1 flex flex-col min-h-0 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 overflow-hidden">
+            <div className={`flex-1 flex flex-col min-h-0 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 overflow-hidden transition-all duration-300 ${
+              targetType === "monthly" ? "opacity-45 pointer-events-none select-none" : ""
+            }`}>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-2 shrink-0 mb-3">
                 <div>
                   <h4 className="text-sm font-bold text-slate-800">
