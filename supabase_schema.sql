@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS kpis (
   direction VARCHAR(50) DEFAULT 'higher',
   team VARCHAR(255) NOT NULL,
   owner VARCHAR(255) NOT NULL,
+  drive_by VARCHAR(255) DEFAULT '',
+  monitor_by VARCHAR(255) DEFAULT '',
   kra VARCHAR(255),
   history JSONB DEFAULT '[]'::jsonb,
   daily_actual JSONB DEFAULT '{}'::jsonb,
