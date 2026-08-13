@@ -3292,6 +3292,16 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
 
   const teamOptions = ["All teams", ...new Set(kpis.map((k) => k.team))];
   const filteredKpis = teamFilter === "All teams" ? kpis : kpis.filter((k) => k.team === teamFilter);
+  const kpisByTeam = useMemo(() => {
+    const groups = {};
+    filteredKpis.forEach(k => {
+      if (!groups[k.team]) {
+        groups[k.team] = [];
+      }
+      groups[k.team].push(k);
+    });
+    return groups;
+  }, [filteredKpis]);
   const onTrackCount = kpis.filter((k) => getStatus(k) === "on-track").length;
 
   const detailKpi = kpis.find((k) => k.id === detailId);
@@ -3441,97 +3451,117 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
               </div>
 
               {kpiView === "list" && (
-                <div className="bg-white border border-orange-100 rounded-2xl overflow-y-auto max-h-[calc(100vh-210px)] shadow-sm">
-                  <table className="w-full text-xs min-w-[1000px] border-collapse">
-                    <thead className="sticky top-0 bg-white z-10">
-                      <tr className="border-b border-orange-100 text-left bg-orange-50/40">
-                        <th className="px-4 py-2 font-bold text-slate-600">KPI Title</th>
-                        <th className="px-4 py-2 font-bold text-slate-600 w-1/4">Description</th>
-                        <th className="px-4 py-2 font-bold text-slate-600">UOM</th>
-                        <th className="px-4 py-2 font-bold text-slate-600">Target Type / Value</th>
-                        <th className="px-4 py-2 font-bold text-slate-600">Team</th>
-                        <th className="px-4 py-2 font-bold text-slate-600">Owner</th>
-                        <th className="px-4 py-2 font-bold text-slate-600">Status</th>
-                        <th className="px-4 py-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-orange-50">
-                      {filteredKpis.map((kpi, i) => (
-                        <tr key={kpi.id} className="hover:bg-orange-50/30 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
-                          <td className="px-4 py-2 font-bold text-slate-800 text-xs max-w-xs truncate">{kpi.name}</td>
-                          <td className="px-4 py-2 text-slate-500 text-[11px] leading-relaxed max-w-xs truncate" title={kpi.description || `Key Performance Indicator: ${kpi.name}`}>
-                            {kpi.description || <span className="italic text-slate-350">No description</span>}
-                          </td>
-                          <td className="px-4 py-2 text-slate-700">
-                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-600 font-mono font-bold uppercase tracking-wider">{kpi.unit.trim()}</span>
-                          </td>
-                          <td className="px-4 py-2">
-                            <span className="capitalize font-bold text-slate-800 block text-[11px]">{kpi.targetType || "monthly"}</span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">{kpi.target}{kpi.unit}</span>
-                          </td>
-                          <td className="px-4 py-2 text-slate-600 font-medium text-[11px]">{kpi.team}</td>
-                          <td className="px-4 py-2 text-slate-600 text-[11px] space-y-1">
-                            <div><span className="text-[9px] font-bold uppercase text-teal-700 bg-teal-50 px-1 rounded mr-1">Do</span><span className="font-bold text-slate-750">{kpi.owner}</span></div>
-                            {kpi.driveBy && <div><span className="text-[9px] font-bold uppercase text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive</span><span className="font-medium text-slate-600">{kpi.driveBy}</span></div>}
-                            {kpi.monitorBy && <div><span className="text-[9px] font-bold uppercase text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor</span><span className="font-medium text-slate-600">{kpi.monitorBy}</span></div>}
-                          </td>
-                          <td className="px-4 py-2"><StatusBadge status={getStatus(kpi)} /></td>
-                          <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end gap-1.5">
-                              <button 
-                                onClick={() => setEditingKpi(kpi)} 
-                                className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
-                                title="Edit KPI Targets"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button 
-                                onClick={() => onDeleteKpi && onDeleteKpi(kpi.id)} 
-                                className="text-rose-600 hover:text-rose-800 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
-                                title="Delete KPI"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-210px)] pr-1">
+                  {Object.entries(kpisByTeam).map(([teamName, teamKpis]) => (
+                    <div key={teamName} className="bg-white border border-orange-100 rounded-2xl shadow-sm overflow-hidden">
+                      <div className="bg-orange-50/30 px-5 py-3 border-b border-orange-100 flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">{teamName}</h4>
+                        <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-100">{teamKpis.length} {teamKpis.length === 1 ? "KPI" : "KPIs"}</span>
+                      </div>
+                      
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs min-w-[1000px] border-collapse">
+                          <thead>
+                            <tr className="border-b border-orange-50 text-left bg-slate-50/50">
+                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">KPI Title</th>
+                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-1/4">Description</th>
+                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">UOM</th>
+                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Target Type / Value</th>
+                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Owner</th>
+                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
+                              <th className="px-5 py-2.5"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-orange-50">
+                            {teamKpis.map((kpi) => (
+                              <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
+                                <td className="px-5 py-3.5 font-bold text-slate-800 text-xs max-w-xs truncate">{kpi.name}</td>
+                                <td className="px-5 py-3.5 text-slate-500 text-[11px] leading-relaxed max-w-xs truncate" title={kpi.description || `Key Performance Indicator: ${kpi.name}`}>
+                                  {kpi.description || <span className="italic text-slate-350 font-normal">No description</span>}
+                                </td>
+                                <td className="px-5 py-3.5 text-slate-700">
+                                  <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-600 font-mono font-bold uppercase tracking-wider">{kpi.unit.trim()}</span>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <span className="capitalize font-bold text-slate-800 block text-[11px]">{kpi.targetType || "monthly"}</span>
+                                  <span className="text-[10px] text-slate-400 block mt-0.5">{kpi.target}{kpi.unit}</span>
+                                </td>
+                                <td className="px-5 py-3.5 text-slate-600 text-[11px] space-y-1">
+                                  <div><span className="text-[9px] font-bold uppercase text-teal-700 bg-teal-50 px-1 rounded mr-1">Do</span><span className="font-bold text-slate-750">{kpi.owner}</span></div>
+                                  {kpi.driveBy && <div><span className="text-[9px] font-bold uppercase text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive</span><span className="font-medium text-slate-600">{kpi.driveBy}</span></div>}
+                                  {kpi.monitorBy && <div><span className="text-[9px] font-bold uppercase text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor</span><span className="font-medium text-slate-600">{kpi.monitorBy}</span></div>}
+                                </td>
+                                <td className="px-5 py-3.5"><StatusBadge status={getStatus(kpi)} /></td>
+                                <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex justify-end gap-1.5">
+                                    <button 
+                                      onClick={() => setEditingKpi(kpi)} 
+                                      className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
+                                      title="Edit KPI Targets"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button 
+                                      onClick={() => onDeleteKpi && onDeleteKpi(kpi.id)} 
+                                      className="text-rose-600 hover:text-rose-800 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
+                                      title="Delete KPI"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
               {kpiView === "grid" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filteredKpis.map((kpi) => (
-                    <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group">
-                      <div className="flex items-start justify-between mb-3">
-                        <p className="text-sm font-semibold text-slate-700 pr-6">{kpi.name}</p>
-                        <StatusBadge status={getStatus(kpi)} />
+                <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-210px)] pr-1">
+                  {Object.entries(kpisByTeam).map(([teamName, teamKpis]) => (
+                    <div key={teamName} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{teamName}</h4>
+                        <div className="h-px bg-orange-100 flex-1"></div>
+                        <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 border border-orange-100 rounded-full">{teamKpis.length}</span>
                       </div>
-                      <p className="text-2xl font-semibold text-slate-900">{getLatest(kpi)}<span className="text-sm text-slate-400 ml-1">{kpi.unit}</span></p>
                       
-                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-50">
-<div className="space-y-0.5 text-[10px]">
-                          <p className="text-xs text-slate-400 mb-1">{kpi.team}</p>
-                          <div><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
-                          {kpi.driveBy && <div><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
-                          {kpi.monitorBy && <div><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }}
-                            className="text-teal-600 hover:text-teal-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-teal-50 transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onDeleteKpi && onDeleteKpi(kpi.id); }}
-                            className="text-rose-600 hover:text-rose-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {teamKpis.map((kpi) => (
+                          <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group">
+                            <div className="flex items-start justify-between mb-3">
+                              <p className="text-sm font-semibold text-slate-700 pr-6">{kpi.name}</p>
+                              <StatusBadge status={getStatus(kpi)} />
+                            </div>
+                            <p className="text-2xl font-semibold text-slate-900">{getLatest(kpi)}<span className="text-sm text-slate-400 ml-1">{kpi.unit}</span></p>
+                            
+                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-50">
+                              <div className="space-y-0.5 text-[10px]">
+                                <div><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
+                                {kpi.driveBy && <div><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
+                                {kpi.monitorBy && <div><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }}
+                                  className="text-teal-600 hover:text-teal-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-teal-50 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onDeleteKpi && onDeleteKpi(kpi.id); }}
+                                  className="text-rose-600 hover:text-rose-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
