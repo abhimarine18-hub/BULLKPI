@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table
 } from "lucide-react";
 
 /* ---------------- Shared data (single source of truth) ---------------- */
@@ -2295,6 +2295,148 @@ const HOLIDAYS = [
   "2027-01-26"  // Republic Day
 ];
 
+const isWeekendDay = (dateStr) => {
+  const d = new Date(dateStr);
+  const day = d.getDay();
+  if (day === 0) return { isHoliday: true, name: "Sunday" };
+  if (day === 6) return { isHoliday: true, name: "Saturday" };
+  return { isHoliday: false };
+};
+
+const getDaysInMonth = (monthName) => {
+  const monthInfo = FY_MONTHS.find(m => m.name === monthName);
+  if (!monthInfo) return [];
+  const date = new Date(monthInfo.year, monthInfo.monthIdx, 1);
+  const days = [];
+  while (date.getMonth() === monthInfo.monthIdx) {
+    const year = date.getFullYear();
+    const mIdx = String(date.getMonth() + 1).padStart(2, "0");
+    const dIdx = String(date.getDate()).padStart(2, "0");
+    days.push(`${year}-${mIdx}-${dIdx}`);
+    date.setDate(date.getDate() + 1);
+  }
+  return days;
+};
+
+const getCalendarCells = (monthName) => {
+  const monthInfo = FY_MONTHS.find(m => m.name === monthName);
+  if (!monthInfo) return [];
+  const firstDay = new Date(monthInfo.year, monthInfo.monthIdx, 1).getDay(); // 0 to 6
+  const days = getDaysInMonth(monthName);
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) {
+    cells.push({ isEmpty: true });
+  }
+  days.forEach(dStr => {
+    const dayNum = parseInt(dStr.split("-")[2]);
+    cells.push({ isEmpty: false, dateStr: dStr, dayNum });
+  });
+  return cells;
+};
+
+const getDaysInWeekRow = (monthName, rowIdx) => {
+  const cells = getCalendarCells(monthName);
+  const rowCells = cells.slice(rowIdx * 7, (rowIdx + 1) * 7);
+  return rowCells.filter(c => c && !c.isEmpty).map(c => c.dateStr);
+};
+
+const getFYearDays = () => {
+  const days = [];
+  FY_MONTHS.forEach(mInfo => {
+    const date = new Date(mInfo.year, mInfo.monthIdx, 1);
+    while (date.getMonth() === mInfo.monthIdx) {
+      const year = date.getFullYear();
+      const mStr = String(date.getMonth() + 1).padStart(2, "0");
+      const dStr = String(date.getDate()).padStart(2, "0");
+      days.push(`${year}-${mStr}-${dStr}`);
+      date.setDate(date.getDate() + 1);
+    }
+  });
+  return days;
+};
+
+const checkIsHolidayPure = (dateStr, holidaysEnabled, customHolidays) => {
+  if (!holidaysEnabled) return { isHoliday: false };
+  if (customHolidays?.[dateStr]) {
+    return { isHoliday: true, name: "Admin Holiday" };
+  }
+  const d = new Date(dateStr);
+  if (d.getDay() === 0) {
+    return { isHoliday: true, name: "Sunday" };
+  }
+  return { isHoliday: false };
+};
+
+const distributeMonthToSubperiods = (monthName, monthVal, currentDaily, currentWeekly, holidaysEnabled, customHolidays) => {
+  const cells = getCalendarCells(monthName);
+  const numRows = Math.ceil(cells.length / 7);
+
+  const baseWeek = Math.floor(monthVal / numRows);
+  let remWeek = monthVal - (baseWeek * numRows);
+  const nextW = { ...currentWeekly };
+  for (let i = 1; i <= numRows; i++) {
+    nextW[`${monthName}-Week${i}`] = baseWeek + (remWeek > 0 ? 1 : 0);
+    if (remWeek > 0) remWeek--;
+  }
+
+  const nextD = { ...currentDaily };
+  for (let r = 0; r < numRows; r++) {
+    const wVal = nextW[`${monthName}-Week${r + 1}`] || 0;
+    const weekDays = getDaysInWeekRow(monthName, r);
+    const workingDays = weekDays.filter(d => !checkIsHolidayPure(d, holidaysEnabled, customHolidays).isHoliday);
+    const wCount = workingDays.length || weekDays.length || 7;
+    const baseDay = Math.floor(wVal / wCount);
+    let remDay = wVal - (baseDay * wCount);
+
+    weekDays.forEach(d => {
+      const check = checkIsHolidayPure(d, holidaysEnabled, customHolidays);
+      if (check.isHoliday) {
+        nextD[d] = 0;
+      } else {
+        nextD[d] = baseDay + (remDay > 0 ? 1 : 0);
+        if (remDay > 0) remDay--;
+      }
+    });
+  }
+
+  return { nextW, nextD };
+};
+
+const distributeMonthActualToSubperiods = (monthName, monthVal, currentDailyAct, currentWeeklyAct, holidaysEnabled, customHolidays) => {
+  const cells = getCalendarCells(monthName);
+  const numRows = Math.ceil(cells.length / 7);
+
+  const baseWeek = Math.floor(monthVal / numRows);
+  let remWeek = monthVal - (baseWeek * numRows);
+  const nextWAct = { ...currentWeeklyAct };
+  for (let i = 1; i <= numRows; i++) {
+    nextWAct[`${monthName}-Week${i}`] = baseWeek + (remWeek > 0 ? 1 : 0);
+    if (remWeek > 0) remWeek--;
+  }
+
+  const nextDAct = { ...currentDailyAct };
+  for (let r = 0; r < numRows; r++) {
+    const wVal = nextWAct[`${monthName}-Week${r + 1}`] || 0;
+    const weekDays = getDaysInWeekRow(monthName, r);
+    const workingDays = weekDays.filter(d => !checkIsHolidayPure(d, holidaysEnabled, customHolidays).isHoliday);
+    const wCount = workingDays.length || weekDays.length || 7;
+    const baseDay = Math.floor(wVal / wCount);
+    let remDay = wVal - (baseDay * wCount);
+
+    weekDays.forEach(d => {
+      const check = checkIsHolidayPure(d, holidaysEnabled, customHolidays);
+      if (check.isHoliday) {
+        nextDAct[d] = 0;
+      } else {
+        nextDAct[d] = baseDay + (remDay > 0 ? 1 : 0);
+        if (remDay > 0) remDay--;
+      }
+    });
+  }
+
+  return { nextWAct, nextDAct };
+};
+
 function isHolidayOrWeekend(dateStr) {
   if (HOLIDAYS.includes(dateStr)) return { isHoliday: true, name: "Holiday" };
   const d = new Date(dateStr);
@@ -2399,134 +2541,6 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
     return { isHoliday: false };
   };
 
-  const getDaysInMonth = (monthName) => {
-    const monthInfo = FY_MONTHS.find(m => m.name === monthName);
-    if (!monthInfo) return [];
-    const date = new Date(monthInfo.year, monthInfo.monthIdx, 1);
-    const days = [];
-    while (date.getMonth() === monthInfo.monthIdx) {
-      const year = date.getFullYear();
-      const mIdx = String(date.getMonth() + 1).padStart(2, "0");
-      const dIdx = String(date.getDate()).padStart(2, "0");
-      days.push(`${year}-${mIdx}-${dIdx}`);
-      date.setDate(date.getDate() + 1);
-    }
-    return days;
-  };
-
-  const getCalendarCells = (monthName) => {
-    const monthInfo = FY_MONTHS.find(m => m.name === monthName);
-    if (!monthInfo) return [];
-    const firstDay = new Date(monthInfo.year, monthInfo.monthIdx, 1).getDay(); // 0 to 6
-    const days = getDaysInMonth(monthName);
-    const cells = [];
-    for (let i = 0; i < firstDay; i++) {
-      cells.push({ isEmpty: true });
-    }
-    days.forEach(dStr => {
-      const dayNum = parseInt(dStr.split("-")[2]);
-      cells.push({ isEmpty: false, dateStr: dStr, dayNum });
-    });
-    return cells;
-  };
-
-  const getDaysInWeekRow = (monthName, rowIdx) => {
-    const cells = getCalendarCells(monthName);
-    const rowCells = cells.slice(rowIdx * 7, (rowIdx + 1) * 7);
-    return rowCells.filter(c => c && !c.isEmpty).map(c => c.dateStr);
-  };
-
-  const getFYearDays = () => {
-    const days = [];
-    FY_MONTHS.forEach(mInfo => {
-      const date = new Date(mInfo.year, mInfo.monthIdx, 1);
-      while (date.getMonth() === mInfo.monthIdx) {
-        const year = date.getFullYear();
-        const mStr = String(date.getMonth() + 1).padStart(2, "0");
-        const dStr = String(date.getDate()).padStart(2, "0");
-        days.push(`${year}-${mStr}-${dStr}`);
-        date.setDate(date.getDate() + 1);
-      }
-    });
-    return days;
-  };
-
-  // Synchronous distribution helpers for Target
-  const distributeMonthToSubperiods = (monthName, monthVal, currentDaily, currentWeekly) => {
-    const cells = getCalendarCells(monthName);
-    const numRows = Math.ceil(cells.length / 7);
-
-    // 1. Distribute to Week Rows
-    const baseWeek = Math.floor(monthVal / numRows);
-    let remWeek = monthVal - (baseWeek * numRows);
-    const nextW = { ...currentWeekly };
-    for (let i = 1; i <= numRows; i++) {
-      nextW[`${monthName}-Week${i}`] = baseWeek + (remWeek > 0 ? 1 : 0);
-      if (remWeek > 0) remWeek--;
-    }
-
-    // 2. Distribute to Days by Week Row
-    const nextD = { ...currentDaily };
-    for (let r = 0; r < numRows; r++) {
-      const wVal = nextW[`${monthName}-Week${r + 1}`] || 0;
-      const weekDays = getDaysInWeekRow(monthName, r);
-      const workingDays = weekDays.filter(d => !checkIsHoliday(d).isHoliday);
-      const wCount = workingDays.length || weekDays.length || 7;
-      const baseDay = Math.floor(wVal / wCount);
-      let remDay = wVal - (baseDay * wCount);
-
-      weekDays.forEach(d => {
-        const check = checkIsHoliday(d);
-        if (check.isHoliday) {
-          nextD[d] = 0;
-        } else {
-          nextD[d] = baseDay + (remDay > 0 ? 1 : 0);
-          if (remDay > 0) remDay--;
-        }
-      });
-    }
-
-    return { nextW, nextD };
-  };
-
-  // Synchronous distribution helpers for Achievements
-  const distributeMonthActualToSubperiods = (monthName, monthVal, currentDailyAct, currentWeeklyAct) => {
-    const cells = getCalendarCells(monthName);
-    const numRows = Math.ceil(cells.length / 7);
-
-    // 1. Distribute to Week Rows
-    const baseWeek = Math.floor(monthVal / numRows);
-    let remWeek = monthVal - (baseWeek * numRows);
-    const nextWAct = { ...currentWeeklyAct };
-    for (let i = 1; i <= numRows; i++) {
-      nextWAct[`${monthName}-Week${i}`] = baseWeek + (remWeek > 0 ? 1 : 0);
-      if (remWeek > 0) remWeek--;
-    }
-
-    // 2. Distribute to Days by Week Row
-    const nextDAct = { ...currentDailyAct };
-    for (let r = 0; r < numRows; r++) {
-      const wVal = nextWAct[`${monthName}-Week${r + 1}`] || 0;
-      const weekDays = getDaysInWeekRow(monthName, r);
-      const workingDays = weekDays.filter(d => !checkIsHoliday(d).isHoliday);
-      const wCount = workingDays.length || weekDays.length || 7;
-      const baseDay = Math.floor(wVal / wCount);
-      let remDay = wVal - (baseDay * wCount);
-
-      weekDays.forEach(d => {
-        const check = checkIsHoliday(d);
-        if (check.isHoliday) {
-          nextDAct[d] = 0;
-        } else {
-          nextDAct[d] = baseDay + (remDay > 0 ? 1 : 0);
-          if (remDay > 0) remDay--;
-        }
-      });
-    }
-
-    return { nextWAct, nextDAct };
-  };
-
   const handleAutoAssign = () => {
     const totalVal = Math.round(parseFloat(totalTargetInput) || 0);
     const base = Math.floor(totalVal / 12);
@@ -2541,7 +2555,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
       if (remainder > 0) remainder--;
       nextM[m] = monthVal;
 
-      const subRes = distributeMonthToSubperiods(m, monthVal, nextD, nextW);
+      const subRes = distributeMonthToSubperiods(m, monthVal, nextD, nextW, holidaysEnabled, customHolidays);
       nextW = subRes.nextW;
       nextD = subRes.nextD;
     });
@@ -2558,7 +2572,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
       const totalSum = Object.values(nextM).reduce((a, b) => a + b, 0);
       setTotalTargetInput(totalSum);
 
-      const subRes = distributeMonthToSubperiods(monthName, numVal, dailyAlloc, weeklyAlloc);
+      const subRes = distributeMonthToSubperiods(monthName, numVal, dailyAlloc, weeklyAlloc, holidaysEnabled, customHolidays);
       setWeeklyAlloc(subRes.nextW);
       setDailyAlloc(subRes.nextD);
 
@@ -2570,7 +2584,7 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
     const numVal = Math.round(parseFloat(val) || 0);
     setMonthlyActual(prev => {
       const nextM = { ...prev, [monthName]: numVal };
-      const subRes = distributeMonthActualToSubperiods(monthName, numVal, dailyActual, weeklyActual);
+      const subRes = distributeMonthActualToSubperiods(monthName, numVal, dailyActual, weeklyActual, holidaysEnabled, customHolidays);
       setWeeklyActual(subRes.nextWAct);
       setDailyActual(subRes.nextDAct);
       return nextM;
@@ -3281,6 +3295,40 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
   const [editingKpi, setEditingKpi] = useState(null);
   const [kpiView, setKpiView] = useState("list");
 
+  const handleExcelTargetChange = async (kpi, monthName, val) => {
+    const numVal = Math.round(parseFloat(val) || 0);
+    const nextM = { ...(kpi.monthlyAlloc || {}) };
+    
+    ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].forEach(m => {
+      if (nextM[m] === undefined) {
+        nextM[m] = Math.round(((kpi.target || 0) / 12) * 100) / 100;
+      }
+    });
+    nextM[monthName] = numVal;
+
+    const totalTarget = Object.values(nextM).reduce((a, b) => a + b, 0);
+
+    const { nextW, nextD } = distributeMonthToSubperiods(
+      monthName, 
+      numVal, 
+      kpi.dailyAlloc || {}, 
+      kpi.weeklyAlloc || {}, 
+      kpi.holidaysEnabled !== false, 
+      kpi.customHolidays || {}
+    );
+
+    const updatedKpi = {
+      ...kpi,
+      target: totalTarget,
+      monthlyAlloc: nextM,
+      weeklyAlloc: nextW,
+      dailyAlloc: nextD,
+      targetsList: Object.entries(nextD).filter(([_, v]) => v > 0).map(([dStr, v]) => ({ id: dStr, label: dStr, targetValue: v, targetDate: dStr }))
+    };
+
+    onEditKpi(updatedKpi);
+  };
+
   const [screen, setScreen] = useState("dashboard");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -3427,6 +3475,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                     {[
                       { id: "list", icon: List, label: "List" },
                       { id: "grid", icon: LayoutGrid, label: "Grid" },
+                      { id: "excel", icon: Table, label: "Excel view" },
                       { id: "process", icon: GitBranch, label: "Process map" },
                     ].map((v) => {
                       const Icon = v.icon;
@@ -3562,6 +3611,81 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {kpiView === "excel" && (
+                <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-210px)] pr-1">
+                  {Object.entries(kpisByTeam).map(([teamName, teamKpis]) => (
+                    <div key={teamName} className="bg-white border border-orange-100 rounded-2xl shadow-sm overflow-hidden">
+                      <div className="bg-orange-50/30 px-5 py-3 border-b border-orange-100 flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">{teamName}</h4>
+                        <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-100">{teamKpis.length} {teamKpis.length === 1 ? "KPI" : "KPIs"}</span>
+                      </div>
+                      
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs min-w-[1400px] border-collapse">
+                          <thead>
+                            <tr className="border-b border-orange-50 text-left bg-slate-50/50">
+                              <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-48 sticky left-0 bg-slate-50/50 z-10">KPI Title</th>
+                              <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-24">Do</th>
+                              {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => (
+                                <th key={m} className="px-2 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-center w-16">{m}</th>
+                              ))}
+                              <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-center w-20">Total</th>
+                              <th className="px-3 py-2.5 w-16"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-orange-50">
+                            {teamKpis.map((kpi) => {
+                              const totalVal = Object.values(kpi.monthlyAlloc || {}).reduce((sum, v) => sum + (v || 0), 0) || kpi.target || 0;
+                              return (
+                                <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
+                                  <td className="px-3 py-2.5 font-bold text-slate-800 text-xs max-w-xs truncate sticky left-0 bg-white hover:bg-orange-50/20 z-10">{kpi.name}</td>
+                                  <td className="px-3 py-2.5 text-slate-600 font-medium text-[11px] truncate">{kpi.owner}</td>
+                                  {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
+                                    const val = kpi.monthlyAlloc?.[m] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
+                                    return (
+                                      <td key={m} className="px-1.5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                        <input 
+                                          type="number"
+                                          value={val}
+                                          onChange={(e) => handleExcelTargetChange(kpi, m, e.target.value)}
+                                          className="w-14 text-center border border-orange-100 hover:border-orange-200 focus:border-teal-400 bg-slate-50/50 hover:bg-white focus:bg-white rounded px-1 py-0.5 text-xs focus:outline-none transition-colors font-medium font-mono"
+                                        />
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="px-3 py-2.5 text-center font-bold text-slate-800 font-mono text-[11px]">
+                                    {totalVal}
+                                    <span className="text-[9px] text-slate-400 block font-normal mt-0.5">{kpi.unit.trim()}</span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex justify-end gap-1">
+                                      <button 
+                                        onClick={() => setEditingKpi(kpi)} 
+                                        className="text-teal-600 hover:text-teal-800 p-1 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
+                                        title="Calendar (Split Target)"
+                                      >
+                                        <CalendarRange className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => onDeleteKpi && onDeleteKpi(kpi.id)} 
+                                        className="text-rose-600 hover:text-rose-800 p-1 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
+                                        title="Delete KPI"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   ))}
@@ -4407,7 +4531,12 @@ export default function App() {
               customHolidays: k.custom_holidays || {},
               holidaysEnabled: k.holidays_enabled,
               targetType: k.target_type,
-              targetsList: k.targets_list
+              targetsList: k.targets_list,
+              monthlyAlloc: k.monthly_alloc || {},
+              monthlyActual: k.monthly_actual || {},
+              weeklyAlloc: k.weekly_alloc || {},
+              weeklyActual: k.weekly_actual || {},
+              dailyAlloc: k.daily_alloc || {}
             })));
           }
         } else {
@@ -4429,7 +4558,12 @@ export default function App() {
             customHolidays: k.custom_holidays || {},
             holidaysEnabled: k.holidays_enabled,
             targetType: k.target_type,
-            targetsList: k.targets_list
+            targetsList: k.targets_list,
+            monthlyAlloc: k.monthly_alloc || {},
+            monthlyActual: k.monthly_actual || {},
+            weeklyAlloc: k.weekly_alloc || {},
+            weeklyActual: k.weekly_actual || {},
+            dailyAlloc: k.daily_alloc || {}
           })));
         }
 
@@ -4556,7 +4690,12 @@ export default function App() {
       custom_holidays: newKpi.customHolidays || {},
       holidays_enabled: newKpi.holidaysEnabled !== false,
       target_type: targetType,
-      targets_list: targetsList
+      targets_list: targetsList,
+      monthly_alloc: newKpi.monthlyAlloc || {},
+      monthly_actual: newKpi.monthlyActual || {},
+      weekly_alloc: newKpi.weeklyAlloc || {},
+      weekly_actual: newKpi.weeklyActual || {},
+      daily_alloc: newKpi.dailyAlloc || {}
     }).select().single();
 
     if (kpiRow) {
@@ -4578,7 +4717,12 @@ export default function App() {
         customHolidays: kpiRow.custom_holidays || {},
         holidaysEnabled: kpiRow.holidays_enabled,
         targetType: kpiRow.target_type,
-        targetsList: kpiRow.targets_list
+        targetsList: kpiRow.targets_list,
+        monthlyAlloc: kpiRow.monthly_alloc || {},
+        monthlyActual: kpiRow.monthly_actual || {},
+        weeklyAlloc: kpiRow.weekly_alloc || {},
+        weeklyActual: kpiRow.weekly_actual || {},
+        dailyAlloc: kpiRow.daily_alloc || {}
       };
       setKpis((prev) => [...prev, formattedKpi]);
     }
@@ -4603,7 +4747,12 @@ export default function App() {
       custom_holidays: updatedKpi.customHolidays || {},
       holidays_enabled: updatedKpi.holidaysEnabled !== false,
       target_type: updatedKpi.targetType,
-      targets_list: updatedKpi.targetsList
+      targets_list: updatedKpi.targetsList,
+      monthly_alloc: updatedKpi.monthlyAlloc || {},
+      monthly_actual: updatedKpi.monthlyActual || {},
+      weekly_alloc: updatedKpi.weeklyAlloc || {},
+      weekly_actual: updatedKpi.weeklyActual || {},
+      daily_alloc: updatedKpi.dailyAlloc || {}
     }).eq('id', updatedKpi.id);
   }
 

@@ -37,7 +37,12 @@ CREATE TABLE IF NOT EXISTS kpis (
   custom_holidays JSONB DEFAULT '{}'::jsonb,
   holidays_enabled BOOLEAN DEFAULT true,
   target_type VARCHAR(50) DEFAULT 'daily',
-  targets_list JSONB DEFAULT '[]'::jsonb
+  targets_list JSONB DEFAULT '[]'::jsonb,
+  monthly_alloc JSONB DEFAULT '{}'::jsonb,
+  monthly_actual JSONB DEFAULT '{}'::jsonb,
+  weekly_alloc JSONB DEFAULT '{}'::jsonb,
+  weekly_actual JSONB DEFAULT '{}'::jsonb,
+  daily_alloc JSONB DEFAULT '{}'::jsonb
 );
 
 -- Create Projects table
