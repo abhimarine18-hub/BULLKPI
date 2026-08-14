@@ -3284,7 +3284,7 @@ const ADMIN_NAV = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi }) {
+function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -4035,13 +4035,22 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                                 Active: {proj.stages[proj.currentStageIdx]?.name}
                               </span>
                             </div>
-                            <button
-                              onClick={() => setEditingProject(proj)}
-                              className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all ml-auto"
-                              title="Edit Project Details"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
+                            <div className="flex items-center gap-2 ml-auto">
+                              <button
+                                onClick={() => setEditingProject(proj)}
+                                className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
+                                title="Edit Project Details"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => onDeleteProject(proj.id)}
+                                className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
+                                title="Delete Project"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
@@ -4871,6 +4880,16 @@ export default function App() {
     }).eq('id', projectId);
   }
 
+  async function handleDeleteProject(id) {
+    if (window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) {
+        console.error("Error deleting project from Supabase:", error);
+      }
+    }
+  }
+
   if (loading) {
     return (
       <div className="h-screen w-screen bg-orange-50 flex items-center justify-center flex-col gap-3">
@@ -4912,6 +4931,7 @@ export default function App() {
             onUpdateProjectStage={handleUpdateProjectStage}
             onEditKpi={handleEditKpi}
             onDeleteKpi={handleDeleteKpi}
+            onDeleteProject={handleDeleteProject}
           />
         ) : (
           <EmployeeApp kpis={kpis} onLog={handleLog} teams={teams} />
