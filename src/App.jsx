@@ -4124,7 +4124,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                         <div className="pt-4">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Project Stages & Timeline</p>
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative">
-                            <div className="absolute left-3 top-3 bottom-3 sm:left-4 sm:right-4 sm:top-1/2 sm:-translate-y-1/2 w-0.5 sm:w-[90%] h-[90%] sm:h-0.5 bg-orange-100 z-0"></div>
+                            <div className="absolute left-3 top-3 bottom-3 sm:left-4 sm:right-4 sm:top-[14px] sm:translate-y-0 w-0.5 sm:w-[90%] h-[90%] sm:h-0.5 bg-orange-100 z-0"></div>
 
                             {proj.stages.map((stage, idx) => {
                               const isCompleted = stage.status === "completed";
