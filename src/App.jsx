@@ -4569,38 +4569,75 @@ export default function App() {
 
         // Fetch Projects
         let { data: dbProjects, error: projectsError } = await supabase.from('projects').select('*');
+        
+        const mapDbProjectToUi = (p) => {
+          let resultAndImprovement = p.description || "";
+          let linkedKpiId = null;
+          let memberNames = [p.lead];
+          let targetDate = "";
+          if (p.stages && p.stages.length > 0) {
+            targetDate = p.stages[p.stages.length - 1].targetDate || "";
+          }
+
+          try {
+            const parsed = JSON.parse(p.description);
+            if (parsed && typeof parsed === "object") {
+              resultAndImprovement = parsed.resultAndImprovement || "";
+              linkedKpiId = parsed.linkedKpiId || null;
+              memberNames = parsed.memberNames || [p.lead];
+              targetDate = parsed.targetDate || targetDate;
+            }
+          } catch (e) {
+            // Not JSON
+          }
+
+          return {
+            id: p.id,
+            title: p.name,
+            resultAndImprovement,
+            linkedKpiId,
+            leadName: p.lead,
+            memberNames,
+            targetDate,
+            team: p.team,
+            stages: p.stages || [],
+            currentStageIdx: p.current_stage_idx || 0
+          };
+        };
+
         if (projectsError || !dbProjects || dbProjects.length === 0) {
           console.log("Supabase empty or error, seeding projects...");
-          const projectsToInsert = initialProjects.map(p => ({
-            name: p.name,
-            description: p.description,
-            team: p.team,
-            lead: p.lead,
-            stages: p.stages || [],
-            current_stage_idx: p.currentStageIdx || 0
-          }));
+          const projectsToInsert = initialProjects.map(p => {
+            let teamName = "Digital Marketing";
+            if (dbMembers && dbMembers.length > 0 && dbTeams && dbTeams.length > 0) {
+              const memberObj = dbMembers.find(m => m.name === p.leadName);
+              if (memberObj) {
+                const teamObj = dbTeams.find(t => t.id === memberObj.team_id);
+                if (teamObj) teamName = teamObj.name;
+              }
+            } else if (p.leadName === "Rohan Das") {
+              teamName = "Video Production";
+            }
+            return {
+              name: p.title,
+              description: JSON.stringify({
+                resultAndImprovement: p.resultAndImprovement,
+                linkedKpiId: p.linkedKpiId,
+                memberNames: p.memberNames,
+                targetDate: p.targetDate
+              }),
+              team: teamName,
+              lead: p.leadName,
+              stages: p.stages || [],
+              current_stage_idx: p.currentStageIdx || 0
+            };
+          });
           const { data: projectRows } = await supabase.from('projects').insert(projectsToInsert).select();
           if (projectRows) {
-            setProjects(projectRows.map(p => ({
-              id: p.id,
-              name: p.name,
-              description: p.description,
-              team: p.team,
-              lead: p.lead,
-              stages: p.stages || [],
-              currentStageIdx: p.current_stage_idx
-            })));
+            setProjects(projectRows.map(mapDbProjectToUi));
           }
         } else {
-          setProjects(dbProjects.map(p => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            team: p.team,
-            lead: p.lead,
-            stages: p.stages || [],
-            currentStageIdx: p.current_stage_idx
-          })));
+          setProjects(dbProjects.map(mapDbProjectToUi));
         }
       } catch (err) {
         console.error("Error loading data from Supabase:", err);
@@ -4766,23 +4803,41 @@ export default function App() {
   async function handleAddProject(newProject) {
     const isNew = typeof newProject.id === "string" && newProject.id.startsWith("temp-");
     
+    const descriptionJson = JSON.stringify({
+      resultAndImprovement: newProject.resultAndImprovement,
+      linkedKpiId: newProject.linkedKpiId,
+      memberNames: newProject.memberNames,
+      targetDate: newProject.targetDate
+    });
+
+    let teamName = newProject.team || "Digital Marketing";
+    if (!newProject.team && newProject.leadName) {
+      const leadTeam = teams.find(t => t.members.some(m => m.name === newProject.leadName));
+      if (leadTeam) teamName = leadTeam.name;
+    }
+
+    const dbPayload = {
+      name: newProject.title,
+      description: descriptionJson,
+      team: teamName,
+      lead: newProject.leadName,
+      stages: newProject.stages || [],
+      current_stage_idx: newProject.currentStageIdx || 0
+    };
+
     if (isNew) {
-      const { data: projectRow } = await supabase.from('projects').insert({
-        name: newProject.name,
-        description: newProject.description,
-        team: newProject.team,
-        lead: newProject.lead,
-        stages: newProject.stages || [],
-        current_stage_idx: newProject.currentStageIdx || 0
-      }).select().single();
+      const { data: projectRow } = await supabase.from('projects').insert(dbPayload).select().single();
 
       if (projectRow) {
         setProjects((prev) => [...prev.filter(p => p.id !== newProject.id), {
           id: projectRow.id,
-          name: projectRow.name,
-          description: projectRow.description,
+          title: projectRow.name,
+          resultAndImprovement: newProject.resultAndImprovement,
+          linkedKpiId: newProject.linkedKpiId,
+          leadName: projectRow.lead,
+          memberNames: newProject.memberNames,
+          targetDate: newProject.targetDate,
           team: projectRow.team,
-          lead: projectRow.lead,
           stages: projectRow.stages || [],
           currentStageIdx: projectRow.current_stage_idx
         }]);
@@ -4791,12 +4846,7 @@ export default function App() {
       setProjects((prev) => prev.map(p => p.id === newProject.id ? newProject : p));
       await supabase.from('projects').upsert({
         id: newProject.id,
-        name: newProject.name,
-        description: newProject.description,
-        team: newProject.team,
-        lead: newProject.lead,
-        stages: newProject.stages || [],
-        current_stage_idx: newProject.currentStageIdx || 0
+        ...dbPayload
       });
     }
   }
