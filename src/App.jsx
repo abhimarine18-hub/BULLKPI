@@ -2021,6 +2021,7 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
   const [leadName, setLeadName] = useState(project?.leadName || "");
   const [memberNames, setMemberNames] = useState(project?.memberNames || []);
   const [targetDate, setTargetDate] = useState(project?.targetDate || "");
+  const [kpiSearch, setKpiSearch] = useState("");
   
   const initStages = (src) => src.map((s, i) => ({ ...s, _id: s._id || (Date.now() + i) }));
   const [stages, setStages] = useState(() => initStages(project?.stages || [
@@ -2124,8 +2125,15 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
 
           <div>
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Connected KPIs (Select 1 or more)</label>
+            <input 
+              type="text" 
+              value={kpiSearch} 
+              onChange={(e) => setKpiSearch(e.target.value)} 
+              placeholder="Search KPIs by name..." 
+              className="w-full border border-orange-200 rounded-xl px-3 py-1.5 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
+            />
             <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto border border-orange-100 p-2 rounded-xl bg-orange-50/35">
-              {kpis.map(k => {
+              {kpis.filter(k => k.name.toLowerCase().includes(kpiSearch.toLowerCase())).map(k => {
                 const selected = linkedKpiIds.includes(k.id);
                 return (
                   <button
@@ -2142,6 +2150,9 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
                   </button>
                 );
               })}
+              {kpis.filter(k => k.name.toLowerCase().includes(kpiSearch.toLowerCase())).length === 0 && (
+                <span className="text-xs text-slate-400 italic p-1">No matching KPIs found</span>
+              )}
             </div>
           </div>
 
