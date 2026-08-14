@@ -2249,21 +2249,21 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
           disabled={!canSubmit}
           onClick={() => {
             onSubmit({
-              id: Date.now(),
+              id: project ? project.id : `temp-${Date.now()}`,
               title,
               resultAndImprovement,
               linkedKpiId: linkedKpiId || null,
               leadName,
               memberNames: memberNames.length > 0 ? memberNames : [leadName],
               targetDate,
-              currentStageIdx: 0,
+              currentStageIdx: project ? project.currentStageIdx : 0,
               stages
             });
             onClose();
           }}
           className="w-full bg-teal-500 hover:bg-teal-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-xl transition-colors mt-5"
         >
-          Create Project
+          {project ? "Update Project" : "Create Project"}
         </button>
       </div>
     </div>
@@ -4843,7 +4843,7 @@ export default function App() {
         }]);
       }
     } else {
-      setProjects((prev) => prev.map(p => p.id === newProject.id ? newProject : p));
+      setProjects((prev) => prev.map(p => p.id === newProject.id ? { ...p, ...newProject, team: teamName } : p));
       await supabase.from('projects').upsert({
         id: newProject.id,
         ...dbPayload
