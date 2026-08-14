@@ -4844,10 +4844,10 @@ export default function App() {
       }
     } else {
       setProjects((prev) => prev.map(p => p.id === newProject.id ? { ...p, ...newProject, team: teamName } : p));
-      await supabase.from('projects').upsert({
-        id: newProject.id,
-        ...dbPayload
-      });
+      const { error } = await supabase.from('projects').update(dbPayload).eq('id', newProject.id);
+      if (error) {
+        console.error("Error updating project in Supabase:", error);
+      }
     }
   }
 
