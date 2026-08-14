@@ -2017,7 +2017,7 @@ function AddTeamModal({ teams, onClose, onSubmit }) {
 function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
   const [title, setTitle] = useState(project?.title || "");
   const [resultAndImprovement, setResultAndImprovement] = useState(project?.resultAndImprovement || "");
-  const [linkedKpiId, setLinkedKpiId] = useState(project?.linkedKpiId || "");
+  const [linkedKpiIds, setLinkedKpiIds] = useState(project?.linkedKpiIds || (project?.linkedKpiId ? [project.linkedKpiId] : []));
   const [leadName, setLeadName] = useState(project?.leadName || "");
   const [memberNames, setMemberNames] = useState(project?.memberNames || []);
   const [targetDate, setTargetDate] = useState(project?.targetDate || "");
@@ -2110,18 +2110,38 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Connected KPI</label>
-              <select value={linkedKpiId} onChange={(e) => setLinkedKpiId(Number(e.target.value))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
-                <option value="">Select a KPI...</option>
-                {kpis.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
-              </select>
-            </div>
-            <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Project Lead *</label>
               <select value={leadName} onChange={(e) => { setLeadName(e.target.value); setMemberNames([]); }} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
                 <option value="">Select a lead...</option>
                 {allEmployees.map(m => <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1 block">Project Target Date *</label>
+              <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Connected KPIs (Select 1 or more)</label>
+            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto border border-orange-100 p-2 rounded-xl bg-orange-50/35">
+              {kpis.map(k => {
+                const selected = linkedKpiIds.includes(k.id);
+                return (
+                  <button
+                    key={k.id}
+                    type="button"
+                    onClick={() => {
+                      setLinkedKpiIds(prev => prev.includes(k.id) ? prev.filter(id => id !== k.id) : [...prev, k.id]);
+                    }}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-all text-left ${
+                      selected ? "bg-teal-500 border-teal-500 text-white" : "bg-white border-orange-100 text-slate-600 hover:bg-orange-50"
+                    }`}
+                  >
+                    {k.name}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -2141,15 +2161,8 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
                   >
                     {m.name}
                   </button>
-                  );
+                );
               })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-500 mb-1 block">Project Target Date *</label>
-              <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
             </div>
           </div>
 
@@ -2252,7 +2265,7 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
               id: project ? project.id : `temp-${Date.now()}`,
               title,
               resultAndImprovement,
-              linkedKpiId: linkedKpiId || null,
+              linkedKpiIds,
               leadName,
               memberNames: memberNames.length > 0 ? memberNames : [leadName],
               targetDate,
@@ -4023,7 +4036,6 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
 
               <div className="grid grid-cols-1 gap-5">
                 {projects.map((proj) => {
-                  const connectedKpi = kpis.find(k => k.id === proj.linkedKpiId);
                   return (
                     <div key={proj.id} className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row justify-between gap-6">
                       <div className="flex-1 space-y-3">
@@ -4066,11 +4078,19 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                             <span className="font-medium text-slate-700">{proj.leadName}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Connected KPI</span>
-                            {connectedKpi ? (
-                              <span className="font-medium text-teal-600 hover:underline cursor-pointer" onClick={() => setDetailId(connectedKpi.id)}>
-                                {connectedKpi.name}
-                              </span>
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Connected KPIs</span>
+                            {proj.linkedKpiIds && proj.linkedKpiIds.length > 0 ? (
+                              <div className="flex flex-col gap-1 max-h-24 overflow-y-auto">
+                                {proj.linkedKpiIds.map(id => {
+                                  const kpi = kpis.find(k => k.id === id);
+                                  if (!kpi) return null;
+                                  return (
+                                    <span key={id} className="font-medium text-teal-600 hover:underline cursor-pointer block truncate text-left" onClick={() => setDetailId(id)} title={kpi.name}>
+                                      {kpi.name}
+                                    </span>
+                                  );
+                                })}
+                              </div>
                             ) : (
                               <span className="text-slate-400 italic">None</span>
                             )}
@@ -4581,7 +4601,7 @@ export default function App() {
         
         const mapDbProjectToUi = (p) => {
           let resultAndImprovement = p.description || "";
-          let linkedKpiId = null;
+          let linkedKpiIds = [];
           let memberNames = [p.lead];
           let targetDate = "";
           if (p.stages && p.stages.length > 0) {
@@ -4592,7 +4612,7 @@ export default function App() {
             const parsed = JSON.parse(p.description);
             if (parsed && typeof parsed === "object") {
               resultAndImprovement = parsed.resultAndImprovement || "";
-              linkedKpiId = parsed.linkedKpiId || null;
+              linkedKpiIds = parsed.linkedKpiIds || (parsed.linkedKpiId ? [parsed.linkedKpiId] : []);
               memberNames = parsed.memberNames || [p.lead];
               targetDate = parsed.targetDate || targetDate;
             }
@@ -4604,7 +4624,7 @@ export default function App() {
             id: p.id,
             title: p.name,
             resultAndImprovement,
-            linkedKpiId,
+            linkedKpiIds,
             leadName: p.lead,
             memberNames,
             targetDate,
@@ -4631,7 +4651,7 @@ export default function App() {
               name: p.title,
               description: JSON.stringify({
                 resultAndImprovement: p.resultAndImprovement,
-                linkedKpiId: p.linkedKpiId,
+                linkedKpiIds: p.linkedKpiId ? [p.linkedKpiId] : [],
                 memberNames: p.memberNames,
                 targetDate: p.targetDate
               }),
@@ -4814,7 +4834,7 @@ export default function App() {
     
     const descriptionJson = JSON.stringify({
       resultAndImprovement: newProject.resultAndImprovement,
-      linkedKpiId: newProject.linkedKpiId,
+      linkedKpiIds: newProject.linkedKpiIds || [],
       memberNames: newProject.memberNames,
       targetDate: newProject.targetDate
     });
@@ -4842,7 +4862,7 @@ export default function App() {
           id: projectRow.id,
           title: projectRow.name,
           resultAndImprovement: newProject.resultAndImprovement,
-          linkedKpiId: newProject.linkedKpiId,
+          linkedKpiIds: newProject.linkedKpiIds || [],
           leadName: projectRow.lead,
           memberNames: newProject.memberNames,
           targetDate: newProject.targetDate,
