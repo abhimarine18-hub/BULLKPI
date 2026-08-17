@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { supabase } from "./supabaseClient";
+import * as XLSX from "xlsx";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
@@ -3319,6 +3320,10 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
   const [editingKpi, setEditingKpi] = useState(null);
   const [kpiView, setKpiView] = useState("list");
   const [showTemplate, setShowTemplate] = useState(false);
+  const [uploadTeam, setUploadTeam] = useState("");
+  const [uploadOwner, setUploadOwner] = useState("");
+  const [uploadDrive, setUploadDrive] = useState("");
+  const [uploadMonitor, setUploadMonitor] = useState("");
 
   const handleExcelTargetChange = async (kpi, monthName, val) => {
     const numVal = Math.round(parseFloat(val) || 0);
@@ -4181,35 +4186,207 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
               <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
                 <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Database Utilities</h3>
                 
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Upload KPIs (.json)</h4>
-                  <p className="text-xs text-slate-400">Select a JSON file containing a list of KPIs to upload and sync to Supabase.</p>
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Upload KPIs (.xlsx)</h4>
+                  <p className="text-xs text-slate-400">Select a Team and members to assign, then upload the Excel file containing KPI rows.</p>
                   
+                  {/* Select Team */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Select Team *</label>
+                    <select 
+                      value={uploadTeam} 
+                      onChange={(e) => { setUploadTeam(e.target.value); setUploadOwner(""); }} 
+                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                    >
+                      <option value="">Select a team...</option>
+                      {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Select Owner (Do) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Select Owner (Do) *</label>
+                    <select 
+                      value={uploadOwner} 
+                      onChange={(e) => setUploadOwner(e.target.value)} 
+                      disabled={!uploadTeam}
+                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold disabled:bg-slate-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select owner...</option>
+                      {(teams.find(t => t.name === uploadTeam)?.members || []).map(m => (
+                        <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Select Drive (Optional) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Drive (Optional)</label>
+                    <select 
+                      value={uploadDrive} 
+                      onChange={(e) => setUploadDrive(e.target.value)} 
+                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                    >
+                      <option value="">Select Drive...</option>
+                      {teams.flatMap(t => t.members).map(m => (
+                        <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Select Reporting To / Monitor (Optional) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Reporting To / Monitor (Optional)</label>
+                    <select 
+                      value={uploadMonitor} 
+                      onChange={(e) => setUploadMonitor(e.target.value)} 
+                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                    >
+                      <option value="">Select Reporting To...</option>
+                      {teams.flatMap(t => t.members).map(m => (
+                        <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* File Upload Button */}
                   <div className="pt-2">
-                    <label className="inline-flex items-center justify-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full">
-                      <Plus className="h-4 w-4" /> Upload JSON File
+                    <label 
+                      className={`inline-flex items-center justify-center gap-1.5 text-white text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full ${
+                        uploadTeam && uploadOwner 
+                          ? "bg-teal-500 hover:bg-teal-600 cursor-pointer" 
+                          : "bg-slate-300 cursor-not-allowed opacity-50 pointer-events-none"
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" /> Upload Excel File
                       <input 
                         type="file" 
-                        accept=".json" 
+                        accept=".xlsx, .xls" 
+                        disabled={!uploadTeam || !uploadOwner}
                         onChange={(e) => {
                           const file = e.target.files[0];
                           if (!file) return;
                           const reader = new FileReader();
                           reader.onload = async (evt) => {
                             try {
-                              const parsed = JSON.parse(evt.target.result);
-                              if (Array.isArray(parsed)) {
-                                if (window.confirm(`Are you sure you want to upload ${parsed.length} KPIs to the database?`)) {
-                                  await onUploadKpis(parsed);
+                              const arrayBuffer = evt.target.result;
+                              const data = new Uint8Array(arrayBuffer);
+                              const workbook = XLSX.read(data, { type: "array" });
+                              const sheetName = workbook.SheetNames[0];
+                              const worksheet = workbook.Sheets[sheetName];
+                              const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                              
+                              // Find header row
+                              let headerIdx = -1;
+                              for (let i = 0; i < rows.length; i++) {
+                                const row = rows[i];
+                                if (row && (row.includes("KPI no") || row.includes("KPI"))) {
+                                  headerIdx = i;
+                                  break;
                                 }
-                              } else {
-                                alert("Invalid JSON format. Expected an array of KPIs.");
+                              }
+                              
+                              if (headerIdx === -1) {
+                                alert("Invalid Excel template. Could not find header row with 'KPI no' or 'KPI' columns.");
+                                return;
+                              }
+                              
+                              const headers = rows[headerIdx].map(h => String(h || "").trim());
+                              const kpiIdx = headers.indexOf("KPI");
+                              const uomIdx = headers.indexOf("UOM");
+                              const directionIdx = headers.indexOf("UP/ Down");
+                              const targetIdx = headers.indexOf("CY Target");
+                              
+                              const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+                              const monthColIdxs = months.map(m => headers.indexOf(m));
+
+                              const parsedKpis = [];
+                              
+                              for (let i = headerIdx + 1; i < rows.length; i++) {
+                                const row = rows[i];
+                                if (!row || row.length === 0) continue;
+                                
+                                const kpiName = row[kpiIdx];
+                                if (!kpiName || String(kpiName).trim() === "" || String(kpiName).trim() === "NaN") continue;
+                                if (String(kpiName).toLowerCase() === "total") continue;
+
+                                const unit = row[uomIdx] ? " " + String(row[uomIdx]).trim() : " Nos";
+                                const target = parseFloat(row[targetIdx]) || 0.0;
+                                
+                                let direction = "higher";
+                                const dirVal = String(row[directionIdx] || "").toLowerCase().trim();
+                                if (dirVal === "down" || dirVal === "lower") {
+                                  direction = "lower";
+                                }
+
+                                const monthlyAlloc = {};
+                                const targetsList = [];
+                                
+                                months.forEach((m, idx) => {
+                                  const colIdx = monthColIdxs[idx];
+                                  if (colIdx !== -1 && row[colIdx] !== undefined && row[colIdx] !== null && row[colIdx] !== "") {
+                                    const val = parseFloat(row[colIdx]);
+                                    if (!isNaN(val)) {
+                                      const year = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
+                                      const monthKey = `${m} ${year}`;
+                                      monthlyAlloc[monthKey] = val;
+                                      
+                                      let lastDay = "30";
+                                      if (["Jan", "Mar", "May", "Jul", "Aug", "Oct", "Dec"].includes(m)) lastDay = "31";
+                                      else if (m === "Feb") lastDay = "28";
+                                      
+                                      const monthNum = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(m) + 1;
+                                      const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
+                                      const targetDate = `${year}-${padMonth}-${lastDay}`;
+                                      
+                                      targetsList.push({
+                                        id: monthKey,
+                                        label: monthKey,
+                                        targetValue: val,
+                                        targetDate
+                                      });
+                                    }
+                                  }
+                                });
+
+                                const history = [];
+                                if (targetsList.length > 0) {
+                                  history.push({ d: "W1", v: targetsList[0].targetValue });
+                                } else {
+                                  history.push({ d: "W1", v: 0 });
+                                }
+
+                                parsedKpis.push({
+                                  name: String(kpiName).trim(),
+                                  unit,
+                                  target: target || (targetsList.length > 0 ? targetsList[0].targetValue : 0),
+                                  direction,
+                                  history,
+                                  monthlyAlloc,
+                                  targetsList,
+                                  targetType: "monthly"
+                                });
+                              }
+                              
+                              if (parsedKpis.length === 0) {
+                                alert("No valid KPI rows found in the selected Excel sheet.");
+                                return;
+                              }
+
+                              if (window.confirm(`Are you sure you want to upload ${parsedKpis.length} KPIs from the Excel sheet and assign them to ${uploadOwner} under ${uploadTeam}?`)) {
+                                await onUploadKpis(parsedKpis, {
+                                  team: uploadTeam,
+                                  owner: uploadOwner,
+                                  driveBy: uploadDrive,
+                                  monitorBy: uploadMonitor
+                                });
                               }
                             } catch (err) {
-                              alert("Failed to parse JSON file: " + err.message);
+                              alert("Failed to parse Excel file: " + err.message);
+                              console.error(err);
                             }
                           };
-                          reader.readAsText(file);
+                          reader.readAsArrayBuffer(file);
                           e.target.value = ""; 
                         }}
                         className="hidden" 
@@ -4222,43 +4399,22 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                       onClick={() => setShowTemplate(!showTemplate)} 
                       className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1 w-full justify-between focus:outline-none"
                     >
-                      <span>Show JSON Format Details</span>
+                      <span>Show Excel Format Details</span>
                       <span>{showTemplate ? "▲" : "▼"}</span>
                     </button>
                     {showTemplate && (
-                      <div className="mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[10px] font-mono text-slate-600 overflow-x-auto max-h-60 overflow-y-auto">
-                        <p className="text-slate-400 mb-1 font-sans italic">// Example JSON structure:</p>
-                        <pre>{`[
-  {
-    "name": "Digital enquiry sales",
-    "unit": " Nos",
-    "target": 100,
-    "direction": "higher",
-    "team": "Digital Marketing",
-    "owner": "Anand Kumar",
-    "kra": "Digital Marketing",
-    "history": [
-      { "d": "W1", "v": 10 },
-      { "d": "W2", "v": 12 }
-    ]
-  }
-]`}</pre>
-                        <div className="mt-2 border-t border-slate-200/50 pt-2 font-sans space-y-1 text-slate-500 text-[10px]">
-                          <p className="font-bold text-slate-700">Required fields:</p>
-                          <ul className="list-disc pl-3 space-y-0.5">
-                            <li><strong>name</strong>: Title of the KPI</li>
-                            <li><strong>team</strong>: Team name (e.g. "Digital Marketing")</li>
-                            <li><strong>owner</strong>: Owner name (e.g. "Anand Kumar")</li>
-                          </ul>
-                          <p className="font-bold text-slate-700 pt-1">Optional fields:</p>
-                          <ul className="list-disc pl-3 space-y-0.5">
-                            <li><strong>unit</strong>: e.g. " Nos", " %", " INR"</li>
-                            <li><strong>target</strong>: Target value (number)</li>
-                            <li><strong>direction</strong>: "higher" or "lower"</li>
-                            <li><strong>kra</strong>: Key result area string</li>
-                            <li><strong>history</strong>: List of week/value pairs</li>
-                          </ul>
+                      <div className="mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[10px] font-sans text-slate-600 space-y-2">
+                        <p className="font-semibold text-slate-800">Your Excel sheet must contain a header row with these exact column names:</p>
+                        <div className="bg-slate-100 p-1.5 rounded font-mono text-[9px] text-slate-600 overflow-x-auto">
+                          KPI no | KPI | UOM | UP/ Down | CY Target | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Feb | Mar
                         </div>
+                        <ul className="list-disc pl-4 space-y-1">
+                          <li><strong>KPI</strong>: The name of the KPI (required)</li>
+                          <li><strong>UOM</strong>: Unit (e.g. Nos, %, INR)</li>
+                          <li><strong>UP/ Down</strong>: UP/UPward = higher target; Down = lower target</li>
+                          <li><strong>CY Target</strong>: Cumulative CY Target value</li>
+                          <li><strong>Apr to Mar</strong>: Optional monthly target numbers</li>
+                        </ul>
                       </div>
                     )}
                   </div>
@@ -5011,14 +5167,17 @@ export default function App() {
     }
   }
 
-  async function handleUploadKpis(kpisToUpload) {
+  async function handleUploadKpis(kpisToUpload, metadata) {
+    const { team, owner, driveBy, monitorBy } = metadata;
     const mapped = kpisToUpload.map(k => ({
       name: k.name || "Unnamed KPI",
       unit: k.unit || " Nos",
       target: parseFloat(k.target) || 0.0,
       direction: k.direction || "higher",
-      team: k.team || "Digital Marketing",
-      owner: k.owner || "Anand Kumar",
+      team: team || "Digital Marketing",
+      owner: owner || "Anand Kumar",
+      drive_by: driveBy || "",
+      monitor_by: monitorBy || "",
       kra: k.kra || "",
       description: k.description || "",
       history: k.history || [],
