@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download
 } from "lucide-react";
 
 /* ---------------- Shared data (single source of truth) ---------------- */
@@ -3325,6 +3325,28 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
   const [uploadDrive, setUploadDrive] = useState("");
   const [uploadMonitor, setUploadMonitor] = useState("");
 
+  const handleDownloadTemplate = () => {
+    const headers = [
+      ["KPI no", "KPI", "Team", "Owner", "Drive", "Reporting To", "UOM", "UP/ Down", "CY Target", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]
+    ];
+    const sampleRow = [
+      "1", 
+      "No of digital enquiry resulted in sales - Domestic", 
+      "Digital Marketing", 
+      "Aditi Rao", 
+      "Anand Kumar", 
+      "Pooja Mehta", 
+      "Nos", 
+      "UP", 
+      "400", 
+      "5500", "5500", "5500", "6000", "6000", "6000", "6500", "6500", "6500", "7000", "7000", "7000"
+    ];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers[0], sampleRow]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "KPI Template");
+    XLSX.writeFile(workbook, "KPI_Upload_Template.xlsx");
+  };
+
   const handleExcelTargetChange = async (kpi, monthName, val) => {
     const numVal = Math.round(parseFloat(val) || 0);
     const nextM = { ...(kpi.monthlyAlloc || {}) };
@@ -4187,82 +4209,28 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                 <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Database Utilities</h3>
                 
                 <div className="space-y-3">
-                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Upload KPIs (.xlsx)</h4>
-                  <p className="text-xs text-slate-400">Select a Team and members to assign, then upload the Excel file containing KPI rows.</p>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">KPI Excel Import / Export</h4>
+                  <p className="text-xs text-slate-400">Download the KPI template, populate your KPI rows (with Team, Owner, Drive, and Reporting To), and upload it.</p>
                   
-                  {/* Select Team */}
+                  {/* Download Template Button */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Select Team *</label>
-                    <select 
-                      value={uploadTeam} 
-                      onChange={(e) => { setUploadTeam(e.target.value); setUploadOwner(""); }} 
-                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                    <button 
+                      onClick={handleDownloadTemplate}
+                      className="inline-flex items-center justify-center gap-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full border border-orange-200"
                     >
-                      <option value="">Select a team...</option>
-                      {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Select Owner (Do) */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Select Owner (Do) *</label>
-                    <select 
-                      value={uploadOwner} 
-                      onChange={(e) => setUploadOwner(e.target.value)} 
-                      disabled={!uploadTeam}
-                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold disabled:bg-slate-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="">Select owner...</option>
-                      {(teams.find(t => t.name === uploadTeam)?.members || []).map(m => (
-                        <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Select Drive (Optional) */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Drive (Optional)</label>
-                    <select 
-                      value={uploadDrive} 
-                      onChange={(e) => setUploadDrive(e.target.value)} 
-                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
-                    >
-                      <option value="">Select Drive...</option>
-                      {teams.flatMap(t => t.members).map(m => (
-                        <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Select Reporting To / Monitor (Optional) */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Reporting To / Monitor (Optional)</label>
-                    <select 
-                      value={uploadMonitor} 
-                      onChange={(e) => setUploadMonitor(e.target.value)} 
-                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
-                    >
-                      <option value="">Select Reporting To...</option>
-                      {teams.flatMap(t => t.members).map(m => (
-                        <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>
-                      ))}
-                    </select>
+                      <Download className="h-4 w-4 text-orange-650" /> Download Format Excel Template
+                    </button>
                   </div>
 
                   {/* File Upload Button */}
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <label 
-                      className={`inline-flex items-center justify-center gap-1.5 text-white text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full ${
-                        uploadTeam && uploadOwner 
-                          ? "bg-teal-500 hover:bg-teal-600 cursor-pointer" 
-                          : "bg-slate-300 cursor-not-allowed opacity-50 pointer-events-none"
-                      }`}
+                      className="inline-flex items-center justify-center gap-1.5 text-white bg-teal-500 hover:bg-teal-600 text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full"
                     >
                       <Plus className="h-4 w-4" /> Upload Excel File
                       <input 
                         type="file" 
                         accept=".xlsx, .xls" 
-                        disabled={!uploadTeam || !uploadOwner}
                         onChange={(e) => {
                           const file = e.target.files[0];
                           if (!file) return;
@@ -4293,6 +4261,10 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                               
                               const headers = rows[headerIdx].map(h => String(h || "").trim());
                               const kpiIdx = headers.indexOf("KPI");
+                              const teamIdx = headers.indexOf("Team");
+                              const ownerIdx = headers.indexOf("Owner");
+                              const driveIdx = headers.indexOf("Drive");
+                              const repToIdx = headers.indexOf("Reporting To");
                               const uomIdx = headers.indexOf("UOM");
                               const directionIdx = headers.indexOf("UP/ Down");
                               const targetIdx = headers.indexOf("CY Target");
@@ -4310,6 +4282,10 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                                 if (!kpiName || String(kpiName).trim() === "" || String(kpiName).trim() === "NaN") continue;
                                 if (String(kpiName).toLowerCase() === "total") continue;
 
+                                const rowTeam = row[teamIdx] ? String(row[teamIdx]).trim() : "Digital Marketing";
+                                const rowOwner = row[ownerIdx] ? String(row[ownerIdx]).trim() : "Anand Kumar";
+                                const rowDrive = row[driveIdx] ? String(row[driveIdx]).trim() : "";
+                                const rowRepTo = row[repToIdx] ? String(row[repToIdx]).trim() : "";
                                 const unit = row[uomIdx] ? " " + String(row[uomIdx]).trim() : " Nos";
                                 const target = parseFloat(row[targetIdx]) || 0.0;
                                 
@@ -4358,6 +4334,10 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
 
                                 parsedKpis.push({
                                   name: String(kpiName).trim(),
+                                  team: rowTeam,
+                                  owner: rowOwner,
+                                  driveBy: rowDrive,
+                                  monitorBy: rowRepTo,
                                   unit,
                                   target: target || (targetsList.length > 0 ? targetsList[0].targetValue : 0),
                                   direction,
@@ -4373,12 +4353,9 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                                 return;
                               }
 
-                              if (window.confirm(`Are you sure you want to upload ${parsedKpis.length} KPIs from the Excel sheet and assign them to ${uploadOwner} under ${uploadTeam}?`)) {
+                              if (window.confirm(`Are you sure you want to upload ${parsedKpis.length} KPIs from the Excel sheet?`)) {
                                 await onUploadKpis(parsedKpis, {
-                                  team: uploadTeam,
-                                  owner: uploadOwner,
-                                  driveBy: uploadDrive,
-                                  monitorBy: uploadMonitor
+                                  useRowMetadata: true
                                 });
                               }
                             } catch (err) {
@@ -4403,15 +4380,19 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                       <span>{showTemplate ? "▲" : "▼"}</span>
                     </button>
                     {showTemplate && (
-                      <div className="mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[10px] font-sans text-slate-600 space-y-2">
+                      <div className="mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[10px] font-sans text-slate-650 space-y-2">
                         <p className="font-semibold text-slate-800">Your Excel sheet must contain a header row with these exact column names:</p>
                         <div className="bg-slate-100 p-1.5 rounded font-mono text-[9px] text-slate-600 overflow-x-auto">
-                          KPI no | KPI | UOM | UP/ Down | CY Target | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Feb | Mar
+                          KPI no | KPI | Team | Owner | Drive | Reporting To | UOM | UP/ Down | CY Target | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Feb | Mar
                         </div>
-                        <ul className="list-disc pl-4 space-y-1">
+                        <ul className="list-disc pl-4 space-y-1 text-slate-500">
                           <li><strong>KPI</strong>: The name of the KPI (required)</li>
+                          <li><strong>Team</strong>: Team name (e.g. "Digital Marketing")</li>
+                          <li><strong>Owner</strong>: Owner (Do) (e.g. "Aditi Rao")</li>
+                          <li><strong>Drive</strong>: Drive-by person (e.g. "Anand Kumar")</li>
+                          <li><strong>Reporting To</strong>: Reporting-to / Monitor (e.g. "Pooja Mehta")</li>
                           <li><strong>UOM</strong>: Unit (e.g. Nos, %, INR)</li>
-                          <li><strong>UP/ Down</strong>: UP/UPward = higher target; Down = lower target</li>
+                          <li><strong>UP/ Down</strong>: UP = higher target; Down = lower target</li>
                           <li><strong>CY Target</strong>: Cumulative CY Target value</li>
                           <li><strong>Apr to Mar</strong>: Optional monthly target numbers</li>
                         </ul>
@@ -5168,16 +5149,16 @@ export default function App() {
   }
 
   async function handleUploadKpis(kpisToUpload, metadata) {
-    const { team, owner, driveBy, monitorBy } = metadata;
+    const { team, owner, driveBy, monitorBy, useRowMetadata } = metadata || {};
     const mapped = kpisToUpload.map(k => ({
       name: k.name || "Unnamed KPI",
       unit: k.unit || " Nos",
       target: parseFloat(k.target) || 0.0,
       direction: k.direction || "higher",
-      team: team || "Digital Marketing",
-      owner: owner || "Anand Kumar",
-      drive_by: driveBy || "",
-      monitor_by: monitorBy || "",
+      team: useRowMetadata ? (k.team || "Digital Marketing") : (team || "Digital Marketing"),
+      owner: useRowMetadata ? (k.owner || "Anand Kumar") : (owner || "Anand Kumar"),
+      drive_by: useRowMetadata ? (k.driveBy || "") : (driveBy || ""),
+      monitor_by: useRowMetadata ? (k.monitorBy || "") : (monitorBy || ""),
       kra: k.kra || "",
       description: k.description || "",
       history: k.history || [],
