@@ -1655,8 +1655,9 @@ const initialKpis = [
 ];
 
 const teamsData = [
-  { id: 1, name: "Digital Marketing", description: "Building brand visibility, engagement and cost-efficient leads across digital channels", lead: "Anand Kumar",
+  { id: 1, name: "Digital Marketing", description: "Building brand visibility, engagement and cost-efficient leads across digital channels", lead: "CMO",
     members: [
+      { id: 100, name: "CMO", employeeId: "EMP-1000", designation: "Chief Marketing Officer", experience: 15, reportingManager: "BULL Machines", description: "Chief Marketing Officer reporting directly to BULL Machines." },
       { id: 1, name: "Anand Kumar", employeeId: "EMP-1042", designation: "Digital Marketing Junior Manager", experience: 5, reportingManager: "CMO", description: "Leads overall digital campaigns and strategy." },
       { id: 2, name: "Krithika", employeeId: "EMP-1058", designation: "Intern - Digital Marketing", experience: 1, reportingManager: "Anand Kumar", description: "Assists with social content and digital updates." },
     ] },
