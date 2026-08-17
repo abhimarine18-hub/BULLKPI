@@ -4751,61 +4751,11 @@ export default function App() {
 
         // Fetch KPIs
         let { data: dbKpis, error: kpisError } = await supabase.from('kpis').select('*');
-        if (kpisError || !dbKpis || dbKpis.length === 0) {
-          console.log("Supabase empty or error, seeding KPIs...");
-          const mappedInitialKpis = initialKpis.map(k => ({
-            ...k,
-            targetType: k.targetType || "monthly",
-            targetsList: k.targetsList || [
-              { id: "1", label: "CY Target", targetValue: k.target, targetDate: "2026-08-31" }
-            ]
-          }));
-
-          const kpisToInsert = mappedInitialKpis.map(k => ({
-            name: k.name,
-            unit: k.unit,
-            target: k.target,
-            direction: k.direction,
-            team: k.team,
-            owner: k.owner,
-            kra: k.kra,
-            history: k.history || [],
-            daily_actual: k.dailyActual || {},
-            revised_alloc: k.revisedAlloc || {},
-            custom_holidays: k.customHolidays || {},
-            holidays_enabled: k.holidaysEnabled !== false,
-            target_type: k.targetType,
-            targets_list: k.targetsList
-          }));
-
-          const { data: kpiRows } = await supabase.from('kpis').insert(kpisToInsert).select();
-          if (kpiRows) {
-            setKpis(kpiRows.map(k => ({
-              id: k.id,
-              name: k.name,
-              unit: k.unit,
-              target: parseFloat(k.target),
-              direction: k.direction,
-              team: k.team,
-              owner: k.owner,
-              driveBy: k.drive_by || "",
-              monitorBy: k.monitor_by || "",
-              description: k.description || "",
-              kra: k.kra,
-              history: k.history || [],
-              dailyActual: k.daily_actual || {},
-              revisedAlloc: k.revised_alloc || {},
-              customHolidays: k.custom_holidays || {},
-              holidaysEnabled: k.holidays_enabled,
-              targetType: k.target_type,
-              targetsList: k.targets_list,
-              monthlyAlloc: k.monthly_alloc || {},
-              monthlyActual: k.monthly_actual || {},
-              weeklyAlloc: k.weekly_alloc || {},
-              weeklyActual: k.weekly_actual || {},
-              dailyAlloc: k.daily_alloc || {}
-            })));
-          }
+        if (kpisError) {
+          console.error("Error fetching KPIs from Supabase:", kpisError);
+        } else if (!dbKpis || dbKpis.length === 0) {
+          console.log("No KPIs found in Supabase.");
+          setKpis([]);
         } else {
           setKpis(dbKpis.map(k => ({
             id: k.id,
