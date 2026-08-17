@@ -4823,37 +4823,11 @@ export default function App() {
           };
         };
 
-        if (projectsError || !dbProjects || dbProjects.length === 0) {
-          console.log("Supabase empty or error, seeding projects...");
-          const projectsToInsert = initialProjects.map(p => {
-            let teamName = "Digital Marketing";
-            if (dbMembers && dbMembers.length > 0 && dbTeams && dbTeams.length > 0) {
-              const memberObj = dbMembers.find(m => m.name === p.leadName);
-              if (memberObj) {
-                const teamObj = dbTeams.find(t => t.id === memberObj.team_id);
-                if (teamObj) teamName = teamObj.name;
-              }
-            } else if (p.leadName === "Rohan Das") {
-              teamName = "Video Production";
-            }
-            return {
-              name: p.title,
-              description: JSON.stringify({
-                resultAndImprovement: p.resultAndImprovement,
-                linkedKpiIds: p.linkedKpiId ? [p.linkedKpiId] : [],
-                memberNames: p.memberNames,
-                targetDate: p.targetDate
-              }),
-              team: teamName,
-              lead: p.leadName,
-              stages: p.stages || [],
-              current_stage_idx: p.currentStageIdx || 0
-            };
-          });
-          const { data: projectRows } = await supabase.from('projects').insert(projectsToInsert).select();
-          if (projectRows) {
-            setProjects(projectRows.map(mapDbProjectToUi));
-          }
+        if (projectsError) {
+          console.error("Error fetching projects from Supabase:", projectsError);
+        } else if (!dbProjects || dbProjects.length === 0) {
+          console.log("No projects found in Supabase.");
+          setProjects([]);
         } else {
           setProjects(dbProjects.map(mapDbProjectToUi));
         }
