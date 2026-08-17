@@ -4051,9 +4051,10 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                   <div className="space-y-2">
                     {c.linkedKpiIds.map((id) => {
                       const kpi = kpis.find((k) => k.id === id);
+                      if (!kpi) return null;
                       return (
-                        <button key={id} onClick={() => setDetailId(id)} className="w-full flex items-center justify-between text-sm py-1.5 hover:text-teal-700">
-                          <span className="text-slate-600">{kpi.name}</span>
+                        <button key={id} onClick={() => setDetailId(id)} className="w-full flex items-center justify-between text-sm py-1.5 hover:text-teal-700 focus:outline-none">
+                          <span className="text-slate-600 truncate max-w-[80%] text-left" title={kpi.name}>{kpi.name}</span>
                           <StatusBadge status={getStatus(kpi)} />
                         </button>
                       );
