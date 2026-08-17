@@ -3318,6 +3318,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
   const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [editingKpi, setEditingKpi] = useState(null);
   const [kpiView, setKpiView] = useState("list");
+  const [showTemplate, setShowTemplate] = useState(false);
 
   const handleExcelTargetChange = async (kpi, monthName, val) => {
     const numVal = Math.round(parseFloat(val) || 0);
@@ -4214,6 +4215,52 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                         className="hidden" 
                       />
                     </label>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-50 mt-3">
+                    <button 
+                      onClick={() => setShowTemplate(!showTemplate)} 
+                      className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1 w-full justify-between focus:outline-none"
+                    >
+                      <span>Show JSON Format Details</span>
+                      <span>{showTemplate ? "▲" : "▼"}</span>
+                    </button>
+                    {showTemplate && (
+                      <div className="mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[10px] font-mono text-slate-600 overflow-x-auto max-h-60 overflow-y-auto">
+                        <p className="text-slate-400 mb-1 font-sans italic">// Example JSON structure:</p>
+                        <pre>{`[
+  {
+    "name": "Digital enquiry sales",
+    "unit": " Nos",
+    "target": 100,
+    "direction": "higher",
+    "team": "Digital Marketing",
+    "owner": "Anand Kumar",
+    "kra": "Digital Marketing",
+    "history": [
+      { "d": "W1", "v": 10 },
+      { "d": "W2", "v": 12 }
+    ]
+  }
+]`}</pre>
+                        <div className="mt-2 border-t border-slate-200/50 pt-2 font-sans space-y-1 text-slate-500 text-[10px]">
+                          <p className="font-bold text-slate-700">Required fields:</p>
+                          <ul className="list-disc pl-3 space-y-0.5">
+                            <li><strong>name</strong>: Title of the KPI</li>
+                            <li><strong>team</strong>: Team name (e.g. "Digital Marketing")</li>
+                            <li><strong>owner</strong>: Owner name (e.g. "Anand Kumar")</li>
+                          </ul>
+                          <p className="font-bold text-slate-700 pt-1">Optional fields:</p>
+                          <ul className="list-disc pl-3 space-y-0.5">
+                            <li><strong>unit</strong>: e.g. " Nos", " %", " INR"</li>
+                            <li><strong>target</strong>: Target value (number)</li>
+                            <li><strong>direction</strong>: "higher" or "lower"</li>
+                            <li><strong>kra</strong>: Key result area string</li>
+                            <li><strong>history</strong>: List of week/value pairs</li>
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
