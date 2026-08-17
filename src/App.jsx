@@ -3308,7 +3308,7 @@ const ADMIN_NAV = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject }) {
+function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onUploadKpis }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -4167,12 +4167,55 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
           )}
 
           {screen === "settings" && (
-            <div className="bg-white border border-orange-100 rounded-2xl p-5 max-w-md">
-              <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Poppins, sans-serif" }}>Organization</h3>
-              <div className="space-y-3 text-sm">
-                <div><p className="text-slate-400 text-xs mb-1">Name</p><p className="text-slate-800 font-medium">Acme Manufacturing</p></div>
-                <div><p className="text-slate-400 text-xs mb-1">Industry</p><p className="text-slate-800 font-medium">Manufacturing</p></div>
-                <div><p className="text-slate-400 text-xs mb-1">Plan</p><p className="text-slate-800 font-medium">Team</p></div>
+            <div className="space-y-6 max-w-md">
+              <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm">
+                <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Poppins, sans-serif" }}>Organization</h3>
+                <div className="space-y-3 text-sm">
+                  <div><p className="text-slate-400 text-xs mb-1">Name</p><p className="text-slate-800 font-medium">Acme Manufacturing</p></div>
+                  <div><p className="text-slate-400 text-xs mb-1">Industry</p><p className="text-slate-800 font-medium">Manufacturing</p></div>
+                  <div><p className="text-slate-400 text-xs mb-1">Plan</p><p className="text-slate-800 font-medium">Team</p></div>
+                </div>
+              </div>
+
+              <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Database Utilities</h3>
+                
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Upload KPIs (.json)</h4>
+                  <p className="text-xs text-slate-400">Select a JSON file containing a list of KPIs to upload and sync to Supabase.</p>
+                  
+                  <div className="pt-2">
+                    <label className="inline-flex items-center justify-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full">
+                      <Plus className="h-4 w-4" /> Upload JSON File
+                      <input 
+                        type="file" 
+                        accept=".json" 
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = async (evt) => {
+                            try {
+                              const parsed = JSON.parse(evt.target.result);
+                              if (Array.isArray(parsed)) {
+                                if (window.confirm(`Are you sure you want to upload ${parsed.length} KPIs to the database?`)) {
+                                  await onUploadKpis(parsed);
+                                }
+                              } else {
+                                alert("Invalid JSON format. Expected an array of KPIs.");
+                              }
+                            } catch (err) {
+                              alert("Failed to parse JSON file: " + err.message);
+                            }
+                          };
+                          reader.readAsText(file);
+                          e.target.value = ""; 
+                        }}
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -4921,6 +4964,65 @@ export default function App() {
     }
   }
 
+  async function handleUploadKpis(kpisToUpload) {
+    const mapped = kpisToUpload.map(k => ({
+      name: k.name || "Unnamed KPI",
+      unit: k.unit || " Nos",
+      target: parseFloat(k.target) || 0.0,
+      direction: k.direction || "higher",
+      team: k.team || "Digital Marketing",
+      owner: k.owner || "Anand Kumar",
+      kra: k.kra || "",
+      description: k.description || "",
+      history: k.history || [],
+      daily_actual: k.dailyActual || k.daily_actual || {},
+      revised_alloc: k.revisedAlloc || k.revised_alloc || {},
+      custom_holidays: k.customHolidays || k.custom_holidays || {},
+      holidays_enabled: k.holidaysEnabled !== false,
+      target_type: k.targetType || k.target_type || "monthly",
+      targets_list: k.targetsList || k.targets_list || [],
+      monthly_alloc: k.monthlyAlloc || k.monthly_alloc || {},
+      monthly_actual: k.monthlyActual || k.monthly_actual || {},
+      weekly_alloc: k.weeklyAlloc || k.weekly_alloc || {},
+      weekly_actual: k.weeklyActual || k.weekly_actual || {},
+      daily_alloc: k.dailyAlloc || k.daily_alloc || {}
+    }));
+
+    const { data, error } = await supabase.from('kpis').insert(mapped).select();
+    if (error) {
+      alert("Error inserting KPIs: " + error.message);
+      console.error(error);
+    } else if (data) {
+      const mappedData = data.map(k => ({
+        id: k.id,
+        name: k.name,
+        unit: k.unit,
+        target: parseFloat(k.target),
+        direction: k.direction,
+        team: k.team,
+        owner: k.owner,
+        driveBy: k.drive_by || "",
+        monitorBy: k.monitor_by || "",
+        description: k.description || "",
+        kra: k.kra,
+        history: k.history || [],
+        dailyActual: k.daily_actual || {},
+        revisedAlloc: k.revised_alloc || {},
+        customHolidays: k.custom_holidays || {},
+        holidaysEnabled: k.holidays_enabled,
+        targetType: k.target_type,
+        targetsList: k.targets_list,
+        monthlyAlloc: k.monthly_alloc || {},
+        monthlyActual: k.monthly_actual || {},
+        weeklyAlloc: k.weekly_alloc || {},
+        weeklyActual: k.weekly_actual || {},
+        dailyAlloc: k.daily_alloc || {}
+      }));
+      setKpis(prev => [...prev, ...mappedData]);
+      alert(`Successfully uploaded ${mappedData.length} KPIs!`);
+    }
+  }
+
   if (loading) {
     return (
       <div className="h-screen w-screen bg-orange-50 flex items-center justify-center flex-col gap-3">
@@ -4963,6 +5065,7 @@ export default function App() {
             onEditKpi={handleEditKpi}
             onDeleteKpi={handleDeleteKpi}
             onDeleteProject={handleDeleteProject}
+            onUploadKpis={handleUploadKpis}
           />
         ) : (
           <EmployeeApp kpis={kpis} onLog={handleLog} teams={teams} />
