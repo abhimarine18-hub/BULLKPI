@@ -3465,7 +3465,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
           {!sidebarMinimized && (
             <div className="min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">Admin · Ravi</p>
-              <p className="text-xs text-slate-400 truncate">Acme Manufacturing</p>
+              <p className="text-xs text-slate-400 truncate">BULL Machines</p>
             </div>
           )}
         </div>
@@ -3750,7 +3750,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                   <div className="flex flex-col items-center mb-8">
                     <div className="bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-2xl px-8 py-4 shadow-md text-center">
                       <p className="text-[10px] uppercase tracking-wider text-teal-100 font-bold">Company</p>
-                      <h3 className="text-lg font-bold" style={{ fontFamily: "Poppins, sans-serif" }}>Acme Manufacturing</h3>
+                      <h3 className="text-lg font-bold" style={{ fontFamily: "Poppins, sans-serif" }}>BULL Machines</h3>
                     </div>
                     <div className="w-0.5 h-8 bg-slate-300"></div>
                   </div>
@@ -4199,7 +4199,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
               <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm">
                 <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Poppins, sans-serif" }}>Organization</h3>
                 <div className="space-y-3 text-sm">
-                  <div><p className="text-slate-400 text-xs mb-1">Name</p><p className="text-slate-800 font-medium">Acme Manufacturing</p></div>
+                  <div><p className="text-slate-400 text-xs mb-1">Name</p><p className="text-slate-800 font-medium">BULL Machines</p></div>
                   <div><p className="text-slate-400 text-xs mb-1">Industry</p><p className="text-slate-800 font-medium">Manufacturing</p></div>
                   <div><p className="text-slate-400 text-xs mb-1">Plan</p><p className="text-slate-800 font-medium">Team</p></div>
                 </div>
@@ -4637,7 +4637,7 @@ function EmployeeApp({ kpis, onLog, teams }) {
             <div className="flex flex-col items-center pt-4 pb-6">
               <div className="h-16 w-16 rounded-full bg-orange-200 flex items-center justify-center text-lg font-medium text-orange-800 mb-3">AR</div>
               <p className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{CURRENT_EMPLOYEE}</p>
-              <p className="text-xs text-slate-400">{myTeam?.name} · Acme Manufacturing</p>
+              <p className="text-xs text-slate-400">{myTeam?.name} · BULL Machines</p>
             </div>
             <div className="space-y-2">
               {myKpis.map((kpi) => (
