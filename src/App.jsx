@@ -5792,7 +5792,10 @@ export default function App() {
       monitor_by: newKpi.monitorBy || "",
       description: newKpi.description || "",
       kra: newKpi.kra,
-      history: newKpi.history || []
+      history: newKpi.history || [],
+      target_type: targetType,
+      targets_list: targetsList,
+      monthly_alloc: newKpi.monthlyAlloc || {}
     }).select().single();
 
     if (kpiRow) {
@@ -5841,7 +5844,10 @@ export default function App() {
       monitor_by: updatedKpi.monitorBy || "",
       description: updatedKpi.description || "",
       kra: updatedKpi.kra,
-      history: updatedKpi.history || []
+      history: updatedKpi.history || [],
+      target_type: updatedKpi.targetType,
+      targets_list: updatedKpi.targetsList,
+      monthly_alloc: updatedKpi.monthlyAlloc || {}
     }).eq('id', updatedKpi.id);
   }
 
@@ -5946,7 +5952,10 @@ export default function App() {
       monitor_by: useRowMetadata ? (k.monitorBy || "") : (monitorBy || ""),
       kra: k.kra || "",
       description: k.description || "",
-      history: k.history || []
+      history: k.history || [],
+      target_type: k.targetType || k.target_type || "monthly",
+      targets_list: k.targetsList || k.targets_list || [],
+      monthly_alloc: k.monthlyAlloc || k.monthly_alloc || {}
     }));
 
     const { data, error } = await supabase.from('kpis').insert(mapped).select();
