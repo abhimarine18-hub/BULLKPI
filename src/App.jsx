@@ -3658,6 +3658,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
   const [screen, setScreen] = useState("dashboard");
   const [settingsTab, setSettingsTab] = useState("spreadsheet");
+  const [isEditingHierarchy, setIsEditingHierarchy] = useState(false);
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
   const [teamFilter, setTeamFilter] = useState("All teams");
@@ -4549,19 +4550,32 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Players & Hierarchy Tree</h3>
                           <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Explore team rosters grouped by department, with subordinates indented to represent reporting lines.</p>
                         </div>
-                        <button 
-                          onClick={() => {
-                            if (teams.length === 0) {
-                              alert("Please add a Team first!");
-                              return;
-                            }
-                            setActiveTeamId(teams[0].id);
-                            setAddMemberOpen(true);
-                          }} 
-                          className="text-xs text-teal-650 hover:text-teal-755 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
-                        >
-                          + Add Player
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setIsEditingHierarchy(!isEditingHierarchy)}
+                            className={`p-2 rounded-xl border transition-all ${
+                              isEditingHierarchy 
+                                ? "bg-teal-500 text-white border-teal-500 shadow-sm" 
+                                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
+                            }`}
+                            title={isEditingHierarchy ? "Disable Edit Mode" : "Enable Edit Mode"}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (teams.length === 0) {
+                                alert("Please add a Team first!");
+                                    return;
+                              }
+                              setActiveTeamId(teams[0].id);
+                              setAddMemberOpen(true);
+                            }} 
+                            className="text-xs text-teal-650 hover:text-teal-755 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
+                          >
+                            + Add Player
+                          </button>
+                        </div>
                       </div>
 
                       <div className="space-y-6">
@@ -4582,76 +4596,116 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                     <span className="text-slate-300 font-mono text-xs select-none">└─</span>
                                   )}
                                   
+                                  {/* Team Lead Radio Button */}
+                                  <div className="flex items-center gap-1 shrink-0" title="Set as Team Lead">
+                                    <input 
+                                      type="radio" 
+                                      name={`team_lead_${t.id}`}
+                                      checked={t.lead === member.name} 
+                                      onChange={() => handleSetTeamLead(t.id, member.name)}
+                                      className="h-3.5 w-3.5 text-teal-600 focus:ring-teal-400 border-slate-300 cursor-pointer"
+                                    />
+                                    {t.lead === member.name && (
+                                      <span className="text-[11px]" title="Team Lead">👑</span>
+                                    )}
+                                  </div>
+
                                   {/* Player details */}
                                   <div className="flex-1 min-w-[200px] flex items-center gap-2">
                                     <div className="bg-teal-50 text-teal-700 h-6.5 w-6.5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">
                                       {member.name.charAt(0)}
                                     </div>
-                                    <div>
-                                      <input 
-                                        type="text" 
-                                        value={member.name}
-                                        onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, name: e.target.value })}
-                                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200"
-                                      />
-                                      <input 
-                                        type="text" 
-                                        value={member.designation || ""}
-                                        placeholder="Designation"
-                                        onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, designation: e.target.value })}
-                                        className="text-[10px] text-slate-400 block focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200 w-full"
-                                      />
+                                    <div className="flex flex-col">
+                                      {isEditingHierarchy ? (
+                                        <>
+                                          <input 
+                                            type="text" 
+                                            value={member.name}
+                                            onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, name: e.target.value })}
+                                            className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200"
+                                          />
+                                          <input 
+                                            type="text" 
+                                            value={member.designation || ""}
+                                            placeholder="Designation"
+                                            onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, designation: e.target.value })}
+                                            className="text-[10px] text-slate-400 block focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200 w-full"
+                                          />
+                                        </>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-slate-800 text-xs">{member.name}</span>
+                                          <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded">{member.designation || "Player"}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
 
                                   {/* Experience */}
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[10px] text-slate-400">Exp:</span>
-                                    <input 
-                                      type="number" 
-                                      value={member.experience || 0}
-                                      onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, experience: parseInt(e.target.value) || 0 })}
-                                      className="w-10 border border-slate-200 rounded px-1 py-0.5 text-center text-xs font-mono text-slate-650 focus:outline-none focus:ring-1 focus:ring-teal-200"
-                                    />
-                                    <span className="text-[10px] text-slate-450">yrs</span>
+                                  <div className="flex items-center gap-1 text-slate-500">
+                                    {isEditingHierarchy ? (
+                                      <>
+                                        <span className="text-[10px] text-slate-400">Exp:</span>
+                                        <input 
+                                          type="number" 
+                                          value={member.experience || 0}
+                                          onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, experience: parseInt(e.target.value) || 0 })}
+                                          className="w-10 border border-slate-200 rounded px-1 py-0.5 text-center text-xs font-mono text-slate-650 focus:outline-none focus:ring-1 focus:ring-teal-200"
+                                        />
+                                        <span className="text-[10px] text-slate-450">yrs</span>
+                                      </>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-500 font-medium font-mono">Exp: {member.experience || 0} yrs</span>
+                                    )}
                                   </div>
 
-                                  {/* Team selector */}
-                                  <div>
-                                    <select 
-                                      value={t.id}
-                                      onChange={(e) => onUpdateMember(member.id, { ...member, teamId: parseInt(e.target.value) })}
-                                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-300"
-                                    >
-                                      {teams.map(teamOpt => (
-                                        <option key={teamOpt.id} value={teamOpt.id}>{teamOpt.name}</option>
-                                      ))}
-                                    </select>
-                                  </div>
+                                  {/* Team & Reports To Selectors / Badges */}
+                                  {isEditingHierarchy ? (
+                                    <>
+                                      {/* Team selector */}
+                                      <div>
+                                        <select 
+                                          value={t.id}
+                                          onChange={(e) => onUpdateMember(member.id, { ...member, teamId: parseInt(e.target.value) })}
+                                          className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-300"
+                                        >
+                                          {teams.map(teamOpt => (
+                                            <option key={teamOpt.id} value={teamOpt.id}>{teamOpt.name}</option>
+                                          ))}
+                                        </select>
+                                      </div>
 
-                                  {/* Reporting Manager selector */}
-                                  <div>
-                                    <select 
-                                      value={member.reportingManager || ""}
-                                      onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, reportingManager: e.target.value })}
-                                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-750 bg-white focus:outline-none focus:ring-1 focus:ring-teal-300"
-                                    >
-                                      <option value="">No Manager</option>
-                                      {managerOptions.filter(mName => mName !== member.name).map(mName => (
-                                        <option key={mName} value={mName}>{mName}</option>
-                                      ))}
-                                    </select>
-                                  </div>
+                                      {/* Reporting Manager selector */}
+                                      <div>
+                                        <select 
+                                          value={member.reportingManager || ""}
+                                          onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, reportingManager: e.target.value })}
+                                          className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-750 bg-white focus:outline-none focus:ring-1 focus:ring-teal-300"
+                                        >
+                                          <option value="">No Manager</option>
+                                          {managerOptions.filter(mName => mName !== member.name).map(mName => (
+                                            <option key={mName} value={mName}>{mName}</option>
+                                          ))}
+                                        </select>
+                                      </div>
 
-                                  {/* Actions */}
-                                  <div>
-                                    <button
-                                      onClick={() => onDeleteMember(member.id)}
-                                      className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline px-2"
-                                    >
-                                      Delete
-                                    </button>
-                                  </div>
+                                      {/* Actions */}
+                                      <div>
+                                        <button
+                                          onClick={() => onDeleteMember(member.id)}
+                                          className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline px-2"
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    member.reportingManager && (
+                                      <span className="text-[10px] text-slate-500 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
+                                        Reports to: <span className="font-semibold text-slate-700">{member.reportingManager}</span>
+                                      </span>
+                                    )
+                                  )}
                                 </div>
 
                                 {/* Render subordinates */}
@@ -5409,6 +5463,42 @@ export default function App() {
     if (error) {
       console.error("Error updating player details in Supabase:", error);
       // Reload fresh details on sync failure
+      const { data: dbTeams } = await supabase.from('teams').select('*');
+      const { data: dbMembers } = await supabase.from('team_members').select('*');
+      if (dbTeams) {
+        setTeams(dbTeams.map(t => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          lead: t.lead,
+          members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
+            id: m.id,
+            name: m.name,
+            employeeId: m.employee_id,
+            designation: m.designation,
+            experience: m.experience,
+            reportingManager: m.reporting_manager,
+            description: m.description
+          }))
+        })));
+      }
+    }
+  }
+
+  async function handleSetTeamLead(teamId, leaderName) {
+    // Optimistically update local state
+    setTeams(prev => prev.map(t => {
+      if (t.id === teamId) {
+        return { ...t, lead: leaderName };
+      }
+      return t;
+    }));
+
+    // Update in database
+    const { error } = await supabase.from('teams').update({ lead: leaderName }).eq('id', teamId);
+    if (error) {
+      console.error("Error setting team lead in Supabase:", error);
+      // Reload on failure
       const { data: dbTeams } = await supabase.from('teams').select('*');
       const { data: dbMembers } = await supabase.from('team_members').select('*');
       if (dbTeams) {
