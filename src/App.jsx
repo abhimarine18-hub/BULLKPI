@@ -1654,50 +1654,6 @@ const initialKpis = []; /*
   }
 ];
 
-const teamsData = [
-  { id: 1, name: "Digital Marketing", description: "Building brand visibility, engagement and cost-efficient leads across digital channels", lead: "Anand Kumar",
-    members: [
-      { id: 1, name: "Anand Kumar", employeeId: "EMP-1042", designation: "Digital Marketing Junior Manager", experience: 5, reportingManager: "CMO", description: "Leads overall digital campaigns and strategy." },
-      { id: 2, name: "Krithika", employeeId: "EMP-1058", designation: "Intern - Digital Marketing", experience: 1, reportingManager: "Anand Kumar", description: "Assists with social content and digital updates." },
-    ] },
-  { id: 2, name: "Video Production", description: "Producing on-brand video content on schedule", lead: "Jefrin",
-    members: [
-      { id: 3, name: "Jefrin", employeeId: "EMP-1071", designation: "Video Production Lead", experience: 6, reportingManager: "Marketing Head", description: "Manages video content development and scheduling." },
-      { id: 4, name: "Harish", employeeId: "EMP-1072", designation: "Video Editor", experience: 3, reportingManager: "Jefrin", description: "Subordinate of Jefrin." },
-      { id: 5, name: "Sanjay", employeeId: "EMP-1073", designation: "Videographer", experience: 3, reportingManager: "Jefrin", description: "Subordinate of Jefrin." },
-      { id: 6, name: "Anand", employeeId: "EMP-1074", designation: "Video Assistant", experience: 2, reportingManager: "Jefrin", description: "Subordinate of Jefrin." },
-      { id: 7, name: "Shivangi", employeeId: "EMP-1075", designation: "Script Writer", experience: 2, reportingManager: "Jefrin", description: "Subordinate of Jefrin." },
-    ] },
-  { id: 3, name: "Graphic Designing", description: "Delivering design assets for campaigns and collateral", lead: "Sandeep",
-    members: [
-      { id: 8, name: "Sandeep", employeeId: "EMP-1083", designation: "Graphic Design Lead", experience: 6, reportingManager: "Marketing Head", description: "Oversees print and digital design requests." },
-      { id: 9, name: "Gopi", employeeId: "EMP-1084", designation: "Graphic Designer", experience: 3, reportingManager: "Sandeep", description: "Subordinate of Sandeep for domestic and international." },
-      { id: 10, name: "Kalaivani", employeeId: "EMP-1085", designation: "Graphic Designer", experience: 3, reportingManager: "Sandeep", description: "Subordinate of Sandeep for domestic and international." },
-      { id: 11, name: "Nowshand", employeeId: "EMP-1086", designation: "Graphic Designer - IB", experience: 4, reportingManager: "Sandeep", description: "Subordinate of Sandeep dedicated for the IB." },
-    ] },
-  { id: 4, name: "Enquiry Management", description: "Managing inbound enquiries and converting them into qualified leads", lead: "Malathi",
-    members: [
-      { id: 12, name: "Malathi", employeeId: "EMP-1094", designation: "Enquiry Desk Lead", experience: 7, reportingManager: "Marketing Head", description: "Oversees enquiry intake and conversion tracking." },
-      { id: 13, name: "Saranya", employeeId: "EMP-1095", designation: "Enquiry Agent", experience: 3, reportingManager: "Malathi", description: "Agent working under Malathi." },
-      { id: 14, name: "Shalini", employeeId: "EMP-1096", designation: "Enquiry Agent", experience: 3, reportingManager: "Malathi", description: "Agent working under Malathi." },
-      { id: 15, name: "Smeronika", employeeId: "EMP-1097", designation: "Enquiry Agent", experience: 2, reportingManager: "Malathi", description: "Agent working under Malathi." },
-      { id: 16, name: "Jennet", employeeId: "EMP-1098", designation: "Enquiry Agent", experience: 2, reportingManager: "Malathi", description: "Agent working under Malathi." },
-      { id: 17, name: "Agent 1", employeeId: "EMP-1099", designation: "Enquiry Agent 1", experience: 1, reportingManager: "Malathi", description: "Agent 1 working under Malathi." },
-      { id: 18, name: "Agent 2", employeeId: "EMP-1100", designation: "Enquiry Agent 2", experience: 1, reportingManager: "Malathi", description: "Agent 2 working under Malathi." },
-      { id: 19, name: "Agent 3", employeeId: "EMP-1101", designation: "Enquiry Agent 3", experience: 1, reportingManager: "Malathi", description: "Agent 3 working under Malathi." },
-      { id: 20, name: "Agent 4", employeeId: "EMP-1102", designation: "Enquiry Agent 4", experience: 1, reportingManager: "Malathi", description: "Agent 4 working under Malathi." },
-      { id: 21, name: "Agent 5", employeeId: "EMP-1103", designation: "Enquiry Agent 5", experience: 1, reportingManager: "Malathi", description: "Agent 5 working under Malathi." },
-      { id: 22, name: "Agent 6", employeeId: "EMP-1104", designation: "Enquiry Agent 6", experience: 1, reportingManager: "Malathi", description: "Agent 6 working under Malathi." },
-    ] },
-  { id: 5, name: "CRM and Coordinator", description: "Customer relationship management and coordination", lead: "Keerthana",
-    members: [
-      { id: 23, name: "Keerthana", employeeId: "EMP-1119", designation: "CRM Lead & Coordinator", experience: 5, reportingManager: "Marketing Head", description: "Leads client relationships and service coordination." },
-    ] },
-  { id: 6, name: "EXPO AND EVENTS", description: "Generating and capturing leads at trade shows and exhibitions", lead: "Anitha",
-    members: [
-      { id: 24, name: "Anitha", employeeId: "EMP-1105", designation: "Events & Expo Lead", experience: 5, reportingManager: "Marketing Head", description: "Plans and executes expo participation end-to-end." },
-    ] },
-]; */
 
 const okrsData = [
   { id: 1, objective: "Grow digital presence this quarter", level: "Company", owner: "Digital Marketing", keyResults: [
