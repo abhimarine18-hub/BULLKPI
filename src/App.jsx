@@ -1870,6 +1870,18 @@ function AddPlayerModal({ teams, defaultTeamId, onClose, onSubmit }) {
             <label className="text-xs text-slate-500 mb-1 block">User (Name)</label>
             <input value={form.name} onChange={set("name")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="e.g. Neha Kulkarni" />
           </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-1 block">Team (Department)</label>
+            <select 
+              value={teamId || ""} 
+              onChange={(e) => setTeamId(parseInt(e.target.value))} 
+              className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
+            >
+              {teams.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Designation</label>
@@ -5373,7 +5385,7 @@ export default function App() {
   }
 
   async function handleAddMember(teamId, member) {
-    const { data: memberRow } = await supabase.from('team_members').insert({
+    const { data: memberRow, error } = await supabase.from('team_members').insert({
       team_id: teamId,
       name: member.name,
       employee_id: member.employeeId,
@@ -5383,7 +5395,10 @@ export default function App() {
       description: member.description
     }).select().single();
 
-    if (memberRow) {
+    if (error) {
+      alert("Failed to add player: " + error.message);
+      console.error(error);
+    } else if (memberRow) {
       const formattedMember = {
         id: memberRow.id,
         name: memberRow.name,
