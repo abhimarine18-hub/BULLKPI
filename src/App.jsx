@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy
 } from "lucide-react";
 
 /* ---------------- Shared data (single source of truth) ---------------- */
@@ -3951,9 +3951,23 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                     <button 
                                       onClick={() => setEditingKpi(kpi)} 
                                       className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
-                                      title="Edit KPI Targets"
+                                      title="Edit KPI"
                                     >
                                       <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        const duplicated = {
+                                          ...kpi,
+                                          id: `temp-${Date.now()}`,
+                                          name: `${kpi.name} (Copy)`
+                                        };
+                                        setEditingKpi(duplicated);
+                                      }}
+                                      className="text-blue-500 hover:text-blue-700 p-1.5 rounded-lg border border-blue-100 hover:bg-blue-50 transition-all"
+                                      title="Duplicate KPI"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
                                     </button>
                                     <button 
                                       onClick={() => onDeleteKpi && onDeleteKpi(kpi.id)} 
@@ -4073,9 +4087,23 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                       <button 
                                         onClick={() => setEditingKpi(kpi)} 
                                         className="text-teal-600 hover:text-teal-800 p-1 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
-                                        title="Calendar (Split Target)"
+                                        title="Edit KPI"
                                       >
                                         <CalendarRange className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => {
+                                          const duplicated = {
+                                            ...kpi,
+                                            id: `temp-${Date.now()}`,
+                                            name: `${kpi.name} (Copy)`
+                                          };
+                                          setEditingKpi(duplicated);
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700 p-1 rounded-lg border border-blue-100 hover:bg-blue-50 transition-all"
+                                        title="Duplicate KPI"
+                                      >
+                                        <Copy className="h-3.5 w-3.5" />
                                       </button>
                                       <button 
                                         onClick={() => onDeleteKpi && onDeleteKpi(kpi.id)} 
@@ -5745,6 +5773,9 @@ export default function App() {
   }
 
   async function handleEditKpi(updatedKpi) {
+    if (typeof updatedKpi.id === 'string' && updatedKpi.id.startsWith('temp-')) {
+      return handleAddKpi(updatedKpi);
+    }
     setKpis((prev) => prev.map((k) => k.id === updatedKpi.id ? updatedKpi : k));
     await supabase.from('kpis').update({
       name: updatedKpi.name,
