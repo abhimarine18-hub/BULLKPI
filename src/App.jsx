@@ -4574,7 +4574,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                             return (
                               <div key={member.id} className="space-y-2">
                                 <div 
-                                  className="flex flex-wrap items-center gap-3 bg-white hover:bg-slate-50 border border-slate-150 rounded-xl p-3 shadow-sm transition-all"
+                                  className="flex flex-wrap items-center gap-2.5 bg-white hover:bg-slate-50/80 border border-slate-200 rounded-lg py-1.5 px-3 shadow-sm transition-all"
                                   style={{ marginLeft: `${level * 24}px` }}
                                 >
                                   {/* Indent line indicator */}
@@ -4584,7 +4584,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   
                                   {/* Player details */}
                                   <div className="flex-1 min-w-[200px] flex items-center gap-2">
-                                    <div className="bg-teal-50 text-teal-700 h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0">
+                                    <div className="bg-teal-50 text-teal-700 h-6.5 w-6.5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">
                                       {member.name.charAt(0)}
                                     </div>
                                     <div>
@@ -5354,6 +5354,79 @@ export default function App() {
         alert("Error deleting team: " + error.message);
       } else {
         setTeams(prev => prev.filter(t => t.id !== teamId));
+      }
+    }
+  }
+
+  async function handleUpdateMember(memberId, updatedFields) {
+    // Optimistically update the state
+    setTeams(prev => {
+      let player = null;
+      prev.forEach(t => {
+        const found = t.members.find(m => m.id === memberId);
+        if (found) player = { ...found };
+      });
+
+      if (!player) return prev;
+
+      const nextPlayer = {
+        ...player,
+        name: updatedFields.name !== undefined ? updatedFields.name : player.name,
+        designation: updatedFields.designation !== undefined ? updatedFields.designation : player.designation,
+        experience: updatedFields.experience !== undefined ? updatedFields.experience : player.experience,
+        reportingManager: updatedFields.reportingManager !== undefined ? updatedFields.reportingManager : player.reportingManager
+      };
+
+      const nextTeamId = updatedFields.teamId !== undefined ? updatedFields.teamId : player.teamId;
+
+      return prev.map(t => {
+        let members = [...t.members];
+        const isTargetTeam = t.id === nextTeamId;
+        const wasInThisTeam = t.members.some(m => m.id === memberId);
+
+        if (wasInThisTeam && !isTargetTeam) {
+          members = members.filter(m => m.id !== memberId);
+        } else if (!wasInThisTeam && isTargetTeam) {
+          members.push(nextPlayer);
+        } else if (wasInThisTeam && isTargetTeam) {
+          members = members.map(m => m.id === memberId ? nextPlayer : m);
+        }
+
+        return { ...t, members };
+      });
+    });
+
+    // Save background update to database
+    const { error } = await supabase.from('team_members').update({
+      team_id: updatedFields.teamId,
+      name: updatedFields.name,
+      designation: updatedFields.designation,
+      experience: updatedFields.experience,
+      reporting_manager: updatedFields.reportingManager,
+      description: updatedFields.description
+    }).eq('id', memberId);
+
+    if (error) {
+      console.error("Error updating player details in Supabase:", error);
+      // Reload fresh details on sync failure
+      const { data: dbTeams } = await supabase.from('teams').select('*');
+      const { data: dbMembers } = await supabase.from('team_members').select('*');
+      if (dbTeams) {
+        setTeams(dbTeams.map(t => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          lead: t.lead,
+          members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
+            id: m.id,
+            name: m.name,
+            employeeId: m.employee_id,
+            designation: m.designation,
+            experience: m.experience,
+            reportingManager: m.reporting_manager,
+            description: m.description
+          }))
+        })));
       }
     }
   }
