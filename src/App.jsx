@@ -11,7 +11,7 @@ import {
 
 /* ---------------- Shared data (single source of truth) ---------------- */
 
-const initialKpis = [
+const initialKpis = []; /*
   {
     "id": 1,
     "name": "No of digital enquiry resulted in sales - Domestic",
@@ -1655,9 +1655,8 @@ const initialKpis = [
 ];
 
 const teamsData = [
-  { id: 1, name: "Digital Marketing", description: "Building brand visibility, engagement and cost-efficient leads across digital channels", lead: "CMO",
+  { id: 1, name: "Digital Marketing", description: "Building brand visibility, engagement and cost-efficient leads across digital channels", lead: "Anand Kumar",
     members: [
-      { id: 100, name: "CMO", employeeId: "EMP-1000", designation: "Chief Marketing Officer", experience: 15, reportingManager: "BULL Machines", description: "Chief Marketing Officer reporting directly to BULL Machines." },
       { id: 1, name: "Anand Kumar", employeeId: "EMP-1042", designation: "Digital Marketing Junior Manager", experience: 5, reportingManager: "CMO", description: "Leads overall digital campaigns and strategy." },
       { id: 2, name: "Krithika", employeeId: "EMP-1058", designation: "Intern - Digital Marketing", experience: 1, reportingManager: "Anand Kumar", description: "Assists with social content and digital updates." },
     ] },
@@ -1698,7 +1697,7 @@ const teamsData = [
     members: [
       { id: 24, name: "Anitha", employeeId: "EMP-1105", designation: "Events & Expo Lead", experience: 5, reportingManager: "Marketing Head", description: "Plans and executes expo participation end-to-end." },
     ] },
-];
+]; */
 
 const okrsData = [
   { id: 1, objective: "Grow digital presence this quarter", level: "Company", owner: "Digital Marketing", keyResults: [
@@ -1711,7 +1710,7 @@ const okrsData = [
   ]},
 ];
 
-const initialProjects = [
+const initialProjects = []; /*
   {
     id: 1,
     title: "Video Content Hub Relaunch",
@@ -1744,7 +1743,7 @@ const initialProjects = [
       { name: "Final Performance Audit", targetDate: "2026-12-01", status: "pending" }
     ]
   }
-];
+]; */
 
 const campaignsData = [
   { id: 1, name: "Autumn Trade Expo 2026", start: "Sep 10", end: "Sep 14", owner: "Meera Kapoor", linkedKpiIds: [8, 3] },
