@@ -3657,6 +3657,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
   };
 
   const [screen, setScreen] = useState("dashboard");
+  const [settingsTab, setSettingsTab] = useState("spreadsheet");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
   const [teamFilter, setTeamFilter] = useState("All teams");
