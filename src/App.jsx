@@ -4594,18 +4594,31 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                             onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, name: e.target.value })}
                                             className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200"
                                           />
-                                          <input 
-                                            type="text" 
-                                            value={member.designation || ""}
-                                            placeholder="Designation"
-                                            onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, designation: e.target.value })}
-                                            className="text-[10px] text-slate-400 block focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200 w-full"
-                                          />
+                                          <div className="flex items-center gap-1.5">
+                                            <input 
+                                              type="text" 
+                                              value={member.designation || ""}
+                                              placeholder="Designation"
+                                              onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, designation: e.target.value })}
+                                              className="text-[10px] text-slate-450 focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200 w-32"
+                                            />
+                                            <span className="text-[10px] text-slate-300">|</span>
+                                            <input 
+                                              type="text" 
+                                              value={member.employeeId || ""}
+                                              placeholder="Code"
+                                              onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, employeeId: e.target.value })}
+                                              className="text-[10px] text-slate-450 font-mono focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200 w-20"
+                                            />
+                                          </div>
                                         </>
                                       ) : (
                                         <div className="flex items-center gap-2">
                                           <span className="font-bold text-slate-800 text-xs">{member.name}</span>
                                           <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded">{member.designation || "Player"}</span>
+                                          {member.employeeId && (
+                                            <span className="text-[9px] text-slate-400 font-mono bg-slate-50 px-1 rounded border border-slate-150">#{member.employeeId}</span>
+                                          )}
                                         </div>
                                       )}
                                     </div>
@@ -4668,6 +4681,17 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                         </select>
                                       </div>
 
+                                      {/* Details input */}
+                                      <div>
+                                        <input 
+                                          type="text" 
+                                          value={member.description || ""}
+                                          placeholder="Additional details"
+                                          onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, description: e.target.value })}
+                                          className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-teal-200 min-w-[120px]"
+                                        />
+                                      </div>
+
                                       {/* Actions */}
                                       <div>
                                         <button
@@ -4679,11 +4703,18 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                       </div>
                                     </>
                                   ) : (
-                                    member.reportingManager && (
-                                      <span className="text-[10px] text-slate-500 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
-                                        Reports to: <span className="font-semibold text-slate-700">{member.reportingManager}</span>
-                                      </span>
-                                    )
+                                    <>
+                                      {member.reportingManager && (
+                                        <span className="text-[10px] text-slate-500 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded">
+                                          Reports to: <span className="font-semibold text-slate-700">{member.reportingManager}</span>
+                                        </span>
+                                      )}
+                                      {member.description && (
+                                        <span className="text-[10px] text-slate-400 italic max-w-[180px] truncate" title={member.description}>
+                                          ({member.description})
+                                        </span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
 
@@ -5407,7 +5438,9 @@ export default function App() {
         name: updatedFields.name !== undefined ? updatedFields.name : player.name,
         designation: updatedFields.designation !== undefined ? updatedFields.designation : player.designation,
         experience: updatedFields.experience !== undefined ? updatedFields.experience : player.experience,
-        reportingManager: updatedFields.reportingManager !== undefined ? updatedFields.reportingManager : player.reportingManager
+        reportingManager: updatedFields.reportingManager !== undefined ? updatedFields.reportingManager : player.reportingManager,
+        employeeId: updatedFields.employeeId !== undefined ? updatedFields.employeeId : player.employeeId,
+        description: updatedFields.description !== undefined ? updatedFields.description : player.description
       };
 
       const nextTeamId = updatedFields.teamId !== undefined ? updatedFields.teamId : player.teamId;
@@ -5436,7 +5469,8 @@ export default function App() {
       designation: updatedFields.designation,
       experience: updatedFields.experience,
       reporting_manager: updatedFields.reportingManager,
-      description: updatedFields.description
+      description: updatedFields.description,
+      employee_id: updatedFields.employeeId
     }).eq('id', memberId);
 
     if (error) {
