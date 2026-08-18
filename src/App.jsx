@@ -5795,7 +5795,14 @@ export default function App() {
       history: newKpi.history || [],
       target_type: targetType,
       targets_list: targetsList,
-      monthly_alloc: newKpi.monthlyAlloc || {}
+      monthly_alloc: newKpi.monthlyAlloc || {},
+      monthly_actual: newKpi.monthlyActual || {},
+      weekly_alloc: newKpi.weeklyAlloc || {},
+      weekly_actual: newKpi.weeklyActual || {},
+      daily_actual: newKpi.dailyActual || {},
+      revised_alloc: newKpi.revisedAlloc || {},
+      custom_holidays: newKpi.customHolidays || {},
+      holidays_enabled: newKpi.holidaysEnabled ?? true
     }).select().single();
 
     if (kpiRow) {
@@ -5847,7 +5854,14 @@ export default function App() {
       history: updatedKpi.history || [],
       target_type: updatedKpi.targetType,
       targets_list: updatedKpi.targetsList,
-      monthly_alloc: updatedKpi.monthlyAlloc || {}
+      monthly_alloc: updatedKpi.monthlyAlloc || {},
+      monthly_actual: updatedKpi.monthlyActual || {},
+      weekly_alloc: updatedKpi.weeklyAlloc || {},
+      weekly_actual: updatedKpi.weeklyActual || {},
+      daily_actual: updatedKpi.dailyActual || {},
+      revised_alloc: updatedKpi.revisedAlloc || {},
+      custom_holidays: updatedKpi.customHolidays || {},
+      holidays_enabled: updatedKpi.holidaysEnabled ?? true
     }).eq('id', updatedKpi.id);
   }
 
