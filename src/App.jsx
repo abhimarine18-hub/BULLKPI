@@ -5252,13 +5252,13 @@ export default function App() {
         let { data: dbMembers, error: membersError } = await supabase.from('team_members').select('*');
 
         const loadedTeams = (dbTeams || []).map(t => {
-          const leadMember = (dbMembers || []).find(m => m.employee_id === t.lead);
+          const leadMember = (dbMembers || []).find(m => m.employee_id === t.employee_id);
           return {
             id: t.id,
             name: t.name,
             description: t.description,
             lead: leadMember ? leadMember.name : (t.lead || "Unassigned"),
-            leadEmployeeId: t.lead,
+            leadEmployeeId: t.employee_id,
             members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
               id: m.id,
               name: m.name,
@@ -5523,8 +5523,8 @@ export default function App() {
       return t;
     }));
 
-    // Update in database (saving the unique Employee ID)
-    const { error } = await supabase.from('teams').update({ lead: leaderEmpId }).eq('id', teamId);
+    // Update in database (saving the unique Employee ID to the employee_id column)
+    const { error } = await supabase.from('teams').update({ employee_id: leaderEmpId }).eq('id', teamId);
     if (error) {
       console.error("Error setting team lead in Supabase:", error);
       // Reload on failure
@@ -5532,13 +5532,13 @@ export default function App() {
       const { data: dbMembers } = await supabase.from('team_members').select('*');
       if (dbTeams) {
         setTeams(dbTeams.map(t => {
-          const leadMember = (dbMembers || []).find(m => m.employee_id === t.lead);
+          const leadMember = (dbMembers || []).find(m => m.employee_id === t.employee_id);
           return {
             id: t.id,
             name: t.name,
             description: t.description,
             lead: leadMember ? leadMember.name : (t.lead || "Unassigned"),
-            leadEmployeeId: t.lead,
+            leadEmployeeId: t.employee_id,
             members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
               id: m.id,
               name: m.name,
@@ -5561,7 +5561,8 @@ export default function App() {
     const { data: teamRow } = await supabase.from('teams').insert({
       name: newVertical.name,
       description: newVertical.description,
-      lead: newVertical.lead ? leadEmpCode : null // Stored as employee ID
+      lead: newVertical.lead || null, // Stored as name string
+      employee_id: newVertical.lead ? leadEmpCode : null // Stored as employee ID
     }).select().single();
 
     if (teamRow) {
