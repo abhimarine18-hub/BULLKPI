@@ -3297,7 +3297,7 @@ const ADMIN_NAV = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onUploadKpis }) {
+function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onUploadKpis }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -4454,6 +4454,85 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
                 </div>
               </div>
 
+              {/* Teams & Players Management Card */}
+              <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Teams & Players</h3>
+                    <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Manage teams and team members (players) dynamically connected to Supabase.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        if (teams.length === 0) {
+                          alert("Please add a Team first!");
+                          return;
+                        }
+                        setActiveTeamId(teams[0].id);
+                        setAddMemberOpen(true);
+                      }} 
+                      className="text-xs text-teal-600 hover:text-teal-700 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
+                    >
+                      + Add Player
+                    </button>
+                    <button 
+                      onClick={() => setAddVerticalOpen(true)} 
+                      className="text-xs text-teal-650 hover:text-teal-700 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
+                    >
+                      + Add Team
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-4 max-h-[350px] overflow-y-auto">
+                  {teams.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">No teams or players found in the database. Click "+ Add Team" to start.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {teams.map(t => (
+                        <div key={t.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/30 flex flex-col justify-between">
+                          <div>
+                            <div className="flex justify-between items-start border-b border-slate-150 pb-2 mb-3">
+                              <div>
+                                <span className="font-bold text-slate-800 text-sm">📂 {t.name}</span>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">{t.description || "No description"}</span>
+                              </div>
+                              <button
+                                onClick={() => onDeleteTeam(t.id)}
+                                className="text-[10px] text-rose-500 hover:text-rose-600 font-bold hover:underline"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                            
+                            <div className="space-y-1.5">
+                              {t.members.map(m => (
+                                <div key={m.id} className="flex justify-between items-center text-xs text-slate-650 hover:bg-white p-1.5 rounded-lg border border-transparent hover:border-slate-100 transition-all">
+                                  <div>
+                                    <span className="font-semibold text-slate-800">{m.name}</span>
+                                    <span className="text-[10px] text-slate-400 ml-1.5">({m.designation || "Player"})</span>
+                                  </div>
+                                  <button 
+                                    onClick={() => onDeleteMember(m.id)}
+                                    className="text-[10px] text-slate-400 hover:text-rose-600 font-bold opacity-60 hover:opacity-100 px-1"
+                                    title="Remove Player"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                              {t.members.length === 0 && (
+                                <span className="text-[10px] text-slate-400 italic block py-1">No players in this team</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* KPI Excel Grid Sheet View */}
               <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
@@ -5097,6 +5176,31 @@ export default function App() {
     }
   }
 
+  async function handleDeleteMember(memberId) {
+    if (window.confirm("Are you sure you want to remove this player?")) {
+      const { error } = await supabase.from('team_members').delete().eq('id', memberId);
+      if (error) {
+        alert("Error deleting player: " + error.message);
+      } else {
+        setTeams(prev => prev.map(t => ({
+          ...t,
+          members: t.members.filter(m => m.id !== memberId)
+        })));
+      }
+    }
+  }
+
+  async function handleDeleteTeam(teamId) {
+    if (window.confirm("Are you sure you want to delete this team? All players in this team will be unassigned.")) {
+      const { error } = await supabase.from('teams').delete().eq('id', teamId);
+      if (error) {
+        alert("Error deleting team: " + error.message);
+      } else {
+        setTeams(prev => prev.filter(t => t.id !== teamId));
+      }
+    }
+  }
+
   async function handleAddVertical(newVertical) {
     const { data: teamRow } = await supabase.from('teams').insert({
       name: newVertical.name,
@@ -5398,6 +5502,8 @@ export default function App() {
             onEditKpi={handleEditKpi}
             onDeleteKpi={handleDeleteKpi}
             onDeleteProject={handleDeleteProject}
+            onDeleteMember={handleDeleteMember}
+            onDeleteTeam={handleDeleteTeam}
             onUploadKpis={handleUploadKpis}
           />
         ) : (
