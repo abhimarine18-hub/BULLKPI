@@ -3303,7 +3303,7 @@ const ADMIN_NAV = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onUploadKpis }) {
+function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onUploadKpis }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -3377,39 +3377,212 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
 
   const [isEditingGrid, setIsEditingGrid] = useState(false);
   const [editingCell, setEditingCell] = useState(null);
+  const [gridKpis, setGridKpis] = useState([]);
 
-  const handleExcelActualChange = async (kpi, monthName, val) => {
+  // Sync gridKpis with DB kpis, padded to exactly 500 rows
+  useEffect(() => {
+    const list = [...kpis];
+    const padCount = Math.max(0, 500 - list.length);
+    for (let i = 0; i < padCount; i++) {
+      list.push({
+        id: `temp_${i}`,
+        isTemp: true,
+        name: "",
+        team: "",
+        owner: "",
+        driveBy: "",
+        monitorBy: "",
+        unit: "Nos",
+        direction: "higher",
+        target: 0,
+        monthlyAlloc: {},
+        monthlyActual: {},
+        targetsList: [],
+        history: []
+      });
+    }
+    setGridKpis(list);
+  }, [kpis]);
+
+  const handleLocalGridCellChange = (kpiId, field, val) => {
+    setGridKpis((prev) => prev.map((k) => {
+      if (k.id === kpiId) {
+        let updated = { ...k };
+        if (field === "name") updated.name = val;
+        else if (field === "team") updated.team = val;
+        else if (field === "owner") updated.owner = val;
+        else if (field === "driveBy") updated.driveBy = val;
+        else if (field === "monitorBy") updated.monitorBy = val;
+        else if (field === "unit") updated.unit = val.startsWith(" ") ? val : " " + val;
+        else if (field === "direction") updated.direction = val;
+        else if (field === "target") updated.target = parseFloat(val) || 0;
+        
+        updated.isDirty = true;
+        return updated;
+      }
+      return k;
+    }));
+  };
+
+  const handleLocalGridTargetChange = (kpiId, monthName, val) => {
     const numVal = parseFloat(val) || 0;
     const year = ["Jan", "Feb", "Mar"].includes(monthName) ? 2027 : 2026;
     const monthKey = `${monthName} ${year}`;
     
-    const nextActuals = { ...(kpi.monthlyActual || {}) };
-    nextActuals[monthKey] = numVal;
+    setGridKpis((prev) => prev.map((k) => {
+      if (k.id === kpiId) {
+        const nextM = { ...(k.monthlyAlloc || {}) };
+        nextM[monthKey] = numVal;
+        
+        const totalTarget = Object.values(nextM).reduce((a, b) => a + b, 0);
 
-    const updatedKpi = {
-      ...kpi,
-      monthlyActual: nextActuals
-    };
-    onEditKpi(updatedKpi);
+        let targetsList = k.targetsList || [];
+        const existingIdx = targetsList.findIndex(t => t.id === monthKey);
+        if (existingIdx !== -1) {
+          targetsList = targetsList.map((t, idx) => idx === existingIdx ? { ...t, targetValue: numVal } : t);
+        } else {
+          let lastDay = "30";
+          if (["Jan", "Mar", "May", "Jul", "Aug", "Oct", "Dec"].includes(monthName)) lastDay = "31";
+          else if (monthName === "Feb") lastDay = "28";
+          const monthNum = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(monthName) + 1;
+          const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
+          const targetDate = `${year}-${padMonth}-${lastDay}`;
+          targetsList.push({ id: monthKey, label: monthKey, targetValue: numVal, targetDate });
+        }
+
+        return {
+          ...k,
+          monthlyAlloc: nextM,
+          target: totalTarget,
+          targetsList,
+          isDirty: true
+        };
+      }
+      return k;
+    }));
   };
 
-  const handleExcelCellChange = async (kpi, field, val) => {
-    let updatedKpi = { ...kpi };
+  const handleLocalGridActualChange = (kpiId, monthName, val) => {
+    const numVal = parseFloat(val) || 0;
+    const year = ["Jan", "Feb", "Mar"].includes(monthName) ? 2027 : 2026;
+    const monthKey = `${monthName} ${year}`;
 
-    if (field === "name") updatedKpi.name = val;
-    else if (field === "team") updatedKpi.team = val;
-    else if (field === "owner") updatedKpi.owner = val;
-    else if (field === "driveBy") updatedKpi.driveBy = val;
-    else if (field === "monitorBy") updatedKpi.monitorBy = val;
-    else if (field === "unit") updatedKpi.unit = val.startsWith(" ") ? val : " " + val;
-    else if (field === "direction") updatedKpi.direction = val;
-    else if (field === "target") updatedKpi.target = parseFloat(val) || 0;
+    setGridKpis((prev) => prev.map((k) => {
+      if (k.id === kpiId) {
+        const nextM = { ...(k.monthlyActual || {}) };
+        nextM[monthKey] = numVal;
+        return {
+          ...k,
+          monthlyActual: nextM,
+          isDirty: true
+        };
+      }
+      return k;
+    }));
+  };
 
-    onEditKpi(updatedKpi);
+  const handleSaveGrid = async () => {
+    setLoading(true);
+    try {
+      const inserts = [];
+      const updates = [];
+
+      for (const row of gridKpis) {
+        if (!row.isDirty) continue;
+
+        if (row.isTemp) {
+          if (row.name && row.name.trim() !== "") {
+            inserts.push({
+              name: row.name,
+              team: row.team || "Digital Marketing",
+              owner: row.owner || "Anand Kumar",
+              drive_by: row.driveBy || "",
+              monitor_by: row.monitorBy || "",
+              unit: row.unit || " Nos",
+              direction: row.direction || "higher",
+              target: row.target || 0,
+              monthly_alloc: row.monthlyAlloc || {},
+              monthly_actual: row.monthlyActual || {},
+              targets_list: row.targetsList || [],
+              history: row.history || [{ d: "W1", v: 0 }],
+              daily_actual: {},
+              revised_alloc: {},
+              custom_holidays: {},
+              holidays_enabled: true,
+              target_type: "monthly",
+              weekly_alloc: {},
+              weekly_actual: {},
+              daily_alloc: {}
+            });
+          }
+        } else {
+          updates.push(row);
+        }
+      }
+
+      if (inserts.length > 0) {
+        const { error: insertError } = await supabase.from('kpis').insert(inserts);
+        if (insertError) throw insertError;
+      }
+
+      for (const row of updates) {
+        const { error: updateError } = await supabase.from('kpis').update({
+          name: row.name,
+          team: row.team,
+          owner: row.owner,
+          drive_by: row.driveBy,
+          monitor_by: row.monitorBy,
+          unit: row.unit,
+          direction: row.direction,
+          target: row.target,
+          monthly_alloc: row.monthlyAlloc,
+          monthly_actual: row.monthlyActual,
+          targets_list: row.targetsList
+        }).eq('id', row.id);
+        if (updateError) throw updateError;
+      }
+
+      alert("Spreadsheet saved successfully!");
+      
+      // Fetch latest KPIs to refresh UI
+      const { data: dbKpis } = await supabase.from('kpis').select('*');
+      if (dbKpis) {
+        setKpis(dbKpis.map(k => ({
+          id: k.id,
+          name: k.name,
+          unit: k.unit,
+          target: parseFloat(k.target),
+          direction: k.direction,
+          team: k.team,
+          owner: k.owner,
+          driveBy: k.drive_by,
+          monitorBy: k.monitor_by,
+          description: k.description,
+          kra: k.kra,
+          history: k.history || [],
+          dailyActual: k.daily_actual || {},
+          revisedAlloc: k.revised_alloc || {},
+          customHolidays: k.custom_holidays || {},
+          holidaysEnabled: k.holidays_enabled !== false,
+          targetType: k.target_type || "weekly",
+          targetsList: k.targets_list || [],
+          monthlyAlloc: k.monthly_alloc || {},
+          monthlyActual: k.monthly_actual || {},
+          weeklyAlloc: k.weekly_alloc || {},
+          weeklyActual: k.weekly_actual || {},
+          dailyAlloc: k.daily_alloc || {}
+        })));
+      }
+    } catch (err) {
+      alert("Error saving spreadsheet: " + err.message);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderExcelCell = (kpi, field, value, type = "text", customDisplay = null) => {
-    const isEditing = editingCell && editingCell.kpiId === kpi.id && editingCell.field === field;
+    const isEditing = isEditingGrid && editingCell && editingCell.kpiId === kpi.id && editingCell.field === field;
     
     if (isEditing) {
       if (type === "select") {
@@ -3419,7 +3592,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
             autoFocus
             onBlur={() => setEditingCell(null)}
             onChange={(e) => {
-              handleExcelCellChange(kpi, field, e.target.value);
+              handleLocalGridCellChange(kpi.id, field, e.target.value);
               setEditingCell(null);
             }}
             className="w-full h-full bg-white px-1.5 py-1 text-xs focus:outline-none border border-teal-500 font-medium text-slate-800"
@@ -3441,7 +3614,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
               setEditingCell(null);
             }
           }}
-          onChange={(e) => handleExcelCellChange(kpi, field, e.target.value)}
+          onChange={(e) => handleLocalGridCellChange(kpi.id, field, e.target.value)}
           className="w-full h-full bg-white px-1.5 py-1 text-xs focus:outline-none border border-teal-500 font-mono text-slate-800"
         />
       );
@@ -3449,9 +3622,13 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
     
     return (
       <div 
-        onDoubleClick={() => setEditingCell({ kpiId: kpi.id, field })}
-        className="w-full h-full min-h-[32px] flex items-center px-2 cursor-text hover:bg-slate-50 select-none truncate"
-        title="Double click to edit"
+        onDoubleClick={() => {
+          if (isEditingGrid) {
+            setEditingCell({ kpiId: kpi.id, field });
+          }
+        }}
+        className={`w-full h-full min-h-[32px] flex items-center px-2 select-none truncate ${isEditingGrid ? "cursor-text hover:bg-slate-50" : "cursor-default"}`}
+        title={isEditingGrid ? "Double click to edit" : ""}
       >
         {customDisplay !== null ? customDisplay : value}
       </div>
@@ -4458,15 +4635,33 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>KPI Grid Spreadsheet</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. Double-click any cell to edit or add content.</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. Enable edit and double-click cells to edit or add content.</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="bg-orange-50 text-orange-700 border border-orange-150 px-3 py-1 rounded-xl text-xs font-semibold">
-                      💡 Double-click cells to edit target/actual/details
-                    </div>
+                    <button 
+                      onClick={() => {
+                        setIsEditingGrid(!isEditingGrid);
+                        if (isEditingGrid) {
+                          setEditingCell(null);
+                        }
+                      }} 
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${isEditingGrid ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span>{isEditingGrid ? "Disable Edit" : "Enable Edit"}</span>
+                    </button>
+                    {isEditingGrid && (
+                      <button 
+                        onClick={handleSaveGrid}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-teal-500 hover:bg-teal-600 text-white transition-all shadow-sm"
+                      >
+                        <Download className="h-3.5 w-3.5 rotate-180" />
+                        <span>Save Changes</span>
+                      </button>
+                    )}
                     <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600">
                       <Table className="h-4 w-4" />
-                      <span>Total Rows: {kpis.length}</span>
+                      <span>Total Rows: 500</span>
                     </div>
                   </div>
                 </div>
@@ -4506,7 +4701,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 font-sans">
-                      {kpis.map((kpi, idx) => {
+                      {gridKpis.map((kpi, idx) => {
                         return (
                           <tr key={kpi.id} className="hover:bg-slate-50/50">
                             {/* A: KPI no */}
@@ -4563,8 +4758,8 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                               const targetVal = kpi.monthlyAlloc?.[monthKey] || 0;
                               const actualVal = kpi.monthlyActual?.[monthKey] ?? "";
                               
-                              const isEditingTarget = editingCell && editingCell.kpiId === kpi.id && editingCell.field === `target_${m}`;
-                              const isEditingActual = editingCell && editingCell.kpiId === kpi.id && editingCell.field === `actual_${m}`;
+                              const isEditingTarget = isEditingGrid && editingCell && editingCell.kpiId === kpi.id && editingCell.field === `target_${m}`;
+                              const isEditingActual = isEditingGrid && editingCell && editingCell.kpiId === kpi.id && editingCell.field === `actual_${m}`;
 
                               return (
                                 <td key={m} className="border border-slate-200 p-0 text-center" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>
@@ -4579,14 +4774,18 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                                           autoFocus
                                           onBlur={() => setEditingCell(null)}
                                           onKeyDown={(e) => { if (e.key === "Enter") setEditingCell(null); }}
-                                          onChange={(e) => handleExcelTargetChange(kpi, m, e.target.value)}
+                                          onChange={(e) => handleLocalGridTargetChange(kpi.id, m, e.target.value)}
                                           className="w-16 text-center border border-teal-500 bg-white rounded px-0.5 py-0.2 text-[10px] focus:outline-none font-medium font-mono text-slate-800"
                                         />
                                       ) : (
                                         <span 
-                                          onDoubleClick={() => setEditingCell({ kpiId: kpi.id, field: `target_${m}` })}
-                                          className="font-mono font-medium text-slate-650 cursor-text hover:bg-slate-50 px-1"
-                                          title="Double click to edit target"
+                                          onDoubleClick={() => {
+                                            if (isEditingGrid) {
+                                              setEditingCell({ kpiId: kpi.id, field: `target_${m}` });
+                                            }
+                                          }}
+                                          className={`font-mono font-medium text-slate-650 px-1 ${isEditingGrid ? "cursor-text hover:bg-slate-50" : "cursor-default"}`}
+                                          title={isEditingGrid ? "Double click to edit target" : ""}
                                         >
                                           {targetVal}
                                         </span>
@@ -5397,6 +5596,7 @@ export default function App() {
         {role === "admin" ? (
           <AdminApp 
             kpis={kpis} 
+            setKpis={setKpis}
             onLog={handleLog} 
             teams={teams} 
             onAddMember={handleAddMember} 
