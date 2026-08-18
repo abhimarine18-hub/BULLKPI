@@ -4723,11 +4723,6 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold">
                                     {teamMembers.length} Players
                                   </span>
-                                  {t.lead && (
-                                    <span className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
-                                      👑 Lead: {t.lead}
-                                    </span>
-                                  )}
                                 </div>
                                 <button
                                   onClick={() => {
@@ -5548,12 +5543,37 @@ export default function App() {
     }).select().single();
 
     if (teamRow) {
+      const createdMembers = [];
+      if (teamRow.lead && String(teamRow.lead).trim() !== "") {
+        const empCode = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+        const { data: leadMemberRow } = await supabase.from('team_members').insert({
+          team_id: teamRow.id,
+          name: teamRow.lead,
+          employee_id: empCode,
+          designation: "Team Lead",
+          experience: 5,
+          description: `Leader of ${teamRow.name}`
+        }).select().single();
+
+        if (leadMemberRow) {
+          createdMembers.push({
+            id: leadMemberRow.id,
+            name: leadMemberRow.name,
+            employeeId: leadMemberRow.employee_id,
+            designation: leadMemberRow.designation,
+            experience: leadMemberRow.experience,
+            reportingManager: leadMemberRow.reporting_manager,
+            description: leadMemberRow.description
+          });
+        }
+      }
+
       const formattedTeam = {
         id: teamRow.id,
         name: teamRow.name,
         description: teamRow.description,
         lead: teamRow.lead,
-        members: []
+        members: createdMembers
       };
       setTeams((prev) => [...prev, formattedTeam]);
     }
