@@ -4544,10 +4544,10 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
                     {/* Players & Hierarchy list card */}
                     <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
                         <div>
-                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Players & Reporting Hierarchy</h3>
-                          <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Edit designations, move players to different teams, or change reporting managers (monitors) directly below.</p>
+                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Players & Hierarchy Tree</h3>
+                          <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Explore team rosters grouped by department, with subordinates indented to represent reporting lines.</p>
                         </div>
                         <button 
                           onClick={() => {
@@ -4564,86 +4564,125 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                         </button>
                       </div>
 
-                      <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                        <table className="w-full text-xs text-left border-collapse bg-white">
-                          <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
-                              <th className="px-4 py-3">Player Name</th>
-                              <th className="px-4 py-3">Designation</th>
-                              <th className="px-4 py-3 text-center">Experience (Yrs)</th>
-                              <th className="px-4 py-3">Team (Change Team)</th>
-                              <th className="px-4 py-3">Reports To (Move Hierarchy)</th>
-                              <th className="px-4 py-3 text-center">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-150">
-                            {allPlayers.map(p => (
-                              <tr key={p.id} className="hover:bg-slate-50/50">
-                                <td className="px-4 py-3.5 font-bold text-slate-800">
-                                  <input 
-                                    type="text" 
-                                    value={p.name}
-                                    onChange={(e) => onUpdateMember(p.id, { ...p, name: e.target.value })}
-                                    className="border-none focus:ring-1 focus:ring-teal-200 rounded px-1.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white"
-                                  />
-                                </td>
-                                <td className="px-4 py-3.5 text-slate-600">
-                                  <input 
-                                    type="text" 
-                                    value={p.designation || ""}
-                                    placeholder="Enter designation"
-                                    onChange={(e) => onUpdateMember(p.id, { ...p, designation: e.target.value })}
-                                    className="border-none focus:ring-1 focus:ring-teal-200 rounded px-1.5 py-1 text-xs text-slate-650 focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white w-full"
-                                  />
-                                </td>
-                                <td className="px-4 py-3.5 text-center text-slate-500">
-                                  <input 
-                                    type="number" 
-                                    value={p.experience || 0}
-                                    onChange={(e) => onUpdateMember(p.id, { ...p, experience: parseInt(e.target.value) || 0 })}
-                                    className="w-16 border-none focus:ring-1 focus:ring-teal-200 rounded px-1.5 py-1 text-xs text-slate-500 focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white font-mono text-center"
-                                  />
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  <select 
-                                    value={p.teamId}
-                                    onChange={(e) => onUpdateMember(p.id, { ...p, teamId: parseInt(e.target.value) })}
-                                    className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-350"
-                                  >
-                                    {teams.map(t => (
-                                      <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  <select 
-                                    value={p.reportingManager || ""}
-                                    onChange={(e) => onUpdateMember(p.id, { ...p, reportingManager: e.target.value })}
-                                    className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-350"
-                                  >
-                                    <option value="">No Manager</option>
-                                    {managerOptions.filter(mName => mName !== p.name).map(mName => (
-                                      <option key={mName} value={mName}>{mName}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="px-4 py-3.5 text-center">
-                                  <button
-                                    onClick={() => onDeleteMember(p.id)}
-                                    className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline"
-                                  >
-                                    Delete
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                            {allPlayers.length === 0 && (
-                              <tr>
-                                <td colSpan={6} className="px-4 py-8 text-center text-slate-455 italic">No players found. Click "+ Add Player" to assign a member.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
+                      <div className="space-y-6">
+                        {teams.map(t => {
+                          const teamMembers = t.members;
+                          const leadMemberName = t.lead;
+                          
+                          const renderNode = (member, level = 0) => {
+                            const subordinates = teamMembers.filter(m => m.reportingManager === member.name && m.name !== member.name);
+                            return (
+                              <div key={member.id} className="space-y-2">
+                                <div 
+                                  className="flex flex-wrap items-center gap-3 bg-white hover:bg-slate-50 border border-slate-150 rounded-xl p-3 shadow-sm transition-all"
+                                  style={{ marginLeft: `${level * 24}px` }}
+                                >
+                                  {/* Indent line indicator */}
+                                  {level > 0 && (
+                                    <span className="text-slate-300 font-mono text-xs select-none">└─</span>
+                                  )}
+                                  
+                                  {/* Player details */}
+                                  <div className="flex-1 min-w-[200px] flex items-center gap-2">
+                                    <div className="bg-teal-50 text-teal-700 h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0">
+                                      {member.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                      <input 
+                                        type="text" 
+                                        value={member.name}
+                                        onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, name: e.target.value })}
+                                        className="font-bold text-slate-800 text-xs focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200"
+                                      />
+                                      <input 
+                                        type="text" 
+                                        value={member.designation || ""}
+                                        placeholder="Designation"
+                                        onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, designation: e.target.value })}
+                                        className="text-[10px] text-slate-400 block focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white rounded px-1 py-0.5 border-none focus:ring-1 focus:ring-teal-200 w-full"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Experience */}
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-slate-400">Exp:</span>
+                                    <input 
+                                      type="number" 
+                                      value={member.experience || 0}
+                                      onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, experience: parseInt(e.target.value) || 0 })}
+                                      className="w-10 border border-slate-200 rounded px-1 py-0.5 text-center text-xs font-mono text-slate-650 focus:outline-none focus:ring-1 focus:ring-teal-200"
+                                    />
+                                    <span className="text-[10px] text-slate-450">yrs</span>
+                                  </div>
+
+                                  {/* Team selector */}
+                                  <div>
+                                    <select 
+                                      value={t.id}
+                                      onChange={(e) => onUpdateMember(member.id, { ...member, teamId: parseInt(e.target.value) })}
+                                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-300"
+                                    >
+                                      {teams.map(teamOpt => (
+                                        <option key={teamOpt.id} value={teamOpt.id}>{teamOpt.name}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Reporting Manager selector */}
+                                  <div>
+                                    <select 
+                                      value={member.reportingManager || ""}
+                                      onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, reportingManager: e.target.value })}
+                                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-750 bg-white focus:outline-none focus:ring-1 focus:ring-teal-300"
+                                    >
+                                      <option value="">No Manager</option>
+                                      {managerOptions.filter(mName => mName !== member.name).map(mName => (
+                                        <option key={mName} value={mName}>{mName}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div>
+                                    <button
+                                      onClick={() => onDeleteMember(member.id)}
+                                      className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline px-2"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Render subordinates */}
+                                {subordinates.map(sub => renderNode(sub, level + 1))}
+                              </div>
+                            );
+                          };
+
+                          const teamMemberNames = new Set(teamMembers.map(m => m.name));
+                          const roots = teamMembers.filter(m => m.name === leadMemberName || !teamMemberNames.has(m.reportingManager));
+                          const rootsToRender = roots.length > 0 ? roots : teamMembers;
+
+                          return (
+                            <div key={t.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/10 space-y-3">
+                              <div className="flex items-center gap-2 border-b border-orange-50 pb-2">
+                                <span className="font-extrabold text-slate-800 text-sm">📂 {t.name}</span>
+                                <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold">
+                                  {teamMembers.length} Players
+                                </span>
+                              </div>
+
+                              {teamMembers.length === 0 ? (
+                                <p className="text-xs text-slate-400 italic pl-2 py-1">No players assigned to this team yet.</p>
+                              ) : (
+                                <div className="space-y-2.5">
+                                  {rootsToRender.map(r => renderNode(r, 0))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
