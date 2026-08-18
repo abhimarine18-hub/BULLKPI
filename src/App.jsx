@@ -1853,6 +1853,125 @@ function KpiDetail({ kpi, onClose, onLog }) {
 
 
 
+function ExcelColumnMapModal({ modal, onClose, onConfirm }) {
+  const { headers, allHeaders, rows, headerIdx } = modal;
+  const FIELDS = [
+    { key: "kpi",       label: "KPI Name",      required: true },
+    { key: "empId",     label: "Employee ID",    required: false },
+    { key: "team",      label: "Team / Dept",    required: false },
+    { key: "owner",     label: "Owner (DO)",     required: false },
+    { key: "drive",     label: "Drive By",       required: false },
+    { key: "monitor",   label: "Monitor By",     required: false },
+    { key: "uom",       label: "Unit (UOM)",     required: false },
+    { key: "direction", label: "UP/Down",        required: false },
+    { key: "target",    label: "CY Target",      required: false },
+  ];
+  const MONTHS = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+
+  // Auto-detect sensible defaults from header names
+  const autoDetect = (label) => {
+    const lc = label.toLowerCase();
+    const idx = allHeaders.findIndex(h => {
+      const hl = h.toLowerCase();
+      if (lc === "kpi name") return hl === "kpi" || hl === "kpi name";
+      if (lc === "employee id") return hl.includes("emp") || hl.includes("employee id") || hl === "employee_id";
+      if (lc === "team / dept") return hl === "team" || hl === "department";
+      if (lc === "owner (do)") return hl === "do" || hl === "owner";
+      if (lc === "drive by") return hl === "drive" || hl.includes("drive");
+      if (lc === "monitor by") return hl === "monitor" || hl.includes("monitor") || hl === "reporting to";
+      if (lc === "unit (uom)") return hl === "uom" || hl === "unit";
+      if (lc === "up/down") return hl === "up/ down" || hl === "up/down" || hl === "direction";
+      if (lc === "cy target") return hl === "cy target" || hl === "target";
+      return false;
+    });
+    return idx !== -1 ? String(idx) : "";
+  };
+
+  const initMap = {};
+  FIELDS.forEach(f => { initMap[f.key] = autoDetect(f.label); });
+  MONTHS.forEach(m => {
+    const idx = allHeaders.findIndex(h => h === m);
+    initMap[`month_${m}`] = idx !== -1 ? String(idx) : "";
+  });
+
+  const [colMap, setColMap] = useState(initMap);
+  const setCol = (key) => (e) => setColMap(prev => ({ ...prev, [key]: e.target.value }));
+
+  const optionList = [<option key="" value="">— Not mapped —</option>, ...allHeaders.map((h, i) => (
+    h.trim() !== "" ? <option key={i} value={String(i)}>{h}</option> : null
+  ))];
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 flex items-start justify-center z-50 p-4 overflow-y-auto pt-8">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
+        <div className="px-5 pt-5 pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-slate-800 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Match Excel Columns</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Map your sheet's columns to the correct fields before importing.</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X className="h-4 w-4" /></button>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
+          {/* Core field mapping */}
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Core Fields</p>
+          <div className="grid grid-cols-1 gap-2.5">
+            {FIELDS.map(f => (
+              <div key={f.key} className="flex items-center gap-3">
+                <label className="text-xs font-semibold text-slate-600 w-32 shrink-0">
+                  {f.label}{f.required && <span className="text-red-400 ml-0.5">*</span>}
+                </label>
+                <select
+                  value={colMap[f.key]}
+                  onChange={setCol(f.key)}
+                  className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
+                >
+                  {optionList}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          {/* Monthly target columns */}
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pt-2">Monthly Target Columns</p>
+          <div className="grid grid-cols-2 gap-2">
+            {MONTHS.map(m => (
+              <div key={m} className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-slate-600 w-10 shrink-0">{m}</label>
+                <select
+                  value={colMap[`month_${m}`]}
+                  onChange={setCol(`month_${m}`)}
+                  className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
+                >
+                  {optionList}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
+          <p className="text-[10px] text-slate-400">{rows.length - headerIdx - 1} data rows detected in sheet.</p>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">Cancel</button>
+            <button
+              onClick={() => {
+                if (!colMap.kpi) { alert("Please map at least the KPI Name column."); return; }
+                onConfirm(colMap, rows, headerIdx);
+              }}
+              className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-500 hover:bg-teal-600 text-white transition-colors shadow-sm"
+            >
+              Import KPIs →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddPlayerModal({ teams, defaultTeamId, onClose, onSubmit }) {
   const [teamId, setTeamId] = useState(defaultTeamId || teams[0]?.id);
   const [form, setForm] = useState({ name: "", designation: "", experience: "", description: "" });
@@ -3268,6 +3387,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
   const [uploadOwner, setUploadOwner] = useState("");
   const [uploadDrive, setUploadDrive] = useState("");
   const [uploadMonitor, setUploadMonitor] = useState("");
+  const [columnMapModal, setColumnMapModal] = useState(null); // { headers, rows } when open
 
   const handleDownloadTemplate = () => {
     const headers = [
@@ -4324,128 +4444,32 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                 const sheetName = workbook.SheetNames[0];
                                 const worksheet = workbook.Sheets[sheetName];
                                 const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                                
-                                // Find header row
+
+                                // Find header row (first non-empty row)
                                 let headerIdx = -1;
                                 for (let i = 0; i < rows.length; i++) {
                                   const row = rows[i];
-                                  if (row && (row.includes("KPI no") || row.includes("KPI"))) {
+                                  if (row && row.some(c => c !== undefined && c !== null && String(c).trim() !== "")) {
                                     headerIdx = i;
                                     break;
                                   }
                                 }
-                                
+
                                 if (headerIdx === -1) {
-                                  alert("Invalid Excel template. Could not find header row with 'KPI no' or 'KPI' columns.");
-                                  return;
-                                }
-                                
-                                const headers = rows[headerIdx].map(h => String(h || "").trim());
-                                const kpiIdx = headers.indexOf("KPI");
-                                const teamIdx = headers.indexOf("Team");
-                                const ownerIdx = headers.indexOf("DO") !== -1 ? headers.indexOf("DO") : headers.indexOf("Owner");
-                                const driveIdx = headers.indexOf("DRIVE") !== -1 ? headers.indexOf("DRIVE") : (headers.indexOf("Drive") !== -1 ? headers.indexOf("Drive") : headers.indexOf("DRIVE (Drive BY)"));
-                                const repToIdx = headers.indexOf("MONITOR") !== -1 ? headers.indexOf("MONITOR") : headers.indexOf("Reporting To");
-                                const uomIdx = headers.indexOf("UOM");
-                                const directionIdx = headers.indexOf("UP/ Down");
-                                const targetIdx = headers.indexOf("CY Target");
-                                
-                                const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
-                                const monthColIdxs = months.map(m => headers.indexOf(m));
-
-                                const parsedKpis = [];
-                                
-                                for (let i = headerIdx + 1; i < rows.length; i++) {
-                                  const row = rows[i];
-                                  if (!row || row.length === 0) continue;
-                                  
-                                  const kpiName = row[kpiIdx];
-                                  if (!kpiName || String(kpiName).trim() === "" || String(kpiName).trim() === "NaN") continue;
-                                  if (String(kpiName).toLowerCase() === "total") continue;
-
-                                  const rowTeam = row[teamIdx] ? String(row[teamIdx]).trim() : "Digital Marketing";
-                                  const rowOwner = row[ownerIdx] ? String(row[ownerIdx]).trim() : "Anand Kumar";
-                                  const rowDrive = row[driveIdx] ? String(row[driveIdx]).trim() : "";
-                                  const rowRepTo = row[repToIdx] ? String(row[repToIdx]).trim() : "";
-                                  const unit = row[uomIdx] ? " " + String(row[uomIdx]).trim() : " Nos";
-                                  const target = parseFloat(row[targetIdx]) || 0.0;
-                                  
-                                  let direction = "higher";
-                                  const dirVal = String(row[directionIdx] || "").toLowerCase().trim();
-                                  if (dirVal === "down" || dirVal === "lower") {
-                                    direction = "lower";
-                                  }
-
-                                  const monthlyAlloc = {};
-                                  const targetsList = [];
-                                  
-                                  months.forEach((m, idx) => {
-                                    const colIdx = monthColIdxs[idx];
-                                    if (colIdx !== -1 && row[colIdx] !== undefined && row[colIdx] !== null && row[colIdx] !== "") {
-                                      const val = parseFloat(row[colIdx]);
-                                      if (!isNaN(val)) {
-                                        const year = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
-                                        const monthKey = `${m} ${year}`;
-                                        monthlyAlloc[monthKey] = val;
-                                        
-                                        let lastDay = "30";
-                                        if (["Jan", "Mar", "May", "Jul", "Aug", "Oct", "Dec"].includes(m)) lastDay = "31";
-                                        else if (m === "Feb") lastDay = "28";
-                                        
-                                        const monthNum = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(m) + 1;
-                                        const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
-                                        const targetDate = `${year}-${padMonth}-${lastDay}`;
-                                        
-                                        targetsList.push({
-                                          id: monthKey,
-                                          label: monthKey,
-                                          targetValue: val,
-                                          targetDate
-                                        });
-                                      }
-                                    }
-                                  });
-
-                                  const history = [];
-                                  if (targetsList.length > 0) {
-                                    history.push({ d: "W1", v: targetsList[0].targetValue });
-                                  } else {
-                                    history.push({ d: "W1", v: 0 });
-                                  }
-
-                                  parsedKpis.push({
-                                    name: String(kpiName).trim(),
-                                    team: rowTeam,
-                                    owner: rowOwner,
-                                    driveBy: rowDrive,
-                                    monitorBy: rowRepTo,
-                                    unit,
-                                    target: target || (targetsList.length > 0 ? targetsList[0].targetValue : 0),
-                                    direction,
-                                    history,
-                                    monthlyAlloc,
-                                    targetsList,
-                                    targetType: "monthly"
-                                  });
-                                }
-                                
-                                if (parsedKpis.length === 0) {
-                                  alert("No valid KPI rows found in the selected Excel sheet.");
+                                  alert("Could not detect any header row in the Excel file.");
                                   return;
                                 }
 
-                                if (window.confirm(`Are you sure you want to upload ${parsedKpis.length} KPIs from the Excel sheet?`)) {
-                                  await onUploadKpis(parsedKpis, {
-                                    useRowMetadata: true
-                                  });
-                                }
+                                const detectedHeaders = rows[headerIdx].map(h => String(h || "").trim()).filter(h => h !== "");
+                                // Open column mapping popup
+                                setColumnMapModal({ headers: detectedHeaders, allHeaders: rows[headerIdx].map(h => String(h || "").trim()), rows, headerIdx });
                               } catch (err) {
-                                alert("Failed to parse Excel file: " + err.message);
+                                alert("Failed to read Excel file: " + err.message);
                                 console.error(err);
                               }
                             };
                             reader.readAsArrayBuffer(file);
-                            e.target.value = ""; 
+                            e.target.value = "";
                           }}
                           className="hidden" 
                         />
@@ -5011,6 +5035,77 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
       )}
       {editingKpi && (
         <EditKpiModal kpi={editingKpi} teams={teams} sidebarMinimized={sidebarMinimized} onClose={() => setEditingKpi(null)} onSubmit={onEditKpi} onAddVertical={onAddVertical} onAddMember={onAddMember} />
+      )}
+      {columnMapModal && (
+        <ExcelColumnMapModal
+          modal={columnMapModal}
+          onClose={() => setColumnMapModal(null)}
+          onConfirm={async (colMap, rows, headerIdx) => {
+            try {
+              const MONTHS = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+              const get = (row, key) => {
+                const idx = colMap[key] !== "" ? parseInt(colMap[key]) : -1;
+                return idx >= 0 && row[idx] !== undefined ? String(row[idx]).trim() : "";
+              };
+              const parsedKpis = [];
+              for (let i = headerIdx + 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length === 0) continue;
+                const kpiName = get(row, "kpi");
+                if (!kpiName || kpiName === "" || kpiName === "NaN" || kpiName.toLowerCase() === "total") continue;
+
+                const unit = get(row, "uom") ? " " + get(row, "uom") : " Nos";
+                const target = parseFloat(get(row, "target")) || 0;
+                const dirVal = get(row, "direction").toLowerCase();
+                const direction = (dirVal === "down" || dirVal === "lower") ? "lower" : "higher";
+                const monthlyAlloc = {};
+                const targetsList = [];
+                MONTHS.forEach(m => {
+                  const key = `month_${m}`;
+                  const idx = colMap[key] !== "" ? parseInt(colMap[key]) : -1;
+                  if (idx >= 0 && row[idx] !== undefined && row[idx] !== null && row[idx] !== "") {
+                    const val = parseFloat(row[idx]);
+                    if (!isNaN(val)) {
+                      const year = ["Jan","Feb","Mar"].includes(m) ? 2027 : 2026;
+                      const monthKey = `${m} ${year}`;
+                      monthlyAlloc[monthKey] = val;
+                      const monthNum = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(m) + 1;
+                      const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
+                      let lastDay = "30";
+                      if (["Jan","Mar","May","Jul","Aug","Oct","Dec"].includes(m)) lastDay = "31";
+                      else if (m === "Feb") lastDay = "28";
+                      targetsList.push({ id: monthKey, label: monthKey, targetValue: val, targetDate: `${year}-${padMonth}-${lastDay}` });
+                    }
+                  }
+                });
+                const history = [{ d: "W1", v: targetsList.length > 0 ? targetsList[0].targetValue : 0 }];
+                parsedKpis.push({
+                  name: kpiName,
+                  team: get(row, "team") || "General",
+                  owner: get(row, "owner") || "",
+                  driveBy: get(row, "drive") || "",
+                  monitorBy: get(row, "monitor") || "",
+                  employeeId: get(row, "empId") || "",
+                  unit,
+                  target: target || (targetsList.length > 0 ? targetsList[0].targetValue : 0),
+                  direction,
+                  history,
+                  monthlyAlloc,
+                  targetsList,
+                  targetType: "monthly"
+                });
+              }
+              if (parsedKpis.length === 0) { alert("No valid KPI rows found."); return; }
+              if (window.confirm(`Import ${parsedKpis.length} KPIs from this sheet?`)) {
+                await onUploadKpis(parsedKpis, { useRowMetadata: true });
+                setColumnMapModal(null);
+              }
+            } catch (err) {
+              alert("Import failed: " + err.message);
+              console.error(err);
+            }
+          }}
+        />
       )}
     </div>
   );
