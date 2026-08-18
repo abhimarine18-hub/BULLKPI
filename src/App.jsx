@@ -1870,18 +1870,6 @@ function AddPlayerModal({ teams, defaultTeamId, onClose, onSubmit }) {
             <label className="text-xs text-slate-500 mb-1 block">User (Name)</label>
             <input value={form.name} onChange={set("name")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="e.g. Neha Kulkarni" />
           </div>
-          <div>
-            <label className="text-xs text-slate-500 mb-1 block">Team (Department)</label>
-            <select 
-              value={teamId || ""} 
-              onChange={(e) => setTeamId(parseInt(e.target.value))} 
-              className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
-            >
-              {teams.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Designation</label>
@@ -4532,32 +4520,19 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Players & Hierarchy Tree</h3>
                           <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Explore team rosters grouped by department, with subordinates indented to represent reporting lines.</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setIsEditingHierarchy(!isEditingHierarchy)}
-                            className={`p-2 rounded-xl border transition-all ${
-                              isEditingHierarchy 
-                                ? "bg-teal-500 text-white border-teal-500 shadow-sm" 
-                                : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
-                            }`}
-                            title={isEditingHierarchy ? "Disable Edit Mode" : "Enable Edit Mode"}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              if (teams.length === 0) {
-                                alert("Please add a Team first!");
-                                    return;
-                              }
-                              setActiveTeamId(teams[0].id);
-                              setAddMemberOpen(true);
-                            }} 
-                            className="text-xs text-teal-650 hover:text-teal-755 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
-                          >
-                            + Add Player
-                          </button>
-                        </div>
+                         <div className="flex items-center gap-2">
+                           <button
+                             onClick={() => setIsEditingHierarchy(!isEditingHierarchy)}
+                             className={`p-2 rounded-xl border transition-all ${
+                               isEditingHierarchy 
+                                 ? "bg-teal-500 text-white border-teal-500 shadow-sm" 
+                                 : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
+                             }`}
+                             title={isEditingHierarchy ? "Disable Edit Mode" : "Enable Edit Mode"}
+                           >
+                             <Pencil className="h-4 w-4" />
+                           </button>
+                         </div>
                       </div>
 
                       <div className="space-y-6">
@@ -4742,11 +4717,22 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
                           return (
                             <div key={t.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/10 space-y-3">
-                              <div className="flex items-center gap-2 border-b border-orange-50 pb-2">
-                                <span className="font-extrabold text-slate-800 text-sm">📂 {t.name}</span>
-                                <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold">
-                                  {teamMembers.length} Players
-                                </span>
+                              <div className="flex items-center justify-between border-b border-orange-50 pb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-slate-800 text-sm">📂 {t.name}</span>
+                                  <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold">
+                                    {teamMembers.length} Players
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setActiveTeamId(t.id);
+                                    setAddMemberOpen(true);
+                                  }}
+                                  className="text-[10px] text-teal-650 hover:text-teal-750 font-bold bg-teal-50 hover:bg-teal-100 border border-teal-100 px-2.5 py-1 rounded-lg transition-all shadow-sm"
+                                >
+                                  + Add Player
+                                </button>
                               </div>
 
                               {teamMembers.length === 0 ? (
