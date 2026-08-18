@@ -3375,6 +3375,38 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
     onEditKpi(updatedKpi);
   };
 
+  const [isEditingGrid, setIsEditingGrid] = useState(false);
+
+  const handleExcelActualChange = async (kpi, monthName, val) => {
+    const numVal = parseFloat(val) || 0;
+    const year = ["Jan", "Feb", "Mar"].includes(monthName) ? 2027 : 2026;
+    const monthKey = `${monthName} ${year}`;
+    
+    const nextActuals = { ...(kpi.monthlyActual || {}) };
+    nextActuals[monthKey] = numVal;
+
+    const updatedKpi = {
+      ...kpi,
+      monthlyActual: nextActuals
+    };
+    onEditKpi(updatedKpi);
+  };
+
+  const handleExcelCellChange = async (kpi, field, val) => {
+    let updatedKpi = { ...kpi };
+
+    if (field === "name") updatedKpi.name = val;
+    else if (field === "team") updatedKpi.team = val;
+    else if (field === "owner") updatedKpi.owner = val;
+    else if (field === "driveBy") updatedKpi.driveBy = val;
+    else if (field === "monitorBy") updatedKpi.monitorBy = val;
+    else if (field === "unit") updatedKpi.unit = val.startsWith(" ") ? val : " " + val;
+    else if (field === "direction") updatedKpi.direction = val;
+    else if (field === "target") updatedKpi.target = parseFloat(val) || 0;
+
+    onEditKpi(updatedKpi);
+  };
+
   const [screen, setScreen] = useState("dashboard");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -4190,7 +4222,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
           )}
 
           {screen === "settings" && (
-            <div className="space-y-6 w-full max-w-7xl px-2">
+            <div className="space-y-6 w-full max-w-full px-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Organization info card */}
                 <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm">
@@ -4375,11 +4407,20 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>KPI Grid Spreadsheet</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. You can update actual values directly in the cells below.</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. You can update values directly in the cells below.</p>
                   </div>
-                  <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600">
-                    <Table className="h-4 w-4" />
-                    <span>Total Rows: {kpis.length}</span>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setIsEditingGrid(!isEditingGrid)} 
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${isEditingGrid ? "bg-teal-500 hover:bg-teal-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span>{isEditingGrid ? "Exit Edit Mode" : "Edit Spreadsheet"}</span>
+                    </button>
+                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600">
+                      <Table className="h-4 w-4" />
+                      <span>Total Rows: {kpis.length}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -4421,28 +4462,141 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                       {kpis.map((kpi, idx) => {
                         return (
                           <tr key={kpi.id} className="hover:bg-slate-50/50">
+                            {/* A: KPI no */}
                             <td className="border-r border-slate-200 px-3 py-2 font-mono text-slate-500 sticky bg-white z-10" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>{idx + 1}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 font-medium text-slate-800 sticky bg-white z-10 truncate" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }} title={kpi.name}>{kpi.name}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 text-slate-650" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>{kpi.team}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>{kpi.owner}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>{kpi.driveBy || "-"}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>{kpi.monitorBy || "-"}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 font-semibold text-slate-500 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>{kpi.unit.trim()}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${kpi.direction === "lower" ? "bg-orange-50 text-orange-600" : "bg-teal-50 text-teal-600"}`}>
-                                {kpi.direction === "lower" ? "Down" : "UP"}
-                              </span>
+                            
+                            {/* B: KPI name */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 font-medium text-slate-800 sticky bg-white z-10" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>
+                              {isEditingGrid ? (
+                                <input 
+                                  value={kpi.name}
+                                  onChange={(e) => handleExcelCellChange(kpi, "name", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
+                                />
+                              ) : (
+                                <div className="truncate max-w-xs px-1" title={kpi.name}>{kpi.name}</div>
+                              )}
                             </td>
-                            <td className="border-r border-slate-200 px-3 py-2 font-bold text-slate-800 text-right" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>{kpi.target}</td>
+
+                            {/* C: Team */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>
+                              {isEditingGrid ? (
+                                <input 
+                                  value={kpi.team}
+                                  onChange={(e) => handleExcelCellChange(kpi, "team", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
+                                />
+                              ) : (
+                                <span className="px-1">{kpi.team}</span>
+                              )}
+                            </td>
+
+                            {/* D: Owner */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
+                              {isEditingGrid ? (
+                                <input 
+                                  value={kpi.owner}
+                                  onChange={(e) => handleExcelCellChange(kpi, "owner", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
+                                />
+                              ) : (
+                                <span className="px-1">{kpi.owner}</span>
+                              )}
+                            </td>
+
+                            {/* E: Drive */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
+                              {isEditingGrid ? (
+                                <input 
+                                  value={kpi.driveBy || ""}
+                                  onChange={(e) => handleExcelCellChange(kpi, "driveBy", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
+                                />
+                              ) : (
+                                <span className="px-1">{kpi.driveBy || "-"}</span>
+                              )}
+                            </td>
+
+                            {/* F: Reporting To */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
+                              {isEditingGrid ? (
+                                <input 
+                                  value={kpi.monitorBy || ""}
+                                  onChange={(e) => handleExcelCellChange(kpi, "monitorBy", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
+                                />
+                              ) : (
+                                <span className="px-1">{kpi.monitorBy || "-"}</span>
+                              )}
+                            </td>
+
+                            {/* G: UOM */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 font-semibold text-slate-500 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>
+                              {isEditingGrid ? (
+                                <input 
+                                  value={kpi.unit.trim()}
+                                  onChange={(e) => handleExcelCellChange(kpi, "unit", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-1 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white text-center"
+                                />
+                              ) : (
+                                <span>{kpi.unit.trim()}</span>
+                              )}
+                            </td>
+
+                            {/* H: UP/Down */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>
+                              {isEditingGrid ? (
+                                <select 
+                                  value={kpi.direction}
+                                  onChange={(e) => handleExcelCellChange(kpi, "direction", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-1 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white text-center font-medium"
+                                >
+                                  <option value="higher">UP</option>
+                                  <option value="lower">Down</option>
+                                </select>
+                              ) : (
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${kpi.direction === "lower" ? "bg-orange-50 text-orange-600" : "bg-teal-50 text-teal-600"}`}>
+                                  {kpi.direction === "lower" ? "Down" : "UP"}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* I: CY Target */}
+                            <td className="border-r border-slate-200 px-2 py-1.5 font-bold text-slate-800 text-right" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>
+                              {isEditingGrid ? (
+                                <input 
+                                  type="number"
+                                  value={kpi.target}
+                                  onChange={(e) => handleExcelCellChange(kpi, "target", e.target.value)}
+                                  className="w-full border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white text-right font-mono"
+                                />
+                              ) : (
+                                <span className="px-1">{kpi.target}</span>
+                              )}
+                            </td>
+
+                            {/* J to U: Monthly target + actual cells */}
                             {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
                               const year = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
                               const monthKey = `${m} ${year}`;
                               const targetVal = kpi.monthlyAlloc?.[monthKey] || 0;
                               const actualVal = kpi.monthlyActual?.[monthKey] ?? "";
                               return (
-                                <td key={m} className="border-r border-slate-200 px-2 py-1.5 text-center">
+                                <td key={m} className="border-r border-slate-200 px-2 py-1.5 text-center" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>
                                   <div className="flex flex-col gap-1 items-center justify-center">
-                                    <div className="text-[10px] text-slate-400" title="Target">T: <span className="font-mono font-medium">{targetVal}</span></div>
+                                    <div className="text-[10px] text-slate-400 flex items-center gap-1" title="Target">
+                                      <span>T:</span>
+                                      {isEditingGrid ? (
+                                        <input 
+                                          type="number"
+                                          value={targetVal}
+                                          onChange={(e) => handleExcelTargetChange(kpi, m, e.target.value)}
+                                          className="w-16 text-center border border-slate-200 focus:border-teal-400 bg-white rounded px-0.5 py-0.2 text-[10px] focus:outline-none font-medium font-mono text-slate-650"
+                                        />
+                                      ) : (
+                                        <span className="font-mono font-medium">{targetVal}</span>
+                                      )}
+                                    </div>
                                     <input 
                                       type="number"
                                       value={actualVal}
@@ -4459,7 +4613,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                       })}
                       {kpis.length === 0 && (
                         <tr>
-                          <td colSpan={22} className="px-6 py-12 text-center text-slate-400 italic bg-slate-50/20">
+                          <td colSpan={21} className="px-6 py-12 text-center text-slate-400 italic bg-slate-50/20">
                             No KPIs uploaded yet. Upload an Excel file containing your KPIs to see them in the spreadsheet.
                           </td>
                         </tr>
