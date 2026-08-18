@@ -5712,16 +5712,9 @@ export default function App() {
       description: newKpi.description || "",
       kra: newKpi.kra,
       history: newKpi.history || [],
-      daily_actual: newKpi.dailyActual || {},
-      revised_alloc: newKpi.revisedAlloc || {},
-      custom_holidays: newKpi.customHolidays || {},
-      holidays_enabled: newKpi.holidaysEnabled !== false,
       target_type: targetType,
       targets_list: targetsList,
-      monthly_alloc: newKpi.monthlyAlloc || {},
-      monthly_actual: newKpi.monthlyActual || {},
-      weekly_alloc: newKpi.weeklyAlloc || {},
-      weekly_actual: newKpi.weeklyActual || {}
+      monthly_alloc: newKpi.monthlyAlloc || {}
     }).select().single();
 
     if (kpiRow) {
@@ -5768,16 +5761,9 @@ export default function App() {
       description: updatedKpi.description || "",
       kra: updatedKpi.kra,
       history: updatedKpi.history || [],
-      daily_actual: updatedKpi.dailyActual || {},
-      revised_alloc: updatedKpi.revisedAlloc || {},
-      custom_holidays: updatedKpi.customHolidays || {},
-      holidays_enabled: updatedKpi.holidaysEnabled !== false,
       target_type: updatedKpi.targetType,
       targets_list: updatedKpi.targetsList,
-      monthly_alloc: updatedKpi.monthlyAlloc || {},
-      monthly_actual: updatedKpi.monthlyActual || {},
-      weekly_alloc: updatedKpi.weeklyAlloc || {},
-      weekly_actual: updatedKpi.weeklyActual || {}
+      monthly_alloc: updatedKpi.monthlyAlloc || {}
     }).eq('id', updatedKpi.id);
   }
 
@@ -5883,16 +5869,9 @@ export default function App() {
       kra: k.kra || "",
       description: k.description || "",
       history: k.history || [],
-      daily_actual: k.dailyActual || k.daily_actual || {},
-      revised_alloc: k.revisedAlloc || k.revised_alloc || {},
-      custom_holidays: k.customHolidays || k.custom_holidays || {},
-      holidays_enabled: k.holidaysEnabled !== false,
       target_type: k.targetType || k.target_type || "monthly",
       targets_list: k.targetsList || k.targets_list || [],
-      monthly_alloc: k.monthlyAlloc || k.monthly_alloc || {},
-      monthly_actual: k.monthlyActual || k.monthly_actual || {},
-      weekly_alloc: k.weeklyAlloc || k.weekly_alloc || {},
-      weekly_actual: k.weeklyActual || k.weekly_actual || {}
+      monthly_alloc: k.monthlyAlloc || k.monthly_alloc || {}
     }));
 
     const { data, error } = await supabase.from('kpis').insert(mapped).select();
