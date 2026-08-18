@@ -4190,210 +4190,285 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
           )}
 
           {screen === "settings" && (
-            <div className="space-y-6 max-w-md">
-              <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm">
-                <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Poppins, sans-serif" }}>Organization</h3>
-                <div className="space-y-3 text-sm">
-                  <div><p className="text-slate-400 text-xs mb-1">Name</p><p className="text-slate-800 font-medium">BULL Machines</p></div>
-                  <div><p className="text-slate-400 text-xs mb-1">Industry</p><p className="text-slate-800 font-medium">Manufacturing</p></div>
-                  <div><p className="text-slate-400 text-xs mb-1">Plan</p><p className="text-slate-800 font-medium">Team</p></div>
+            <div className="space-y-6 w-full max-w-7xl px-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Organization info card */}
+                <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm">
+                  <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Poppins, sans-serif" }}>Organization</h3>
+                  <div className="space-y-3 text-sm">
+                    <div><p className="text-slate-400 text-xs mb-1">Name</p><p className="text-slate-800 font-medium">BULL Machines</p></div>
+                    <div><p className="text-slate-400 text-xs mb-1">Industry</p><p className="text-slate-800 font-medium">Manufacturing</p></div>
+                    <div><p className="text-slate-400 text-xs mb-1">Plan</p><p className="text-slate-800 font-medium">Team</p></div>
+                  </div>
+                </div>
+
+                {/* Database utilities upload/download card */}
+                <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
+                  <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Database Utilities</h3>
+                  
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">KPI Excel Import / Export</h4>
+                    <p className="text-xs text-slate-400">Download the KPI template, populate your KPI rows (with Team, Owner, Drive, and Reporting To), and upload it.</p>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Download Template Button */}
+                      <button 
+                        onClick={handleDownloadTemplate}
+                        className="inline-flex items-center justify-center gap-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-bold px-3 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm border border-orange-200"
+                      >
+                        <Download className="h-4 w-4 text-orange-650" /> Download Template
+                      </button>
+
+                      {/* File Upload Button */}
+                      <label 
+                        className="inline-flex items-center justify-center gap-1.5 text-white bg-teal-500 hover:bg-teal-600 text-xs font-semibold px-3 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm"
+                      >
+                        <Plus className="h-4 w-4" /> Upload Excel File
+                        <input 
+                          type="file" 
+                          accept=".xlsx, .xls" 
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = async (evt) => {
+                              try {
+                                const arrayBuffer = evt.target.result;
+                                const data = new Uint8Array(arrayBuffer);
+                                const workbook = XLSX.read(data, { type: "array" });
+                                const sheetName = workbook.SheetNames[0];
+                                const worksheet = workbook.Sheets[sheetName];
+                                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                                
+                                // Find header row
+                                let headerIdx = -1;
+                                for (let i = 0; i < rows.length; i++) {
+                                  const row = rows[i];
+                                  if (row && (row.includes("KPI no") || row.includes("KPI"))) {
+                                    headerIdx = i;
+                                    break;
+                                  }
+                                }
+                                
+                                if (headerIdx === -1) {
+                                  alert("Invalid Excel template. Could not find header row with 'KPI no' or 'KPI' columns.");
+                                  return;
+                                }
+                                
+                                const headers = rows[headerIdx].map(h => String(h || "").trim());
+                                const kpiIdx = headers.indexOf("KPI");
+                                const teamIdx = headers.indexOf("Team");
+                                const ownerIdx = headers.indexOf("Owner");
+                                const driveIdx = headers.indexOf("Drive");
+                                const repToIdx = headers.indexOf("Reporting To");
+                                const uomIdx = headers.indexOf("UOM");
+                                const directionIdx = headers.indexOf("UP/ Down");
+                                const targetIdx = headers.indexOf("CY Target");
+                                
+                                const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+                                const monthColIdxs = months.map(m => headers.indexOf(m));
+
+                                const parsedKpis = [];
+                                
+                                for (let i = headerIdx + 1; i < rows.length; i++) {
+                                  const row = rows[i];
+                                  if (!row || row.length === 0) continue;
+                                  
+                                  const kpiName = row[kpiIdx];
+                                  if (!kpiName || String(kpiName).trim() === "" || String(kpiName).trim() === "NaN") continue;
+                                  if (String(kpiName).toLowerCase() === "total") continue;
+
+                                  const rowTeam = row[teamIdx] ? String(row[teamIdx]).trim() : "Digital Marketing";
+                                  const rowOwner = row[ownerIdx] ? String(row[ownerIdx]).trim() : "Anand Kumar";
+                                  const rowDrive = row[driveIdx] ? String(row[driveIdx]).trim() : "";
+                                  const rowRepTo = row[repToIdx] ? String(row[repToIdx]).trim() : "";
+                                  const unit = row[uomIdx] ? " " + String(row[uomIdx]).trim() : " Nos";
+                                  const target = parseFloat(row[targetIdx]) || 0.0;
+                                  
+                                  let direction = "higher";
+                                  const dirVal = String(row[directionIdx] || "").toLowerCase().trim();
+                                  if (dirVal === "down" || dirVal === "lower") {
+                                    direction = "lower";
+                                  }
+
+                                  const monthlyAlloc = {};
+                                  const targetsList = [];
+                                  
+                                  months.forEach((m, idx) => {
+                                    const colIdx = monthColIdxs[idx];
+                                    if (colIdx !== -1 && row[colIdx] !== undefined && row[colIdx] !== null && row[colIdx] !== "") {
+                                      const val = parseFloat(row[colIdx]);
+                                      if (!isNaN(val)) {
+                                        const year = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
+                                        const monthKey = `${m} ${year}`;
+                                        monthlyAlloc[monthKey] = val;
+                                        
+                                        let lastDay = "30";
+                                        if (["Jan", "Mar", "May", "Jul", "Aug", "Oct", "Dec"].includes(m)) lastDay = "31";
+                                        else if (m === "Feb") lastDay = "28";
+                                        
+                                        const monthNum = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(m) + 1;
+                                        const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
+                                        const targetDate = `${year}-${padMonth}-${lastDay}`;
+                                        
+                                        targetsList.push({
+                                          id: monthKey,
+                                          label: monthKey,
+                                          targetValue: val,
+                                          targetDate
+                                        });
+                                      }
+                                    }
+                                  });
+
+                                  const history = [];
+                                  if (targetsList.length > 0) {
+                                    history.push({ d: "W1", v: targetsList[0].targetValue });
+                                  } else {
+                                    history.push({ d: "W1", v: 0 });
+                                  }
+
+                                  parsedKpis.push({
+                                    name: String(kpiName).trim(),
+                                    team: rowTeam,
+                                    owner: rowOwner,
+                                    driveBy: rowDrive,
+                                    monitorBy: rowRepTo,
+                                    unit,
+                                    target: target || (targetsList.length > 0 ? targetsList[0].targetValue : 0),
+                                    direction,
+                                    history,
+                                    monthlyAlloc,
+                                    targetsList,
+                                    targetType: "monthly"
+                                  });
+                                }
+                                
+                                if (parsedKpis.length === 0) {
+                                  alert("No valid KPI rows found in the selected Excel sheet.");
+                                  return;
+                                }
+
+                                if (window.confirm(`Are you sure you want to upload ${parsedKpis.length} KPIs from the Excel sheet?`)) {
+                                  await onUploadKpis(parsedKpis, {
+                                    useRowMetadata: true
+                                  });
+                                }
+                              } catch (err) {
+                                alert("Failed to parse Excel file: " + err.message);
+                                console.error(err);
+                              }
+                            };
+                            reader.readAsArrayBuffer(file);
+                            e.target.value = ""; 
+                          }}
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* KPI Excel Grid Sheet View */}
               <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
-                <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Database Utilities</h3>
-                
-                <div className="space-y-3">
-                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">KPI Excel Import / Export</h4>
-                  <p className="text-xs text-slate-400">Download the KPI template, populate your KPI rows (with Team, Owner, Drive, and Reporting To), and upload it.</p>
-                  
-                  {/* Download Template Button */}
+                <div className="flex items-center justify-between">
                   <div>
-                    <button 
-                      onClick={handleDownloadTemplate}
-                      className="inline-flex items-center justify-center gap-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full border border-orange-200"
-                    >
-                      <Download className="h-4 w-4 text-orange-650" /> Download Format Excel Template
-                    </button>
+                    <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>KPI Grid Spreadsheet</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. You can update actual values directly in the cells below.</p>
                   </div>
-
-                  {/* File Upload Button */}
-                  <div className="pt-1">
-                    <label 
-                      className="inline-flex items-center justify-center gap-1.5 text-white bg-teal-500 hover:bg-teal-600 text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm w-full"
-                    >
-                      <Plus className="h-4 w-4" /> Upload Excel File
-                      <input 
-                        type="file" 
-                        accept=".xlsx, .xls" 
-                        onChange={(e) => {
-                          const file = e.target.files[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = async (evt) => {
-                            try {
-                              const arrayBuffer = evt.target.result;
-                              const data = new Uint8Array(arrayBuffer);
-                              const workbook = XLSX.read(data, { type: "array" });
-                              const sheetName = workbook.SheetNames[0];
-                              const worksheet = workbook.Sheets[sheetName];
-                              const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                              
-                              // Find header row
-                              let headerIdx = -1;
-                              for (let i = 0; i < rows.length; i++) {
-                                const row = rows[i];
-                                if (row && (row.includes("KPI no") || row.includes("KPI"))) {
-                                  headerIdx = i;
-                                  break;
-                                }
-                              }
-                              
-                              if (headerIdx === -1) {
-                                alert("Invalid Excel template. Could not find header row with 'KPI no' or 'KPI' columns.");
-                                return;
-                              }
-                              
-                              const headers = rows[headerIdx].map(h => String(h || "").trim());
-                              const kpiIdx = headers.indexOf("KPI");
-                              const teamIdx = headers.indexOf("Team");
-                              const ownerIdx = headers.indexOf("Owner");
-                              const driveIdx = headers.indexOf("Drive");
-                              const repToIdx = headers.indexOf("Reporting To");
-                              const uomIdx = headers.indexOf("UOM");
-                              const directionIdx = headers.indexOf("UP/ Down");
-                              const targetIdx = headers.indexOf("CY Target");
-                              
-                              const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
-                              const monthColIdxs = months.map(m => headers.indexOf(m));
-
-                              const parsedKpis = [];
-                              
-                              for (let i = headerIdx + 1; i < rows.length; i++) {
-                                const row = rows[i];
-                                if (!row || row.length === 0) continue;
-                                
-                                const kpiName = row[kpiIdx];
-                                if (!kpiName || String(kpiName).trim() === "" || String(kpiName).trim() === "NaN") continue;
-                                if (String(kpiName).toLowerCase() === "total") continue;
-
-                                const rowTeam = row[teamIdx] ? String(row[teamIdx]).trim() : "Digital Marketing";
-                                const rowOwner = row[ownerIdx] ? String(row[ownerIdx]).trim() : "Anand Kumar";
-                                const rowDrive = row[driveIdx] ? String(row[driveIdx]).trim() : "";
-                                const rowRepTo = row[repToIdx] ? String(row[repToIdx]).trim() : "";
-                                const unit = row[uomIdx] ? " " + String(row[uomIdx]).trim() : " Nos";
-                                const target = parseFloat(row[targetIdx]) || 0.0;
-                                
-                                let direction = "higher";
-                                const dirVal = String(row[directionIdx] || "").toLowerCase().trim();
-                                if (dirVal === "down" || dirVal === "lower") {
-                                  direction = "lower";
-                                }
-
-                                const monthlyAlloc = {};
-                                const targetsList = [];
-                                
-                                months.forEach((m, idx) => {
-                                  const colIdx = monthColIdxs[idx];
-                                  if (colIdx !== -1 && row[colIdx] !== undefined && row[colIdx] !== null && row[colIdx] !== "") {
-                                    const val = parseFloat(row[colIdx]);
-                                    if (!isNaN(val)) {
-                                      const year = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
-                                      const monthKey = `${m} ${year}`;
-                                      monthlyAlloc[monthKey] = val;
-                                      
-                                      let lastDay = "30";
-                                      if (["Jan", "Mar", "May", "Jul", "Aug", "Oct", "Dec"].includes(m)) lastDay = "31";
-                                      else if (m === "Feb") lastDay = "28";
-                                      
-                                      const monthNum = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(m) + 1;
-                                      const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
-                                      const targetDate = `${year}-${padMonth}-${lastDay}`;
-                                      
-                                      targetsList.push({
-                                        id: monthKey,
-                                        label: monthKey,
-                                        targetValue: val,
-                                        targetDate
-                                      });
-                                    }
-                                  }
-                                });
-
-                                const history = [];
-                                if (targetsList.length > 0) {
-                                  history.push({ d: "W1", v: targetsList[0].targetValue });
-                                } else {
-                                  history.push({ d: "W1", v: 0 });
-                                }
-
-                                parsedKpis.push({
-                                  name: String(kpiName).trim(),
-                                  team: rowTeam,
-                                  owner: rowOwner,
-                                  driveBy: rowDrive,
-                                  monitorBy: rowRepTo,
-                                  unit,
-                                  target: target || (targetsList.length > 0 ? targetsList[0].targetValue : 0),
-                                  direction,
-                                  history,
-                                  monthlyAlloc,
-                                  targetsList,
-                                  targetType: "monthly"
-                                });
-                              }
-                              
-                              if (parsedKpis.length === 0) {
-                                alert("No valid KPI rows found in the selected Excel sheet.");
-                                return;
-                              }
-
-                              if (window.confirm(`Are you sure you want to upload ${parsedKpis.length} KPIs from the Excel sheet?`)) {
-                                await onUploadKpis(parsedKpis, {
-                                  useRowMetadata: true
-                                });
-                              }
-                            } catch (err) {
-                              alert("Failed to parse Excel file: " + err.message);
-                              console.error(err);
-                            }
-                          };
-                          reader.readAsArrayBuffer(file);
-                          e.target.value = ""; 
-                        }}
-                        className="hidden" 
-                      />
-                    </label>
+                  <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600">
+                    <Table className="h-4 w-4" />
+                    <span>Total Rows: {kpis.length}</span>
                   </div>
+                </div>
 
-                  <div className="pt-2 border-t border-slate-50 mt-3">
-                    <button 
-                      onClick={() => setShowTemplate(!showTemplate)} 
-                      className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1 w-full justify-between focus:outline-none"
-                    >
-                      <span>Show Excel Format Details</span>
-                      <span>{showTemplate ? "▲" : "▼"}</span>
-                    </button>
-                    {showTemplate && (
-                      <div className="mt-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[10px] font-sans text-slate-650 space-y-2">
-                        <p className="font-semibold text-slate-800">Your Excel sheet must contain a header row with these exact column names:</p>
-                        <div className="bg-slate-100 p-1.5 rounded font-mono text-[9px] text-slate-600 overflow-x-auto">
-                          KPI no | KPI | Team | Owner | Drive | Reporting To | UOM | UP/ Down | CY Target | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Feb | Mar
-                        </div>
-                        <ul className="list-disc pl-4 space-y-1 text-slate-500">
-                          <li><strong>KPI</strong>: The name of the KPI (required)</li>
-                          <li><strong>Team</strong>: Team name (e.g. "Digital Marketing")</li>
-                          <li><strong>Owner</strong>: Owner (Do) (e.g. "Aditi Rao")</li>
-                          <li><strong>Drive</strong>: Drive-by person (e.g. "Anand Kumar")</li>
-                          <li><strong>Reporting To</strong>: Reporting-to / Monitor (e.g. "Pooja Mehta")</li>
-                          <li><strong>UOM</strong>: Unit (e.g. Nos, %, INR)</li>
-                          <li><strong>UP/ Down</strong>: UP = higher target; Down = lower target</li>
-                          <li><strong>CY Target</strong>: Cumulative CY Target value</li>
-                          <li><strong>Apr to Mar</strong>: Optional monthly target numbers</li>
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-[600px] overflow-y-auto relative">
+                  <table className="w-full text-xs min-w-[2000px] border-collapse bg-white">
+                    {/* Excel column labels row (A, B, C...) */}
+                    <thead>
+                      <tr className="bg-slate-100/70 border-b border-slate-200 text-center text-[10px] text-slate-400 font-mono">
+                        <th className="border-r border-slate-200 py-1 w-12 sticky left-0 bg-slate-200 z-20"></th>
+                        <th className="border-r border-slate-200 py-1 w-16 sticky left-12 bg-slate-200 z-20">A</th>
+                        <th className="border-r border-slate-200 py-1 w-80 sticky left-28 bg-slate-200 z-20">C</th>
+                        <th className="border-r border-slate-200 py-1 w-40">E</th>
+                        <th className="border-r border-slate-200 py-1 w-32">F</th>
+                        <th className="border-r border-slate-200 py-1 w-32">G</th>
+                        <th className="border-r border-slate-200 py-1 w-32">H</th>
+                        <th className="border-r border-slate-200 py-1 w-20">I</th>
+                        <th className="border-r border-slate-200 py-1 w-20">J</th>
+                        <th className="border-r border-slate-200 py-1 w-24">K</th>
+                        {["L","M","N","O","P","Q","R","S","T","U","V","W"].map((col, idx) => (
+                          <th key={col} className="border-r border-slate-200 py-1 w-28">{col}</th>
+                        ))}
+                      </tr>
+                      {/* Table Column headers (KPI no, KPI, Team...) */}
+                      <tr className="bg-slate-50 border-b border-slate-200 text-left font-bold text-slate-600">
+                        <th className="border-r border-slate-200 px-2 py-2 text-center sticky left-0 bg-slate-50 z-20">#</th>
+                        <th className="border-r border-slate-200 px-3 py-2 sticky left-12 bg-slate-50 z-20">KPI no</th>
+                        <th className="border-r border-slate-200 px-3 py-2 sticky left-28 bg-slate-50 z-20">KPI</th>
+                        <th className="border-r border-slate-200 px-3 py-2">Team</th>
+                        <th className="border-r border-slate-200 px-3 py-2">Owner</th>
+                        <th className="border-r border-slate-200 px-3 py-2">Drive</th>
+                        <th className="border-r border-slate-200 px-3 py-2">Reporting To</th>
+                        <th className="border-r border-slate-200 px-3 py-2">UOM</th>
+                        <th className="border-r border-slate-200 px-3 py-2">UP/Down</th>
+                        <th className="border-r border-slate-200 px-3 py-2">CY Target</th>
+                        {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => (
+                          <th key={m} className="border-r border-slate-200 px-2 py-2 text-center">{m}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-sans">
+                      {kpis.map((kpi, idx) => {
+                        return (
+                          <tr key={kpi.id} className="hover:bg-slate-50/50">
+                            <td className="border-r border-slate-200 px-2 py-2 text-center font-mono text-slate-400 bg-slate-50/30 sticky left-0 z-10">{idx + 1}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 font-mono text-slate-500 sticky left-12 bg-white z-10">{idx + 1}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 font-medium text-slate-800 sticky left-28 bg-white z-10 truncate max-w-xs" title={kpi.name}>{kpi.name}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 text-slate-600">{kpi.team}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 text-slate-600">{kpi.owner}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 text-slate-600">{kpi.driveBy || "-"}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 text-slate-600">{kpi.monitorBy || "-"}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 font-semibold text-slate-500 text-center">{kpi.unit.trim()}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 text-center">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${kpi.direction === "lower" ? "bg-orange-50 text-orange-600" : "bg-teal-50 text-teal-600"}`}>
+                                {kpi.direction === "lower" ? "Down" : "UP"}
+                              </span>
+                            </td>
+                            <td className="border-r border-slate-200 px-3 py-2 font-bold text-slate-800 text-right">{kpi.target}</td>
+                            {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
+                              const year = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
+                              const monthKey = `${m} ${year}`;
+                              const targetVal = kpi.monthlyAlloc?.[monthKey] || 0;
+                              const actualVal = kpi.monthlyActual?.[monthKey] ?? "";
+                              return (
+                                <td key={m} className="border-r border-slate-200 px-2 py-1.5 text-center">
+                                  <div className="flex flex-col gap-1 items-center justify-center">
+                                    <div className="text-[10px] text-slate-400" title="Target">T: <span className="font-mono font-medium">{targetVal}</span></div>
+                                    <input 
+                                      type="number"
+                                      value={actualVal}
+                                      placeholder="Act"
+                                      onChange={(e) => handleExcelActualChange(kpi, m, e.target.value)}
+                                      className="w-20 text-center border border-slate-200 hover:border-slate-350 focus:border-teal-400 focus:ring-1 focus:ring-teal-200 bg-white rounded px-1 py-0.5 text-xs focus:outline-none transition-colors font-medium font-mono text-teal-800"
+                                    />
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                      {kpis.length === 0 && (
+                        <tr>
+                          <td colSpan={22} className="px-6 py-12 text-center text-slate-400 italic bg-slate-50/20">
+                            No KPIs uploaded yet. Upload an Excel file containing your KPIs to see them in the spreadsheet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
