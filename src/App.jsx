@@ -4671,8 +4671,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
                     {/* Excel column labels row (A, B, C...) */}
                     <thead>
                       <tr className="bg-slate-100/70 border-b border-slate-200 text-center text-[10px] text-slate-400 font-mono">
-                        <th className="border-r border-slate-200 py-1 sticky left-0 bg-slate-200 z-20" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>A</th>
-                        <th className="border-r border-slate-200 py-1 sticky bg-slate-200 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>B</th>
+                        <th className="border-r border-slate-200 py-1 sticky left-0 bg-slate-200 z-20" style={{ width: '50px', minWidth: '50px', maxWidth: '50px', left: '0px' }}>A</th>
+                        <th className="border-r border-slate-200 py-1 sticky bg-slate-200 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '50px' }}>B</th>
                         <th className="border-r border-slate-200 py-1" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>C</th>
                         <th className="border-r border-slate-200 py-1" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>D</th>
                         <th className="border-r border-slate-200 py-1" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>E</th>
@@ -4686,8 +4686,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
                       </tr>
                       {/* Table Column headers (KPI no, KPI, Team...) */}
                       <tr className="bg-slate-50 border-b border-slate-200 text-left font-bold text-slate-600">
-                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>KPI no</th>
-                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>KPI</th>
+                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '50px', minWidth: '50px', maxWidth: '50px', left: '0px' }}>KPI no</th>
+                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '50px' }}>KPI</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>Team</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>Owner</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>Drive</th>
@@ -4705,10 +4705,10 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
                         return (
                           <tr key={kpi.id} className="hover:bg-slate-50/50">
                             {/* A: KPI no */}
-                            <td className="border border-slate-200 px-3 py-2 font-mono text-slate-500 sticky bg-white z-10" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>{idx + 1}</td>
+                            <td className="border border-slate-200 px-3 py-2 font-mono text-slate-500 sticky bg-white z-10" style={{ width: '50px', minWidth: '50px', maxWidth: '50px', left: '0px' }}>{idx + 1}</td>
                             
                             {/* B: KPI name */}
-                            <td className="border border-slate-200 p-0 font-medium text-slate-800 sticky bg-white z-10" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>
+                            <td className="border border-slate-200 p-0 font-medium text-slate-800 sticky bg-white z-10" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '50px' }}>
                               {renderExcelCell(kpi, "name", kpi.name)}
                             </td>
 
