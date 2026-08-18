@@ -5545,14 +5545,9 @@ export default function App() {
     if (teamRow) {
       const createdMembers = [];
       if (teamRow.lead && String(teamRow.lead).trim() !== "") {
-        const empCode = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
         const { data: leadMemberRow } = await supabase.from('team_members').insert({
           team_id: teamRow.id,
-          name: teamRow.lead,
-          employee_id: empCode,
-          designation: "Team Lead",
-          experience: 5,
-          description: `Leader of ${teamRow.name}`
+          name: teamRow.lead
         }).select().single();
 
         if (leadMemberRow) {
