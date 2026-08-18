@@ -1916,12 +1916,6 @@ function AddPlayerModal({ teams, defaultTeamId, onClose, onSubmit }) {
         </div>
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Team</label>
-            <select value={teamId} onChange={(e) => setTeamId(Number(e.target.value))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
-              {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
-          <div>
             <label className="text-xs text-slate-500 mb-1 block">User (Name)</label>
             <input value={form.name} onChange={set("name")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="e.g. Neha Kulkarni" />
           </div>
