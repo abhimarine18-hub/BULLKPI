@@ -1838,11 +1838,6 @@ function KpiDetail({ kpi, onClose, onLog }) {
           <StatusBadge status={status} />
           <span className="text-xs text-slate-400">
             {kpi.team} · {kpi.owner}
-            {(() => {
-              const allMembers = teamsData.flatMap(t => t.members);
-              const member = allMembers.find(m => m.name === kpi.owner);
-              return member && member.reportingManager ? ` (Reporting to: ${member.reportingManager})` : "";
-            })()}
           </span>
         </div>
         <div className="flex items-end gap-4 mb-4">
@@ -3298,7 +3293,6 @@ const ADMIN_NAV = [
   { id: "kpis", label: "KPIs", icon: Target },
   { id: "okrs", label: "OKRs", icon: TrendingUp },
   { id: "projects", label: "Projects", icon: FolderGit2 },
-  { id: "teams", label: "Teams", icon: Users },
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -4124,204 +4118,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
             </div>
           )}
 
-          {screen === "teams" && (() => {
-            const registeredNames = new Set(teams.flatMap(t => t.members.map(m => m.name)));
-            const unassignedOwners = [...new Set(kpis.map(k => k.owner).filter(name => name && !registeredNames.has(name)))];
 
-            // Filter KPIs by active member filter
-            let displayedKpis = kpis;
-            if (activeMemberFilter) {
-              displayedKpis = kpis.filter(k => k.owner === activeMemberFilter || k.driveBy === activeMemberFilter || k.monitorBy === activeMemberFilter);
-            }
-
-            const showKpiPanel = activeMemberFilter !== null;
-
-            return (
-              <div className="flex gap-4 h-full overflow-hidden flex-1 items-start w-full">
-                
-                {/* LEFT PANE: TEAM & HIERARCHY TREE */}
-                <div className={`${showKpiPanel ? "w-80" : "flex-1"} bg-white border border-orange-100 rounded-2xl p-5 flex flex-col h-full overflow-hidden transition-all duration-300`}>
-                  <div className="flex items-center justify-between border-b border-orange-100 pb-3 mb-4 shrink-0">
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">Teams & Hierarchy Tree</h4>
-                      <p className="text-xs text-slate-400 mt-0.5">Explore organizational structure and click members to view their KPIs.</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setAddMemberOpen(true)} 
-                        className="text-xs text-teal-600 hover:text-teal-700 font-bold bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-xl transition-all"
-                      >
-                        + Player
-                      </button>
-                      <button 
-                        onClick={() => setAddVerticalOpen(true)} 
-                        className="text-xs text-teal-650 hover:text-teal-700 font-bold bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-xl transition-all"
-                      >
-                        + Team
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Scrollable list of all teams and their hierarchy trees */}
-                  <div className="flex-1 overflow-y-auto space-y-6 pr-1">
-                    {teams.map(t => {
-                      const leadMember = t.members.find(m => m.name === t.lead) || t.members[0];
-
-                      const RenderTreeNode = ({ member, level }) => {
-                        const isSelected = activeMemberFilter === member.name;
-                        const isLead = member.name === t.lead;
-                        const directReports = t.members.filter(m => m.reportingManager === member.name && m.name !== member.name);
-
-                        return (
-                          <div className="pl-3 relative space-y-1 mt-1 ml-1">
-                            
-                            <div 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isSelected) {
-                                  setActiveMemberFilter(null);
-                                } else {
-                                  setActiveMemberFilter(member.name);
-                                  setActiveTeamId(t.id);
-                                }
-                              }}
-                              className={`p-1.5 rounded-lg border text-left transition-all cursor-pointer shadow-sm hover:shadow-md w-full max-w-[220px] ${
-                                isSelected 
-                                  ? "bg-teal-50 border-teal-400 ring-2 ring-teal-100/50"
-                                  : (isLead ? "bg-orange-50/50 border-orange-200" : "bg-white border-slate-100 hover:border-slate-200")
-                              }`}
-                              style={{ fontFamily: "'Google Sans', 'Product Sans', 'Segoe UI', sans-serif" }}
-                            >
-                              <div className="flex justify-between items-center gap-1.5">
-                                <span className="font-bold text-slate-800 text-[13px] block truncate">{member.name}</span>
-                                {isLead && <span className="text-[8px] bg-orange-200 text-orange-850 px-1.5 py-0.5 rounded uppercase font-extrabold shrink-0">Lead</span>}
-                              </div>
-                              <span className="text-[11px] text-slate-500 block truncate mt-0.5">{member.designation}</span>
-                              
-                              <div className="flex justify-between items-center mt-1">
-                                <span className="text-[10px] text-slate-400 font-medium">{member.experience} yrs exp</span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTeamId(t.id);
-                                    setAddMemberOpen(true);
-                                  }}
-                                  className="text-[10px] text-teal-600 hover:text-teal-700 font-bold"
-                                >
-                                  + Sub
-                                </button>
-                              </div>
-                            </div>
-
-                            {directReports.map(report => (
-                              <RenderTreeNode key={report.id} member={report} level={level + 1} />
-                            ))}
-                          </div>
-                        );
-                      };
-
-                      return (
-                        <div key={t.id} className="bg-orange-50/20 border border-orange-100/30 rounded-2xl p-4 space-y-3 w-full max-w-[400px]">
-                          {/* Team Card Header (Offset level 0) */}
-                          <div className="flex justify-between items-start border-b border-orange-100 pb-2">
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-sm font-extrabold text-slate-850">📂 {t.name}</span>
-                              </div>
-                              <p className="text-xs text-slate-500 mt-1">{t.description}</p>
-                            </div>
-                          </div>
-
-                          {/* Team Hierarchy Tree Start */}
-                          <div className="pl-1">
-                            {leadMember ? (
-                              <RenderTreeNode member={leadMember} level={1} />
-                            ) : (
-                              <p className="text-xs text-slate-400 italic pl-4">No members assigned to this team.</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* RIGHT PANE: KPI LIST SIDE-PANEL (Only visible when a member is clicked) */}
-                {showKpiPanel && (
-                  <div className="flex-1 bg-white border border-orange-100 rounded-2xl p-5 flex flex-col h-full overflow-hidden transition-all duration-300">
-                    <div className="flex items-center justify-between border-b border-orange-100 pb-3 mb-4 shrink-0">
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>
-                          KPIs of {activeMemberFilter}
-                        </h4>
-                        <p className="text-xs text-slate-500 mt-0.5">List of metrics, role distributions, and target tallies.</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setAddKpiOpen(true)} className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors">
-                          <Plus className="h-4.5 w-4.5" /> Add KPI
-                        </button>
-                        <button 
-                          onClick={() => setActiveMemberFilter(null)} 
-                          className="text-xs text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl font-semibold transition-colors"
-                        >
-                          Close Panel
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Table area for KPIs */}
-                    <div className="flex-1 overflow-y-auto pr-1">
-                      <table className="w-full text-xs text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-orange-100 bg-orange-50/20 text-slate-500 font-bold uppercase tracking-wider">
-                            <th className="px-4 py-3">KPI Title</th>
-                            <th className="px-4 py-3">DO (Owner)</th>
-                            <th className="px-4 py-3">Drive By</th>
-                            <th className="px-4 py-3">Monitor By</th>
-                            <th className="px-4 py-3 text-center">Lead Weightage</th>
-                            <th className="px-4 py-3 text-center">Target Value</th>
-                            <th className="px-4 py-3 text-center">Status</th>
-                            <th className="px-4 py-3"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {displayedKpis.length === 0 ? (
-                            <tr>
-                              <td colSpan={8} className="text-center py-8 text-slate-400 italic">No KPIs found matching this user.</td>
-                            </tr>
-                          ) : (
-                            displayedKpis.map((kpi, idx) => (
-                              <tr 
-                                key={kpi.id} 
-                                onClick={() => setDetailId(kpi.id)}
-                                className="border-b border-orange-50 hover:bg-orange-50/20 cursor-pointer transition-all"
-                              >
-                                <td className="px-4 py-3.5 font-bold text-slate-800 max-w-xs truncate" title={kpi.name}>{kpi.name}</td>
-                                <td className="px-4 py-3.5 text-slate-700 font-medium">🙋‍♂️ {kpi.owner || "—"}</td>
-                                <td className="px-4 py-3.5 text-slate-600 font-medium">⚡ {kpi.driveBy || "—"}</td>
-                                <td className="px-4 py-3.5 text-slate-600 font-medium">🔍 {kpi.monitorBy || "—"}</td>
-                                <td className="px-4 py-3.5 text-center font-extrabold text-teal-700 bg-teal-50/30 rounded-lg">{kpi.weightage ? `${kpi.weightage}%` : "0%"}</td>
-                                <td className="px-4 py-3.5 text-center font-extrabold text-slate-800">{kpi.target} {kpi.unit.trim()}</td>
-                                <td className="px-4 py-3.5 text-center"><StatusBadge status={getStatus(kpi)} /></td>
-                                <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                                  <button 
-                                    onClick={() => setEditingKpi(kpi)}
-                                    className="text-teal-600 hover:text-teal-800 text-[10px] font-bold px-2 py-1 rounded-lg border border-teal-100 hover:bg-teal-50"
-                                  >
-                                    Edit
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
 
           {screen === "campaigns" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -5156,60 +4953,22 @@ export default function App() {
         let { data: dbTeams, error: teamsError } = await supabase.from('teams').select('*');
         let { data: dbMembers, error: membersError } = await supabase.from('team_members').select('*');
 
-        if (teamsError || membersError || !dbTeams || dbTeams.length === 0) {
-          console.log("Supabase empty or error, seeding teams...");
-          const seededTeams = [];
-          for (const t of teamsData) {
-            const { data: teamRow } = await supabase.from('teams').insert({
-              name: t.name,
-              description: t.description,
-              lead: t.lead
-            }).select().single();
-            
-            if (teamRow) {
-              const membersToInsert = t.members.map(m => ({
-                team_id: teamRow.id,
-                name: m.name,
-                employee_id: m.employeeId,
-                designation: m.designation,
-                experience: m.experience,
-                reporting_manager: m.reportingManager,
-                description: m.description
-              }));
-              const { data: memberRows } = await supabase.from('team_members').insert(membersToInsert).select();
-              seededTeams.push({
-                ...teamRow,
-                members: memberRows.map(mr => ({
-                  id: mr.id,
-                  name: mr.name,
-                  employeeId: mr.employee_id,
-                  designation: mr.designation,
-                  experience: mr.experience,
-                  reportingManager: mr.reporting_manager,
-                  description: mr.description
-                }))
-              });
-            }
-          }
-          setTeams(seededTeams);
-        } else {
-          const loadedTeams = dbTeams.map(t => ({
-            id: t.id,
-            name: t.name,
-            description: t.description,
-            lead: t.lead,
-            members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
-              id: m.id,
-              name: m.name,
-              employeeId: m.employee_id,
-              designation: m.designation,
-              experience: m.experience,
-              reportingManager: m.reporting_manager,
-              description: m.description
-            }))
-          }));
-          setTeams(loadedTeams);
-        }
+        const loadedTeams = (dbTeams || []).map(t => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          lead: t.lead,
+          members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
+            id: m.id,
+            name: m.name,
+            employeeId: m.employee_id,
+            designation: m.designation,
+            experience: m.experience,
+            reportingManager: m.reporting_manager,
+            description: m.description
+          }))
+        }));
+        setTeams(loadedTeams);
 
         // Fetch KPIs
         let { data: dbKpis, error: kpisError } = await supabase.from('kpis').select('*');
