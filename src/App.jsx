@@ -3388,6 +3388,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
   const [uploadDrive, setUploadDrive] = useState("");
   const [uploadMonitor, setUploadMonitor] = useState("");
   const [columnMapModal, setColumnMapModal] = useState(null); // { headers, rows } when open
+  const [dashboardMonth, setDashboardMonth] = useState("All Year");
 
   const handleDownloadTemplate = () => {
     const headers = [
@@ -3755,7 +3756,18 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
     });
     return groups;
   }, [filteredKpis]);
-  const onTrackCount = kpis.filter((k) => getStatus(k) === "on-track").length;
+  
+  const onTrackCount = kpis.filter((k) => {
+    if (dashboardMonth === "All Year") return getStatus(k) === "on-track";
+    const t = k.monthlyAlloc?.[dashboardMonth] || 0;
+    const a = k.monthlyActual?.[dashboardMonth] || 0;
+    if (k.direction === "higher") {
+      const ratio = t === 0 ? 1 : a / t;
+      return ratio >= 1;
+    } else {
+      return a <= t;
+    }
+  }).length;
 
   const detailKpi = kpis.find((k) => k.id === detailId);
   const loggingKpi = kpis.find((k) => k.id === loggingId);
@@ -3846,22 +3858,63 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
         <div className="px-4 sm:px-8 py-6">
           {screen === "dashboard" && (
             <>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-800">Overview</h2>
+                <div className="relative">
+                  <select 
+                    value={dashboardMonth} 
+                    onChange={(e) => setDashboardMonth(e.target.value)} 
+                    className="appearance-none bg-white border border-orange-100 rounded-full pl-4 pr-9 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-200"
+                  >
+                    <option value="All Year">All Year</option>
+                    {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
+                      const yr = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
+                      return <option key={`${m} ${yr}`} value={`${m} ${yr}`}>{`${m} ${yr}`}</option>
+                    })}
+                  </select>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
               <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 <StatCard icon={Star} iconBg="bg-orange-100" iconColor="text-orange-500" value={kpis.length} label="Active KPIs" />
                 <StatCard icon={Mountain} iconBg="bg-teal-100" iconColor="text-teal-500" value={onTrackCount} label="On track" />
                 <StatCard icon={UserCheck} iconBg="bg-rose-100" iconColor="text-rose-500" value={teams.reduce((a, t) => a + t.members.length, 0)} label="Employees tracked" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {kpis.map((kpi) => (
-                  <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all">
-                    <div className="flex items-start justify-between mb-3">
-                      <p className="text-sm font-medium text-slate-600">{kpi.name}</p>
-                      <StatusBadge status={getStatus(kpi)} />
-                    </div>
-                    <p className="text-2xl font-semibold text-slate-900">{getLatest(kpi)}<span className="text-sm text-slate-400 ml-1">{kpi.unit}</span></p>
-                    <p className="text-xs text-slate-400 mt-1">Target {kpi.target}{kpi.unit} · {kpi.team}</p>
-                  </button>
-                ))}
+                {kpis.map((kpi) => {
+                  let dispTarget = kpi.target;
+                  let dispActual = getLatest(kpi);
+                  let dispStatus = getStatus(kpi);
+                  let dispLabel = "Target";
+
+                  if (dashboardMonth !== "All Year") {
+                    dispTarget = kpi.monthlyAlloc?.[dashboardMonth] || 0;
+                    dispActual = kpi.monthlyActual?.[dashboardMonth] || 0;
+                    
+                    if (kpi.direction === "higher") {
+                      const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
+                      if (ratio >= 1) dispStatus = "on-track";
+                      else if (ratio >= 0.92) dispStatus = "at-risk";
+                      else dispStatus = "off-track";
+                    } else {
+                      if (dispActual <= dispTarget) dispStatus = "on-track";
+                      else if (dispActual <= dispTarget * 1.2) dispStatus = "at-risk";
+                      else dispStatus = "off-track";
+                    }
+                    dispLabel = `${dashboardMonth.split(' ')[0]} Target`;
+                  }
+
+                  return (
+                    <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all">
+                      <div className="flex items-start justify-between mb-3">
+                        <p className="text-sm font-medium text-slate-600">{kpi.name}</p>
+                        <StatusBadge status={dispStatus} />
+                      </div>
+                      <p className="text-2xl font-semibold text-slate-900">{dispActual}<span className="text-sm text-slate-400 ml-1">{kpi.unit}</span></p>
+                      <p className="text-xs text-slate-400 mt-1">{dispLabel} {dispTarget}{kpi.unit} · {kpi.team}</p>
+                    </button>
+                  );
+                })}
               </div>
             </>
           )}
