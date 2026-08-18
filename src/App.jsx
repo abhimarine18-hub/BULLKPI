@@ -5721,8 +5721,7 @@ export default function App() {
       monthly_alloc: newKpi.monthlyAlloc || {},
       monthly_actual: newKpi.monthlyActual || {},
       weekly_alloc: newKpi.weeklyAlloc || {},
-      weekly_actual: newKpi.weeklyActual || {},
-      daily_alloc: newKpi.dailyAlloc || {}
+      weekly_actual: newKpi.weeklyActual || {}
     }).select().single();
 
     if (kpiRow) {
@@ -5778,8 +5777,7 @@ export default function App() {
       monthly_alloc: updatedKpi.monthlyAlloc || {},
       monthly_actual: updatedKpi.monthlyActual || {},
       weekly_alloc: updatedKpi.weeklyAlloc || {},
-      weekly_actual: updatedKpi.weeklyActual || {},
-      daily_alloc: updatedKpi.dailyAlloc || {}
+      weekly_actual: updatedKpi.weeklyActual || {}
     }).eq('id', updatedKpi.id);
   }
 
@@ -5894,8 +5892,7 @@ export default function App() {
       monthly_alloc: k.monthlyAlloc || k.monthly_alloc || {},
       monthly_actual: k.monthlyActual || k.monthly_actual || {},
       weekly_alloc: k.weeklyAlloc || k.weekly_alloc || {},
-      weekly_actual: k.weeklyActual || k.weekly_actual || {},
-      daily_alloc: k.dailyAlloc || k.daily_alloc || {}
+      weekly_actual: k.weeklyActual || k.weekly_actual || {}
     }));
 
     const { data, error } = await supabase.from('kpis').insert(mapped).select();
