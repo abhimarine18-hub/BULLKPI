@@ -4718,11 +4718,16 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           return (
                             <div key={t.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/10 space-y-3">
                               <div className="flex items-center justify-between border-b border-orange-50 pb-2">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <span className="font-extrabold text-slate-800 text-sm">📂 {t.name}</span>
                                   <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold">
                                     {teamMembers.length} Players
                                   </span>
+                                  {t.lead && (
+                                    <span className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
+                                      👑 Lead: {t.lead}
+                                    </span>
+                                  )}
                                 </div>
                                 <button
                                   onClick={() => {
