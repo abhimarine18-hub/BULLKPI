@@ -4689,9 +4689,9 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
                         <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '50px', minWidth: '50px', maxWidth: '50px', left: '0px' }}>KPI no</th>
                         <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '50px' }}>KPI</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>Team</th>
-                        <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>Owner</th>
-                        <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>Drive</th>
-                        <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>Reporting To</th>
+                        <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>DO</th>
+                        <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>DRIVE</th>
+                        <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>MONITOR</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>UOM</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>UP/Down</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>CY Target</th>
