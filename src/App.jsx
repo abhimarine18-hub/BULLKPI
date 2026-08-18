@@ -4273,9 +4273,52 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             </div>
           )}
 
-          {screen === "settings" && (
-            <div className="space-y-6 w-full max-w-full px-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {screen === "settings" && (() => {
+            const allPlayers = teams.flatMap(t => t.members.map(m => ({
+              ...m,
+              teamId: t.id,
+              teamName: t.name
+            })));
+            const managerOptions = ["CMO", "Marketing Head", ...new Set(allPlayers.map(p => p.name))];
+
+            return (
+              <div className="space-y-6 w-full max-w-full px-2">
+                {/* Settings Sub-Tabs Navigation */}
+                <div className="flex border-b border-orange-100 pb-px shrink-0 gap-3">
+                  <button
+                    onClick={() => setSettingsTab("spreadsheet")}
+                    className={`px-5 py-2.5 font-bold text-xs sm:text-sm transition-all border-b-2 -mb-px flex items-center gap-1.5 ${
+                      settingsTab === "spreadsheet"
+                        ? "border-teal-500 text-teal-600 font-extrabold"
+                        : "border-transparent text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    📊 KPI Grid Spreadsheet
+                  </button>
+                  <button
+                    onClick={() => setSettingsTab("teams")}
+                    className={`px-5 py-2.5 font-bold text-xs sm:text-sm transition-all border-b-2 -mb-px flex items-center gap-1.5 ${
+                      settingsTab === "teams"
+                        ? "border-teal-500 text-teal-600 font-extrabold"
+                        : "border-transparent text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    👥 Teams & Players
+                  </button>
+                  <button
+                    onClick={() => setSettingsTab("utilities")}
+                    className={`px-5 py-2.5 font-bold text-xs sm:text-sm transition-all border-b-2 -mb-px flex items-center gap-1.5 ${
+                      settingsTab === "utilities"
+                        ? "border-teal-500 text-teal-600 font-extrabold"
+                        : "border-transparent text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    ⚙️ Org & Utilities
+                  </button>
+                </div>
+
+                {settingsTab === "utilities" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Organization info card */}
                 <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm">
                   <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Poppins, sans-serif" }}>Organization</h3>
@@ -4450,91 +4493,163 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                         />
                       </label>
                     </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                )}
 
-              {/* Teams & Players Management Card */}
-              <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Teams & Players</h3>
-                    <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Manage teams and team members (players) dynamically connected to Supabase.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        if (teams.length === 0) {
-                          alert("Please add a Team first!");
-                          return;
-                        }
-                        setActiveTeamId(teams[0].id);
-                        setAddMemberOpen(true);
-                      }} 
-                      className="text-xs text-teal-600 hover:text-teal-700 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
-                    >
-                      + Add Player
-                    </button>
-                    <button 
-                      onClick={() => setAddVerticalOpen(true)} 
-                      className="text-xs text-teal-650 hover:text-teal-700 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
-                    >
-                      + Add Team
-                    </button>
-                  </div>
-                </div>
+                {settingsTab === "teams" && (
+                  <div className="space-y-6">
+                    {/* Teams list card */}
+                    <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Teams List</h3>
+                          <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">View and manage organizational team groups.</p>
+                        </div>
+                        <button 
+                          onClick={() => setAddVerticalOpen(true)} 
+                          className="text-xs text-teal-600 hover:text-teal-700 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
+                        >
+                          + Add Team
+                        </button>
+                      </div>
 
-                <div className="space-y-4 max-h-[350px] overflow-y-auto">
-                  {teams.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic">No teams or players found in the database. Click "+ Add Team" to start.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {teams.map(t => (
-                        <div key={t.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/30 flex flex-col justify-between">
-                          <div>
-                            <div className="flex justify-between items-start border-b border-slate-150 pb-2 mb-3">
-                              <div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {teams.map(t => (
+                          <div key={t.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/20 flex flex-col justify-between">
+                            <div>
+                              <div className="flex justify-between items-start border-b border-slate-150 pb-2 mb-2">
                                 <span className="font-bold text-slate-800 text-sm">📂 {t.name}</span>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">{t.description || "No description"}</span>
+                                <button
+                                  onClick={() => onDeleteTeam(t.id)}
+                                  className="text-[10px] text-rose-500 hover:text-rose-600 font-bold hover:underline"
+                                >
+                                  Delete
+                                </button>
                               </div>
-                              <button
-                                onClick={() => onDeleteTeam(t.id)}
-                                className="text-[10px] text-rose-500 hover:text-rose-600 font-bold hover:underline"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                            
-                            <div className="space-y-1.5">
-                              {t.members.map(m => (
-                                <div key={m.id} className="flex justify-between items-center text-xs text-slate-650 hover:bg-white p-1.5 rounded-lg border border-transparent hover:border-slate-100 transition-all">
-                                  <div>
-                                    <span className="font-semibold text-slate-800">{m.name}</span>
-                                    <span className="text-[10px] text-slate-400 ml-1.5">({m.designation || "Player"})</span>
-                                  </div>
-                                  <button 
-                                    onClick={() => onDeleteMember(m.id)}
-                                    className="text-[10px] text-slate-400 hover:text-rose-600 font-bold opacity-60 hover:opacity-100 px-1"
-                                    title="Remove Player"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ))}
-                              {t.members.length === 0 && (
-                                <span className="text-[10px] text-slate-400 italic block py-1">No players in this team</span>
-                              )}
+                              <p className="text-[11px] text-slate-500">{t.description || "No description provided."}</p>
+                              <div className="text-[11px] text-slate-600 mt-2 font-medium flex items-center gap-1">
+                                <span className="text-slate-400 font-normal">Team Lead:</span> {t.lead || "Unassigned"}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                        {teams.length === 0 && (
+                          <p className="text-xs text-slate-400 italic col-span-3 py-4 text-center">No teams found. Click "+ Add Team" to create one.</p>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* KPI Excel Grid Sheet View */}
-              <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
+                    {/* Players & Hierarchy list card */}
+                    <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Players & Reporting Hierarchy</h3>
+                          <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Edit designations, move players to different teams, or change reporting managers (monitors) directly below.</p>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            if (teams.length === 0) {
+                              alert("Please add a Team first!");
+                              return;
+                            }
+                            setActiveTeamId(teams[0].id);
+                            setAddMemberOpen(true);
+                          }} 
+                          className="text-xs text-teal-650 hover:text-teal-755 font-bold bg-teal-50 border border-teal-100 px-3.5 py-2 rounded-xl transition-all shadow-sm"
+                        >
+                          + Add Player
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table className="w-full text-xs text-left border-collapse bg-white">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                              <th className="px-4 py-3">Player Name</th>
+                              <th className="px-4 py-3">Designation</th>
+                              <th className="px-4 py-3 text-center">Experience (Yrs)</th>
+                              <th className="px-4 py-3">Team (Change Team)</th>
+                              <th className="px-4 py-3">Reports To (Move Hierarchy)</th>
+                              <th className="px-4 py-3 text-center">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-150">
+                            {allPlayers.map(p => (
+                              <tr key={p.id} className="hover:bg-slate-50/50">
+                                <td className="px-4 py-3.5 font-bold text-slate-800">
+                                  <input 
+                                    type="text" 
+                                    value={p.name}
+                                    onChange={(e) => onUpdateMember(p.id, { ...p, name: e.target.value })}
+                                    className="border-none focus:ring-1 focus:ring-teal-200 rounded px-1.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white"
+                                  />
+                                </td>
+                                <td className="px-4 py-3.5 text-slate-600">
+                                  <input 
+                                    type="text" 
+                                    value={p.designation || ""}
+                                    placeholder="Enter designation"
+                                    onChange={(e) => onUpdateMember(p.id, { ...p, designation: e.target.value })}
+                                    className="border-none focus:ring-1 focus:ring-teal-200 rounded px-1.5 py-1 text-xs text-slate-650 focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white w-full"
+                                  />
+                                </td>
+                                <td className="px-4 py-3.5 text-center text-slate-500">
+                                  <input 
+                                    type="number" 
+                                    value={p.experience || 0}
+                                    onChange={(e) => onUpdateMember(p.id, { ...p, experience: parseInt(e.target.value) || 0 })}
+                                    className="w-16 border-none focus:ring-1 focus:ring-teal-200 rounded px-1.5 py-1 text-xs text-slate-500 focus:outline-none bg-transparent hover:bg-slate-100 focus:bg-white font-mono text-center"
+                                  />
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  <select 
+                                    value={p.teamId}
+                                    onChange={(e) => onUpdateMember(p.id, { ...p, teamId: parseInt(e.target.value) })}
+                                    className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-350"
+                                  >
+                                    {teams.map(t => (
+                                      <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="px-4 py-3.5">
+                                  <select 
+                                    value={p.reportingManager || ""}
+                                    onChange={(e) => onUpdateMember(p.id, { ...p, reportingManager: e.target.value })}
+                                    className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-350"
+                                  >
+                                    <option value="">No Manager</option>
+                                    {managerOptions.filter(mName => mName !== p.name).map(mName => (
+                                      <option key={mName} value={mName}>{mName}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="px-4 py-3.5 text-center">
+                                  <button
+                                    onClick={() => onDeleteMember(p.id)}
+                                    className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline"
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            {allPlayers.length === 0 && (
+                              <tr>
+                                <td colSpan={6} className="px-4 py-8 text-center text-slate-455 italic">No players found. Click "+ Add Player" to assign a member.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {settingsTab === "spreadsheet" && (
+                  <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>KPI Grid Spreadsheet</h3>
@@ -4739,8 +4854,10 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                   </table>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        );
+      })()}
         </div>
       </main>
 
