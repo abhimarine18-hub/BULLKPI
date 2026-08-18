@@ -4679,7 +4679,16 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                       <div>
                                         <select 
                                           value={member.reportingManager || ""}
-                                          onChange={(e) => onUpdateMember(member.id, { ...member, teamId: t.id, reportingManager: e.target.value })}
+                                          onChange={(e) => {
+                                            const mgrName = e.target.value;
+                                            const mgr = allPlayers.find(p => p.name === mgrName);
+                                            const targetTeamId = mgr ? mgr.teamId : t.id;
+                                            onUpdateMember(member.id, { 
+                                              ...member, 
+                                              teamId: targetTeamId, 
+                                              reportingManager: mgrName 
+                                            });
+                                          }}
                                           className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium text-slate-750 bg-white focus:outline-none focus:ring-1 focus:ring-teal-300"
                                         >
                                           <option value="">No Manager</option>
