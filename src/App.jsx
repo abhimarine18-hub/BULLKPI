@@ -2751,16 +2751,14 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
 
       setWeeklyAlloc(wPrev => ({ ...wPrev, [weekId]: wSum }));
 
-            if (isTimeKpi) {
-        const mDays = getDaysInMonth(monthName);
-        const mSum = mDays.reduce((sum, d) => sum + (nextD[d] || 0), 0);
-        setMonthlyAlloc(mPrev => {
-          const nextM = { ...mPrev, [monthName]: mSum };
-          const totalSum = Object.values(nextM).reduce((a, b) => a + b, 0);
-          setTotalTargetInput(totalSum);
-          return nextM;
-        });
-      }
+      const mDays = getDaysInMonth(monthName);
+      const mSum = mDays.reduce((sum, d) => sum + (nextD[d] || 0), 0);
+      setMonthlyAlloc(mPrev => {
+        const nextM = { ...mPrev, [monthName]: mSum };
+        const totalSum = Object.values(nextM).reduce((a, b) => a + b, 0);
+        setTotalTargetInput(totalSum);
+        return nextM;
+      });
 
       return nextD;
     });
@@ -2842,20 +2840,6 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
     }
   }, [dailyAlloc, dailyActual, customHolidays, holidaysEnabled, selectedMonth, isTimeKpi]);
 
-  // Automatically split monthly target evenly when holidays or holiday toggle changes
-  useEffect(() => {
-    if (!isTimeKpi) {
-      const monthVal = monthlyAlloc[selectedMonth] || 0;
-      setDailyAlloc(prevDaily => {
-        setWeeklyAlloc(prevWeekly => {
-          const subRes = distributeMonthToSubperiods(selectedMonth, monthVal, prevDaily, prevWeekly);
-          return subRes.nextW;
-        });
-        const subRes = distributeMonthToSubperiods(selectedMonth, monthVal, prevDaily, weeklyAlloc);
-        return subRes.nextD;
-      });
-    }
-  }, [customHolidays, holidaysEnabled, selectedMonth, isTimeKpi]);
 
   const summedTotal = getSummedTotal();
   const isTallied = summedTotal === (Math.round(parseFloat(totalTargetInput) || 0));
