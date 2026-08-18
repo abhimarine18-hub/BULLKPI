@@ -1943,7 +1943,7 @@ function AddTeamModal({ teams, onClose, onSubmit }) {
             ) : (
               <select value={form.lead} onChange={set("lead")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
                 <option value="">Select a lead...</option>
-                {allEmployees.map((m) => <option key={m.id} value={m.name}>{m.name} · {m.designation} ({m.team})</option>)}
+                {allEmployees.map((m) => <option key={m.id} value={m.employeeId}>{m.name} · {m.designation} ({m.team}) [{m.employeeId}]</option>)}
               </select>
             )}
           </div>
@@ -4497,12 +4497,17 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   >
                                     <option value="">Unassigned</option>
                                     {t.members.map(m => (
-                                      <option key={m.id} value={m.name}>{m.name}</option>
+                                      <option key={m.id} value={m.employeeId}>{m.name} ({m.employeeId})</option>
                                     ))}
                                   </select>
-                                ) : (
-                                  <span className="font-semibold text-slate-700">{t.lead || "Unassigned"}</span>
-                                )}
+                                ) : (() => {
+                                  const leadPlayer = allPlayers.find(p => p.employeeId === t.lead);
+                                  return (
+                                    <span className="font-semibold text-slate-700">
+                                      {leadPlayer ? leadPlayer.name : (t.lead || "Unassigned")}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -4558,11 +4563,11 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                     <input 
                                       type="radio" 
                                       name={`team_lead_${t.id}`}
-                                      checked={t.lead === member.name} 
-                                      onChange={() => handleSetTeamLead(t.id, member.name)}
+                                      checked={t.lead === member.employeeId && !!member.employeeId} 
+                                      onChange={() => handleSetTeamLead(t.id, member.employeeId)}
                                       className="h-3.5 w-3.5 text-teal-600 focus:ring-teal-400 border-slate-300 cursor-pointer"
                                     />
-                                    {t.lead === member.name && (
+                                    {t.lead === member.employeeId && !!member.employeeId && (
                                       <span className="text-[11px]" title="Team Lead">👑</span>
                                     )}
                                   </div>
@@ -4712,7 +4717,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           };
 
                           const teamMemberNames = new Set(teamMembers.map(m => m.name));
-                          const roots = teamMembers.filter(m => m.name === leadMemberName || !teamMemberNames.has(m.reportingManager));
+                          const roots = teamMembers.filter(m => (m.employeeId === t.lead && !!t.lead) || !teamMemberNames.has(m.reportingManager));
                           const rootsToRender = roots.length > 0 ? roots : teamMembers;
 
                           return (
@@ -5536,18 +5541,22 @@ export default function App() {
   }
 
   async function handleAddVertical(newVertical) {
+    const isNewLeadName = newVertical.lead && !String(newVertical.lead).startsWith("EMP-");
+    const generatedEmpId = isNewLeadName ? `EMP-${Math.floor(1000 + Math.random() * 9000)}` : newVertical.lead;
+
     const { data: teamRow } = await supabase.from('teams').insert({
       name: newVertical.name,
       description: newVertical.description,
-      lead: newVertical.lead
+      lead: generatedEmpId
     }).select().single();
 
     if (teamRow) {
       const createdMembers = [];
-      if (teamRow.lead && String(teamRow.lead).trim() !== "") {
+      if (isNewLeadName) {
         const { data: leadMemberRow } = await supabase.from('team_members').insert({
           team_id: teamRow.id,
-          name: teamRow.lead
+          name: newVertical.lead,
+          employee_id: generatedEmpId
         }).select().single();
 
         if (leadMemberRow) {
@@ -5567,7 +5576,7 @@ export default function App() {
         id: teamRow.id,
         name: teamRow.name,
         description: teamRow.description,
-        lead: teamRow.lead,
+        lead: generatedEmpId,
         members: createdMembers
       };
       setTeams((prev) => [...prev, formattedTeam]);
