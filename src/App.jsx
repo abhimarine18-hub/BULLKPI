@@ -4281,7 +4281,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
               teamId: t.id,
               teamName: t.name
             })));
-            const managerOptions = ["CMO", "Marketing Head", ...new Set(allPlayers.map(p => p.name))];
+            const managerOptions = [...new Set(allPlayers.map(p => p.name))];
 
             return (
               <div className="space-y-6 w-full max-w-full px-2">
@@ -4531,8 +4531,22 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                 </button>
                               </div>
                               <p className="text-[11px] text-slate-500">{t.description || "No description provided."}</p>
-                              <div className="text-[11px] text-slate-600 mt-2 font-medium flex items-center gap-1">
-                                <span className="text-slate-400 font-normal">Team Lead:</span> {t.lead || "Unassigned"}
+                              <div className="text-[11px] text-slate-600 mt-2 font-medium flex items-center gap-1.5">
+                                <span className="text-slate-400 font-normal">Team Lead:</span>
+                                {isEditingHierarchy ? (
+                                  <select 
+                                    value={t.lead || ""}
+                                    onChange={(e) => handleSetTeamLead(t.id, e.target.value)}
+                                    className="border border-slate-200 rounded px-1.5 py-0.5 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-200"
+                                  >
+                                    <option value="">Unassigned</option>
+                                    {t.members.map(m => (
+                                      <option key={m.id} value={m.name}>{m.name}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <span className="font-semibold text-slate-700">{t.lead || "Unassigned"}</span>
+                                )}
                               </div>
                             </div>
                           </div>
