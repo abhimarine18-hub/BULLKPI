@@ -1943,7 +1943,7 @@ function AddTeamModal({ teams, onClose, onSubmit }) {
             ) : (
               <select value={form.lead} onChange={set("lead")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
                 <option value="">Select a lead...</option>
-                {allEmployees.map((m) => <option key={m.id} value={m.employeeId}>{m.name} · {m.designation} ({m.team}) [{m.employeeId}]</option>)}
+                {allEmployees.map((m) => <option key={m.id} value={m.name}>{m.name} · {m.designation} ({m.team})</option>)}
               </select>
             )}
           </div>
@@ -4491,23 +4491,18 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                 <span className="text-slate-400 font-normal">Team Lead:</span>
                                 {isEditingHierarchy ? (
                                   <select 
-                                    value={t.lead || ""}
+                                    value={t.leadEmployeeId || ""}
                                     onChange={(e) => handleSetTeamLead(t.id, e.target.value)}
                                     className="border border-slate-200 rounded px-1.5 py-0.5 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-teal-200"
                                   >
                                     <option value="">Unassigned</option>
                                     {t.members.map(m => (
-                                      <option key={m.id} value={m.employeeId}>{m.name} ({m.employeeId})</option>
+                                      <option key={m.id} value={m.employeeId}>{m.name} ({m.employeeId || "No Code"})</option>
                                     ))}
                                   </select>
-                                ) : (() => {
-                                  const leadPlayer = allPlayers.find(p => p.employeeId === t.lead);
-                                  return (
-                                    <span className="font-semibold text-slate-700">
-                                      {leadPlayer ? leadPlayer.name : (t.lead || "Unassigned")}
-                                    </span>
-                                  );
-                                })()}
+                                ) : (
+                                  <span className="font-semibold text-slate-700">{t.lead || "Unassigned"}</span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -4563,11 +4558,11 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                     <input 
                                       type="radio" 
                                       name={`team_lead_${t.id}`}
-                                      checked={t.lead === member.employeeId && !!member.employeeId} 
-                                      onChange={() => handleSetTeamLead(t.id, member.employeeId)}
+                                      checked={t.lead === member.name} 
+                                      onChange={() => handleSetTeamLead(t.id, member.name)}
                                       className="h-3.5 w-3.5 text-teal-600 focus:ring-teal-400 border-slate-300 cursor-pointer"
                                     />
-                                    {t.lead === member.employeeId && !!member.employeeId && (
+                                    {t.lead === member.name && (
                                       <span className="text-[11px]" title="Team Lead">👑</span>
                                     )}
                                   </div>
@@ -4717,7 +4712,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           };
 
                           const teamMemberNames = new Set(teamMembers.map(m => m.name));
-                          const roots = teamMembers.filter(m => (m.employeeId === t.lead && !!t.lead) || !teamMemberNames.has(m.reportingManager));
+                          const roots = teamMembers.filter(m => m.name === leadMemberName || !teamMemberNames.has(m.reportingManager));
                           const rootsToRender = roots.length > 0 ? roots : teamMembers;
 
                           return (
@@ -5256,21 +5251,25 @@ export default function App() {
         let { data: dbTeams, error: teamsError } = await supabase.from('teams').select('*');
         let { data: dbMembers, error: membersError } = await supabase.from('team_members').select('*');
 
-        const loadedTeams = (dbTeams || []).map(t => ({
-          id: t.id,
-          name: t.name,
-          description: t.description,
-          lead: t.lead,
-          members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
-            id: m.id,
-            name: m.name,
-            employeeId: m.employee_id,
-            designation: m.designation,
-            experience: m.experience,
-            reportingManager: m.reporting_manager,
-            description: m.description
-          }))
-        }));
+        const loadedTeams = (dbTeams || []).map(t => {
+          const leadMember = (dbMembers || []).find(m => m.employee_id === t.lead);
+          return {
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            lead: leadMember ? leadMember.name : (t.lead || "Unassigned"),
+            leadEmployeeId: t.lead,
+            members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
+              id: m.id,
+              name: m.name,
+              employeeId: m.employee_id,
+              designation: m.designation,
+              experience: m.experience,
+              reportingManager: m.reporting_manager,
+              description: m.description
+            }))
+          };
+        });
         setTeams(loadedTeams);
 
         // Fetch KPIs
@@ -5504,59 +5503,74 @@ export default function App() {
     }
   }
 
-  async function handleSetTeamLead(teamId, leaderName) {
+  async function handleSetTeamLead(teamId, leaderEmpId) {
+    // Find name corresponding to leaderEmpId
+    let leaderName = "Unassigned";
+    teams.forEach(t => {
+      const found = t.members.find(m => m.employeeId === leaderEmpId);
+      if (found) leaderName = found.name;
+    });
+
     // Optimistically update local state
     setTeams(prev => prev.map(t => {
       if (t.id === teamId) {
-        return { ...t, lead: leaderName };
+        return { 
+          ...t, 
+          lead: leaderName,
+          leadEmployeeId: leaderEmpId
+        };
       }
       return t;
     }));
 
-    // Update in database
-    const { error } = await supabase.from('teams').update({ lead: leaderName }).eq('id', teamId);
+    // Update in database (saving the unique Employee ID)
+    const { error } = await supabase.from('teams').update({ lead: leaderEmpId }).eq('id', teamId);
     if (error) {
       console.error("Error setting team lead in Supabase:", error);
       // Reload on failure
       const { data: dbTeams } = await supabase.from('teams').select('*');
       const { data: dbMembers } = await supabase.from('team_members').select('*');
       if (dbTeams) {
-        setTeams(dbTeams.map(t => ({
-          id: t.id,
-          name: t.name,
-          description: t.description,
-          lead: t.lead,
-          members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
-            id: m.id,
-            name: m.name,
-            employeeId: m.employee_id,
-            designation: m.designation,
-            experience: m.experience,
-            reportingManager: m.reporting_manager,
-            description: m.description
-          }))
-        })));
+        setTeams(dbTeams.map(t => {
+          const leadMember = (dbMembers || []).find(m => m.employee_id === t.lead);
+          return {
+            id: t.id,
+            name: t.name,
+            description: t.description,
+            lead: leadMember ? leadMember.name : (t.lead || "Unassigned"),
+            leadEmployeeId: t.lead,
+            members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
+              id: m.id,
+              name: m.name,
+              employeeId: m.employee_id,
+              designation: m.designation,
+              experience: m.experience,
+              reportingManager: m.reporting_manager,
+              description: m.description
+            }))
+          };
+        }));
       }
     }
   }
 
   async function handleAddVertical(newVertical) {
-    const isNewLeadName = newVertical.lead && !String(newVertical.lead).startsWith("EMP-");
-    const generatedEmpId = isNewLeadName ? `EMP-${Math.floor(1000 + Math.random() * 9000)}` : newVertical.lead;
+    // Generate unique employee ID for the new lead
+    const leadEmpCode = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const { data: teamRow } = await supabase.from('teams').insert({
       name: newVertical.name,
       description: newVertical.description,
-      lead: generatedEmpId
+      lead: newVertical.lead ? leadEmpCode : null // Stored as employee ID
     }).select().single();
 
     if (teamRow) {
       const createdMembers = [];
-      if (isNewLeadName) {
+      if (newVertical.lead && String(newVertical.lead).trim() !== "") {
         const { data: leadMemberRow } = await supabase.from('team_members').insert({
           team_id: teamRow.id,
           name: newVertical.lead,
-          employee_id: generatedEmpId
+          employee_id: leadEmpCode
         }).select().single();
 
         if (leadMemberRow) {
@@ -5576,7 +5590,8 @@ export default function App() {
         id: teamRow.id,
         name: teamRow.name,
         description: teamRow.description,
-        lead: generatedEmpId,
+        lead: newVertical.lead || "Unassigned",
+        leadEmployeeId: teamRow.lead,
         members: createdMembers
       };
       setTeams((prev) => [...prev, formattedTeam]);
