@@ -3543,7 +3543,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
       }
 
       alert("Spreadsheet saved successfully!");
-      
+      setIsEditingGrid(false);
+
       // Fetch latest KPIs to refresh UI
       const { data: dbKpis } = await supabase.from('kpis').select('*');
       if (dbKpis) {
@@ -3579,6 +3580,32 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    const list = [...kpis];
+    const padCount = Math.max(0, 500 - list.length);
+    for (let i = 0; i < padCount; i++) {
+      list.push({
+        id: `temp_${i}`,
+        isTemp: true,
+        name: "",
+        team: "",
+        owner: "",
+        driveBy: "",
+        monitorBy: "",
+        unit: "Nos",
+        direction: "higher",
+        target: 0,
+        monthlyAlloc: {},
+        monthlyActual: {},
+        targetsList: [],
+        history: []
+      });
+    }
+    setGridKpis(list);
+    setEditingCell(null);
+    setIsEditingGrid(false);
   };
 
   const renderExcelCell = (kpi, field, value, type = "text", customDisplay = null) => {
@@ -4638,26 +4665,30 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
                     <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. Enable edit and double-click cells to edit or add content.</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => {
-                        setIsEditingGrid(!isEditingGrid);
-                        if (isEditingGrid) {
-                          setEditingCell(null);
-                        }
-                      }} 
-                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${isEditingGrid ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      <span>{isEditingGrid ? "Disable Edit" : "Enable Edit"}</span>
-                    </button>
-                    {isEditingGrid && (
+                    {!isEditingGrid ? (
                       <button 
-                        onClick={handleSaveGrid}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-teal-500 hover:bg-teal-600 text-white transition-all shadow-sm"
+                        onClick={() => setIsEditingGrid(true)} 
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all shadow-sm"
                       >
-                        <Download className="h-3.5 w-3.5 rotate-180" />
-                        <span>Save Changes</span>
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span>Enable Edit</span>
                       </button>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={handleSaveGrid}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-teal-500 hover:bg-teal-600 text-white transition-all shadow-sm"
+                        >
+                          <Download className="h-3.5 w-3.5 rotate-180" />
+                          <span>Save Changes</span>
+                        </button>
+                        <button 
+                          onClick={handleCancelEdit}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all shadow-sm"
+                        >
+                          <span>Cancel</span>
+                        </button>
+                      </>
                     )}
                     <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600">
                       <Table className="h-4 w-4" />
