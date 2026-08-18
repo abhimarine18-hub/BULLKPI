@@ -3376,6 +3376,7 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
   };
 
   const [isEditingGrid, setIsEditingGrid] = useState(false);
+  const [editingCell, setEditingCell] = useState(null);
 
   const handleExcelActualChange = async (kpi, monthName, val) => {
     const numVal = parseFloat(val) || 0;
@@ -3405,6 +3406,56 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
     else if (field === "target") updatedKpi.target = parseFloat(val) || 0;
 
     onEditKpi(updatedKpi);
+  };
+
+  const renderExcelCell = (kpi, field, value, type = "text", customDisplay = null) => {
+    const isEditing = editingCell && editingCell.kpiId === kpi.id && editingCell.field === field;
+    
+    if (isEditing) {
+      if (type === "select") {
+        return (
+          <select 
+            value={value}
+            autoFocus
+            onBlur={() => setEditingCell(null)}
+            onChange={(e) => {
+              handleExcelCellChange(kpi, field, e.target.value);
+              setEditingCell(null);
+            }}
+            className="w-full h-full bg-white px-1.5 py-1 text-xs focus:outline-none border border-teal-500 font-medium text-slate-800"
+          >
+            <option value="higher">higher</option>
+            <option value="lower">lower</option>
+          </select>
+        );
+      }
+      
+      return (
+        <input 
+          type={type}
+          value={value}
+          autoFocus
+          onBlur={() => setEditingCell(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              setEditingCell(null);
+            }
+          }}
+          onChange={(e) => handleExcelCellChange(kpi, field, e.target.value)}
+          className="w-full h-full bg-white px-1.5 py-1 text-xs focus:outline-none border border-teal-500 font-mono text-slate-800"
+        />
+      );
+    }
+    
+    return (
+      <div 
+        onDoubleClick={() => setEditingCell({ kpiId: kpi.id, field })}
+        className="w-full h-full min-h-[32px] flex items-center px-2 cursor-text hover:bg-slate-50 select-none truncate"
+        title="Double click to edit"
+      >
+        {customDisplay !== null ? customDisplay : value}
+      </div>
+    );
   };
 
   const [screen, setScreen] = useState("dashboard");
@@ -4407,16 +4458,12 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>KPI Grid Spreadsheet</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. You can update values directly in the cells below.</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. Double-click any cell to edit or add content.</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => setIsEditingGrid(!isEditingGrid)} 
-                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${isEditingGrid ? "bg-teal-500 hover:bg-teal-600 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      <span>{isEditingGrid ? "Exit Edit Mode" : "Edit Spreadsheet"}</span>
-                    </button>
+                    <div className="bg-orange-50 text-orange-700 border border-orange-150 px-3 py-1 rounded-xl text-xs font-semibold">
+                      💡 Double-click cells to edit target/actual/details
+                    </div>
                     <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600">
                       <Table className="h-4 w-4" />
                       <span>Total Rows: {kpis.length}</span>
@@ -4463,98 +4510,41 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                         return (
                           <tr key={kpi.id} className="hover:bg-slate-50/50">
                             {/* A: KPI no */}
-                            <td className="border-r border-slate-200 px-3 py-2 font-mono text-slate-500 sticky bg-white z-10" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>{idx + 1}</td>
+                            <td className="border border-slate-200 px-3 py-2 font-mono text-slate-500 sticky bg-white z-10" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>{idx + 1}</td>
                             
                             {/* B: KPI name */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 font-medium text-slate-800 sticky bg-white z-10" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>
-                              {isEditingGrid ? (
-                                <input 
-                                  value={kpi.name}
-                                  onChange={(e) => handleExcelCellChange(kpi, "name", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
-                                />
-                              ) : (
-                                <div className="truncate max-w-xs px-1" title={kpi.name}>{kpi.name}</div>
-                              )}
+                            <td className="border border-slate-200 p-0 font-medium text-slate-800 sticky bg-white z-10" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>
+                              {renderExcelCell(kpi, "name", kpi.name)}
                             </td>
 
                             {/* C: Team */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>
-                              {isEditingGrid ? (
-                                <input 
-                                  value={kpi.team}
-                                  onChange={(e) => handleExcelCellChange(kpi, "team", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
-                                />
-                              ) : (
-                                <span className="px-1">{kpi.team}</span>
-                              )}
+                            <td className="border border-slate-200 p-0 text-slate-650" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>
+                              {renderExcelCell(kpi, "team", kpi.team)}
                             </td>
 
                             {/* D: Owner */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
-                              {isEditingGrid ? (
-                                <input 
-                                  value={kpi.owner}
-                                  onChange={(e) => handleExcelCellChange(kpi, "owner", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
-                                />
-                              ) : (
-                                <span className="px-1">{kpi.owner}</span>
-                              )}
+                            <td className="border border-slate-200 p-0 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
+                              {renderExcelCell(kpi, "owner", kpi.owner)}
                             </td>
 
                             {/* E: Drive */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
-                              {isEditingGrid ? (
-                                <input 
-                                  value={kpi.driveBy || ""}
-                                  onChange={(e) => handleExcelCellChange(kpi, "driveBy", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
-                                />
-                              ) : (
-                                <span className="px-1">{kpi.driveBy || "-"}</span>
-                              )}
+                            <td className="border border-slate-200 p-0 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
+                              {renderExcelCell(kpi, "driveBy", kpi.driveBy || "")}
                             </td>
 
                             {/* F: Reporting To */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
-                              {isEditingGrid ? (
-                                <input 
-                                  value={kpi.monitorBy || ""}
-                                  onChange={(e) => handleExcelCellChange(kpi, "monitorBy", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
-                                />
-                              ) : (
-                                <span className="px-1">{kpi.monitorBy || "-"}</span>
-                              )}
+                            <td className="border border-slate-200 p-0 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>
+                              {renderExcelCell(kpi, "monitorBy", kpi.monitorBy || "")}
                             </td>
 
                             {/* G: UOM */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 font-semibold text-slate-500 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>
-                              {isEditingGrid ? (
-                                <input 
-                                  value={kpi.unit.trim()}
-                                  onChange={(e) => handleExcelCellChange(kpi, "unit", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-1 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white text-center"
-                                />
-                              ) : (
-                                <span>{kpi.unit.trim()}</span>
-                              )}
+                            <td className="border border-slate-200 p-0 font-semibold text-slate-500 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>
+                              {renderExcelCell(kpi, "unit", kpi.unit.trim())}
                             </td>
 
                             {/* H: UP/Down */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>
-                              {isEditingGrid ? (
-                                <select 
-                                  value={kpi.direction}
-                                  onChange={(e) => handleExcelCellChange(kpi, "direction", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-1 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white text-center font-medium"
-                                >
-                                  <option value="higher">UP</option>
-                                  <option value="lower">Down</option>
-                                </select>
-                              ) : (
+                            <td className="border border-slate-200 p-0 text-center" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>
+                              {renderExcelCell(kpi, "direction", kpi.direction === "lower" ? "lower" : "higher", "select", 
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${kpi.direction === "lower" ? "bg-orange-50 text-orange-600" : "bg-teal-50 text-teal-600"}`}>
                                   {kpi.direction === "lower" ? "Down" : "UP"}
                                 </span>
@@ -4562,17 +4552,8 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                             </td>
 
                             {/* I: CY Target */}
-                            <td className="border-r border-slate-200 px-2 py-1.5 font-bold text-slate-800 text-right" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>
-                              {isEditingGrid ? (
-                                <input 
-                                  type="number"
-                                  value={kpi.target}
-                                  onChange={(e) => handleExcelCellChange(kpi, "target", e.target.value)}
-                                  className="w-full border border-slate-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white text-right font-mono"
-                                />
-                              ) : (
-                                <span className="px-1">{kpi.target}</span>
-                              )}
+                            <td className="border border-slate-200 p-0 font-bold text-slate-800 text-right" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>
+                              {renderExcelCell(kpi, "target", kpi.target, "number")}
                             </td>
 
                             {/* J to U: Monthly target + actual cells */}
@@ -4581,29 +4562,59 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                               const monthKey = `${m} ${year}`;
                               const targetVal = kpi.monthlyAlloc?.[monthKey] || 0;
                               const actualVal = kpi.monthlyActual?.[monthKey] ?? "";
+                              
+                              const isEditingTarget = editingCell && editingCell.kpiId === kpi.id && editingCell.field === `target_${m}`;
+                              const isEditingActual = editingCell && editingCell.kpiId === kpi.id && editingCell.field === `actual_${m}`;
+
                               return (
-                                <td key={m} className="border-r border-slate-200 px-2 py-1.5 text-center" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>
-                                  <div className="flex flex-col gap-1 items-center justify-center">
-                                    <div className="text-[10px] text-slate-400 flex items-center gap-1" title="Target">
+                                <td key={m} className="border border-slate-200 p-0 text-center" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>
+                                  <div className="flex flex-col w-full h-full divide-y divide-slate-200">
+                                    {/* Target Row */}
+                                    <div className="flex-1 min-h-[22px] flex items-center justify-between px-2 text-[10px] text-slate-500">
                                       <span>T:</span>
-                                      {isEditingGrid ? (
+                                      {isEditingTarget ? (
                                         <input 
                                           type="number"
                                           value={targetVal}
+                                          autoFocus
+                                          onBlur={() => setEditingCell(null)}
+                                          onKeyDown={(e) => { if (e.key === "Enter") setEditingCell(null); }}
                                           onChange={(e) => handleExcelTargetChange(kpi, m, e.target.value)}
-                                          className="w-16 text-center border border-slate-200 focus:border-teal-400 bg-white rounded px-0.5 py-0.2 text-[10px] focus:outline-none font-medium font-mono text-slate-650"
+                                          className="w-16 text-center border border-teal-500 bg-white rounded px-0.5 py-0.2 text-[10px] focus:outline-none font-medium font-mono text-slate-800"
                                         />
                                       ) : (
-                                        <span className="font-mono font-medium">{targetVal}</span>
+                                        <span 
+                                          onDoubleClick={() => setEditingCell({ kpiId: kpi.id, field: `target_${m}` })}
+                                          className="font-mono font-medium text-slate-650 cursor-text hover:bg-slate-50 px-1"
+                                          title="Double click to edit target"
+                                        >
+                                          {targetVal}
+                                        </span>
                                       )}
                                     </div>
-                                    <input 
-                                      type="number"
-                                      value={actualVal}
-                                      placeholder="Act"
-                                      onChange={(e) => handleExcelActualChange(kpi, m, e.target.value)}
-                                      className="w-20 text-center border border-slate-200 hover:border-slate-350 focus:border-teal-400 focus:ring-1 focus:ring-teal-200 bg-white rounded px-1 py-0.5 text-xs focus:outline-none transition-colors font-medium font-mono text-teal-800"
-                                    />
+                                    {/* Actual Row */}
+                                    <div className="flex-1 min-h-[22px] flex items-center justify-between px-2 text-[10px] text-teal-700 bg-teal-50/20">
+                                      <span>A:</span>
+                                      {isEditingActual ? (
+                                        <input 
+                                          type="number"
+                                          value={actualVal}
+                                          autoFocus
+                                          onBlur={() => setEditingCell(null)}
+                                          onKeyDown={(e) => { if (e.key === "Enter") setEditingCell(null); }}
+                                          onChange={(e) => handleExcelActualChange(kpi, m, e.target.value)}
+                                          className="w-16 text-center border border-teal-500 bg-white rounded px-0.5 py-0.2 text-[10px] focus:outline-none font-medium font-mono text-slate-800"
+                                        />
+                                      ) : (
+                                        <span 
+                                          onDoubleClick={() => setEditingCell({ kpiId: kpi.id, field: `actual_${m}` })}
+                                          className="font-mono font-bold text-teal-850 cursor-text hover:bg-teal-100/50 px-1"
+                                          title="Double click to edit actual"
+                                        >
+                                          {actualVal || "-"}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </td>
                               );
