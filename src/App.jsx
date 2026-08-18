@@ -4388,9 +4388,8 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                     {/* Excel column labels row (A, B, C...) */}
                     <thead>
                       <tr className="bg-slate-100/70 border-b border-slate-200 text-center text-[10px] text-slate-400 font-mono">
-                        <th className="border-r border-slate-200 py-1 sticky left-0 bg-slate-200 z-20" style={{ width: '50px', minWidth: '50px', maxWidth: '50px', left: '0px' }}></th>
-                        <th className="border-r border-slate-200 py-1 sticky bg-slate-200 z-20" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '50px' }}>A</th>
-                        <th className="border-r border-slate-200 py-1 sticky bg-slate-200 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '130px' }}>B</th>
+                        <th className="border-r border-slate-200 py-1 sticky left-0 bg-slate-200 z-20" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>A</th>
+                        <th className="border-r border-slate-200 py-1 sticky bg-slate-200 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>B</th>
                         <th className="border-r border-slate-200 py-1" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>C</th>
                         <th className="border-r border-slate-200 py-1" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>D</th>
                         <th className="border-r border-slate-200 py-1" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>E</th>
@@ -4404,9 +4403,8 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                       </tr>
                       {/* Table Column headers (KPI no, KPI, Team...) */}
                       <tr className="bg-slate-50 border-b border-slate-200 text-left font-bold text-slate-600">
-                        <th className="border-r border-slate-200 px-2 py-2 text-center sticky left-0 bg-slate-50 z-20" style={{ width: '50px', minWidth: '50px', maxWidth: '50px', left: '0px' }}>#</th>
-                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '50px' }}>KPI no</th>
-                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '130px' }}>KPI</th>
+                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>KPI no</th>
+                        <th className="border-r border-slate-200 px-3 py-2 sticky bg-slate-50 z-20" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }}>KPI</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>Team</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>Owner</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>Drive</th>
@@ -4423,9 +4421,8 @@ function AdminApp({ kpis, onLog, teams, onAddMember, onAddVertical, onAddKpi, pr
                       {kpis.map((kpi, idx) => {
                         return (
                           <tr key={kpi.id} className="hover:bg-slate-50/50">
-                            <td className="border-r border-slate-200 px-2 py-2 text-center font-mono text-slate-400 bg-slate-50/30 sticky left-0 z-10" style={{ width: '50px', minWidth: '50px', maxWidth: '50px', left: '0px' }}>{idx + 1}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 font-mono text-slate-500 sticky bg-white z-10" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '50px' }}>{idx + 1}</td>
-                            <td className="border-r border-slate-200 px-3 py-2 font-medium text-slate-800 sticky bg-white z-10 truncate" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '130px' }} title={kpi.name}>{kpi.name}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 font-mono text-slate-500 sticky bg-white z-10" style={{ width: '80px', minWidth: '80px', maxWidth: '80px', left: '0px' }}>{idx + 1}</td>
+                            <td className="border-r border-slate-200 px-3 py-2 font-medium text-slate-800 sticky bg-white z-10 truncate" style={{ width: '400px', minWidth: '400px', maxWidth: '400px', left: '80px' }} title={kpi.name}>{kpi.name}</td>
                             <td className="border-r border-slate-200 px-3 py-2 text-slate-650" style={{ width: '180px', minWidth: '180px', maxWidth: '180px' }}>{kpi.team}</td>
                             <td className="border-r border-slate-200 px-3 py-2 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>{kpi.owner}</td>
                             <td className="border-r border-slate-200 px-3 py-2 text-slate-650" style={{ width: '150px', minWidth: '150px', maxWidth: '150px' }}>{kpi.driveBy || "-"}</td>
