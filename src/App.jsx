@@ -3321,7 +3321,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
 
   const handleDownloadTemplate = () => {
     const headers = [
-      ["KPI no", "KPI", "Team", "Owner", "Drive", "Reporting To", "UOM", "UP/ Down", "CY Target", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]
+      ["KPI no", "KPI", "Team", "DO", "DRIVE", "MONITOR", "UOM", "UP/ Down", "CY Target", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]
     ];
     const sampleRow = [
       "1", 
@@ -4518,9 +4518,9 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onA
                                 const headers = rows[headerIdx].map(h => String(h || "").trim());
                                 const kpiIdx = headers.indexOf("KPI");
                                 const teamIdx = headers.indexOf("Team");
-                                const ownerIdx = headers.indexOf("Owner");
-                                const driveIdx = headers.indexOf("Drive");
-                                const repToIdx = headers.indexOf("Reporting To");
+                                const ownerIdx = headers.indexOf("DO") !== -1 ? headers.indexOf("DO") : headers.indexOf("Owner");
+                                const driveIdx = headers.indexOf("DRIVE") !== -1 ? headers.indexOf("DRIVE") : (headers.indexOf("Drive") !== -1 ? headers.indexOf("Drive") : headers.indexOf("DRIVE (Drive BY)"));
+                                const repToIdx = headers.indexOf("MONITOR") !== -1 ? headers.indexOf("MONITOR") : headers.indexOf("Reporting To");
                                 const uomIdx = headers.indexOf("UOM");
                                 const directionIdx = headers.indexOf("UP/ Down");
                                 const targetIdx = headers.indexOf("CY Target");
