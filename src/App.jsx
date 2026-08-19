@@ -3689,7 +3689,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
   const [editingProject, setEditingProject] = useState(null);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [editingKpi, setEditingKpi] = useState(null);
-  const [kpiView, setKpiView] = useState("list");
+  const [kpiView, setKpiView] = useState("grid");
   const [showTemplate, setShowTemplate] = useState(false);
   const [uploadTeam, setUploadTeam] = useState("");
   const [uploadOwner, setUploadOwner] = useState("");
