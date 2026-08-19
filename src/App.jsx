@@ -2611,6 +2611,8 @@ const parseIndianNumber = (str) => {
 };
 
 const KpiCheckboxList = ({ kpis, selectedIds, onChange }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
   const toggleId = (id) => {
     const strId = id.toString();
     if (selectedIds.includes(strId)) {
@@ -2620,25 +2622,41 @@ const KpiCheckboxList = ({ kpis, selectedIds, onChange }) => {
     }
   };
 
+  const filteredKpis = kpis.filter(k => 
+    k.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (k.owner && k.owner.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   return (
-    <div className="border border-teal-200 rounded-lg max-h-40 overflow-y-auto bg-white shadow-inner divide-y divide-slate-50 mt-1 mb-2">
-      {kpis.map(k => (
-        <label key={k.id} className="flex items-start gap-3 p-2 hover:bg-slate-50 cursor-pointer transition-colors">
-          <input
-            type="checkbox"
-            checked={selectedIds.includes(k.id.toString()) || selectedIds.includes(k.id)}
-            onChange={() => toggleId(k.id)}
-            className="mt-0.5 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="text-[11px] font-bold text-slate-700 truncate leading-tight">{k.name}</div>
-            <div className="text-[9px] text-slate-400 truncate mt-0.5">{k.team} • {k.owner}</div>
-          </div>
-        </label>
-      ))}
-      {kpis.length === 0 && (
-        <div className="p-4 text-center text-xs text-slate-400 italic">No activity KPIs available</div>
-      )}
+    <div className="border border-teal-200 rounded-lg bg-white shadow-inner flex flex-col mt-1 mb-2">
+      <div className="p-2 border-b border-teal-100 bg-teal-50/30 rounded-t-lg shrink-0">
+        <input 
+          type="text" 
+          placeholder="Search KPIs by name or owner..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-2 py-1.5 text-[11px] border border-teal-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder-slate-400"
+        />
+      </div>
+      <div className="max-h-40 overflow-y-auto divide-y divide-slate-50">
+        {filteredKpis.map(k => (
+          <label key={k.id} className="flex items-start gap-3 p-2 hover:bg-slate-50 cursor-pointer transition-colors">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(k.id.toString()) || selectedIds.includes(k.id)}
+              onChange={() => toggleId(k.id)}
+              className="mt-0.5 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-bold text-slate-700 truncate leading-tight">{k.name}</div>
+              <div className="text-[9px] text-slate-400 truncate mt-0.5">{k.team} • {k.owner}</div>
+            </div>
+          </label>
+        ))}
+        {filteredKpis.length === 0 && (
+          <div className="p-4 text-center text-xs text-slate-400 italic">No KPIs match your search</div>
+        )}
+      </div>
     </div>
   );
 };
