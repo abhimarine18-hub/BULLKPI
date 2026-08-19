@@ -3372,7 +3372,12 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
   const [uploadDrive, setUploadDrive] = useState("");
   const [uploadMonitor, setUploadMonitor] = useState("");
   const [columnMapModal, setColumnMapModal] = useState(null); // { headers, rows } when open
-  const [dashboardMonth, setDashboardMonth] = useState("All Year");
+  const [dashboardMonth, setDashboardMonth] = useState(() => {
+    const d = new Date();
+    const m = d.toLocaleString('en-US', { month: 'short' });
+    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
+    return `${m} ${yr}`;
+  });
 
   const handleDownloadTemplate = () => {
     const headers = [
