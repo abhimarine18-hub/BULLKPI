@@ -3209,7 +3209,21 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
           </div>
 
           {/* RIGHT COLUMN: TARGET SCHEDULING & DISTRIBUTION (takes 6/8 columns) */}
-          <div className="lg:col-span-6 flex flex-col min-h-0 space-y-4 pl-3">
+          <div className="lg:col-span-6 flex flex-col min-h-0 space-y-4 pl-3 relative">
+            {kpiType === 'report' && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-2xl">
+                <div className="bg-white p-6 rounded-3xl shadow-xl border border-purple-100 max-w-sm text-center">
+                  <div className="h-14 w-14 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span className="text-2xl">📊</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">Automated Report</h3>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                    Targets and achievements are calculated automatically from your selected KPIs. Manual distribution is disabled.
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Target Assignment Info Header */}
             <div className="bg-orange-50/20 p-3 rounded-2xl border border-orange-100/50 shrink-0 flex items-center justify-between">
               <div>
@@ -5610,9 +5624,15 @@ const computeReportKpis = (rawKpis) => {
       return res;
     };
 
-    const newDaily = calcObject(k => k.dailyActual);
-    const newWeekly = calcObject(k => k.weeklyActual);
-    const newMonthly = calcObject(k => k.monthlyActual);
+    const newDailyActual = calcObject(k => k.dailyActual);
+    const newWeeklyActual = calcObject(k => k.weeklyActual);
+    const newMonthlyActual = calcObject(k => k.monthlyActual);
+
+    const newDailyAlloc = calcObject(k => k.dailyAlloc);
+    const newWeeklyAlloc = calcObject(k => k.weeklyAlloc);
+    const newMonthlyAlloc = calcObject(k => k.monthlyAlloc);
+
+    const newTarget = runCalc(k => k.target);
 
     // Calculate history
     const allHistoryDates = new Set();
@@ -5631,9 +5651,13 @@ const computeReportKpis = (rawKpis) => {
 
     return {
       ...kpi,
-      dailyActual: newDaily,
-      weeklyActual: newWeekly,
-      monthlyActual: newMonthly,
+      target: newTarget,
+      dailyActual: newDailyActual,
+      weeklyActual: newWeeklyActual,
+      monthlyActual: newMonthlyActual,
+      dailyAlloc: newDailyAlloc,
+      weeklyAlloc: newWeeklyAlloc,
+      monthlyAlloc: newMonthlyAlloc,
       history: newHistory
     };
   });
