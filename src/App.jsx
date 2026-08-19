@@ -3465,10 +3465,10 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                     const monthMismatch = monthDailySum - (monthlyAlloc[selectedMonth] || 0);
                     return (
                       <div className="flex items-center gap-3">
-                        <p className="text-xs text-slate-500">Allocated Daily Sum: <span className="font-bold text-slate-700">{formatIndianNumber(monthDailySum)}</span> {unit}</p>
+                        <p className="text-xs text-slate-500">Allocated Daily Sum: <span className="font-bold text-slate-700">{formatIndianNumber(monthDailySum) || "0"}</span> {unit}</p>
                         {!isTimeKpi && monthMismatch !== 0 && (
                           <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md animate-pulse">
-                            ⚠ Mismatch: {monthMismatch > 0 ? `+${formatIndianNumber(monthMismatch)}` : formatIndianNumber(monthMismatch)} {unit}
+                            ⚠ Mismatch: {monthMismatch > 0 ? `+${formatIndianNumber(monthMismatch) || "0"}` : (formatIndianNumber(monthMismatch) || "0")} {unit}
                           </span>
                         )}
                       </div>
@@ -3636,6 +3636,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                         </div>
                       );
                     }
+                    return rows;
                   })()}
                 </div>
                 </div>
