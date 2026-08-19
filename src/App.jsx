@@ -3320,29 +3320,36 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 {/* Body: Table(s) */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
                   {(() => {
+                     const monthsList = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
                      const SelectedKpiTable = ({ title, kpisList }) => (
-                       <div>
+                       <div className="mb-4">
                          {title && <h4 className="text-xs font-bold text-slate-700 uppercase mb-2">{title}</h4>}
-                         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                           <table className="w-full text-left border-collapse">
+                         <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                           <table className="w-full text-left border-collapse min-w-max">
                              <thead>
                                <tr className="bg-slate-50 border-b border-slate-200">
-                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase">KPI Name</th>
-                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase">Owner</th>
-                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase text-right">Overall Target</th>
-                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase text-right">YTD Actual</th>
+                                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase sticky left-0 bg-slate-50 z-10 border-r border-slate-200">KPI Name</th>
+                                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-500 uppercase">Owner</th>
+                                 {monthsList.map(m => (
+                                   <th key={m} className="px-2 py-2.5 text-[10px] font-bold text-slate-500 uppercase text-right">{m}</th>
+                                 ))}
+                                 <th className="px-3 py-2.5 text-[10px] font-bold text-slate-800 uppercase text-right bg-orange-50/50">Total Tgt</th>
+                                 <th className="px-3 py-2.5 text-[10px] font-bold text-teal-700 uppercase text-right bg-teal-50/50">YTD Act</th>
                                </tr>
                              </thead>
                              <tbody className="divide-y divide-slate-100">
                                {kpisList.length === 0 ? (
-                                 <tr><td colSpan={4} className="px-4 py-8 text-center text-xs font-medium text-slate-400 italic">No KPIs selected</td></tr>
+                                 <tr><td colSpan={16} className="px-4 py-8 text-center text-xs font-medium text-slate-400 italic">No KPIs selected</td></tr>
                                ) : (
                                  kpisList.map(k => (
-                                   <tr key={k.id} className="hover:bg-slate-50 transition-colors">
-                                     <td className="px-4 py-3 text-xs font-bold text-slate-700 max-w-[200px] truncate">{k.name}</td>
-                                     <td className="px-4 py-3 text-[11px] text-slate-500">{k.owner}</td>
-                                     <td className="px-4 py-3 text-xs font-bold text-slate-700 text-right">{k.target} <span className="text-[9px] text-slate-400 font-normal">{k.unit}</span></td>
-                                     <td className="px-4 py-3 text-xs font-bold text-teal-600 text-right">{Object.values(k.monthlyActual||{}).reduce((a,b)=>a+b,0)} <span className="text-[9px] text-teal-400 font-normal">{k.unit}</span></td>
+                                   <tr key={k.id} className="hover:bg-slate-50 transition-colors group">
+                                     <td className="px-3 py-2 text-[11px] font-bold text-slate-700 max-w-[150px] truncate sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-100" title={k.name}>{k.name}</td>
+                                     <td className="px-3 py-2 text-[10px] text-slate-500">{k.owner}</td>
+                                     {monthsList.map(m => (
+                                       <td key={m} className="px-2 py-2 text-[11px] text-slate-600 text-right">{k.monthlyAlloc?.[m] || 0}</td>
+                                     ))}
+                                     <td className="px-3 py-2 text-[11px] font-bold text-slate-800 text-right bg-orange-50/30">{k.target} <span className="text-[9px] text-slate-400 font-normal">{k.unit}</span></td>
+                                     <td className="px-3 py-2 text-[11px] font-bold text-teal-600 text-right bg-teal-50/30">{Object.values(k.monthlyActual||{}).reduce((a,b)=>a+b,0)} <span className="text-[9px] text-teal-400 font-normal">{k.unit}</span></td>
                                    </tr>
                                  ))
                                )}
