@@ -2666,6 +2666,72 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const [weeklyActual] = useState(kpi.weeklyActual || {});
   const [revisedAlloc, setRevisedAlloc] = useState(kpi.revisedAlloc || {});
 
+  // Live computation for Report KPIs so right side updates dynamically
+  useEffect(() => {
+    if (kpiType !== 'report') return;
+
+    const runCalc = (extractFn) => {
+      if (reportConfig.type === 'sum') {
+        const ids = reportConfig.kpiIds || [];
+        const related = allKpis.filter(k => ids.includes(k.id?.toString()) || ids.includes(k.id));
+        return related.reduce((sum, r) => sum + (extractFn(r) || 0), 0);
+      }
+      if (reportConfig.type === 'average') {
+        const ids = reportConfig.kpiIds || [];
+        const related = allKpis.filter(k => ids.includes(k.id?.toString()) || ids.includes(k.id));
+        if (related.length === 0) return 0;
+        const sum = related.reduce((acc, r) => acc + (extractFn(r) || 0), 0);
+        return Math.round((sum / related.length) * 100) / 100;
+      }
+      if (reportConfig.type === 'percent') {
+        const numIds = reportConfig.numeratorIds || [];
+        const denIds = reportConfig.denominatorIds || [];
+        const numRelated = allKpis.filter(k => numIds.includes(k.id?.toString()) || numIds.includes(k.id));
+        const denRelated = allKpis.filter(k => denIds.includes(k.id?.toString()) || denIds.includes(k.id));
+        const numSum = numRelated.reduce((acc, r) => acc + (extractFn(r) || 0), 0);
+        const denSum = denRelated.reduce((acc, r) => acc + (extractFn(r) || 0), 0);
+        if (denSum === 0) return 0;
+        return Math.round((numSum / denSum) * 100) / 100; // Return % (e.g. 0.5 becomes 50, but we want 50.00)
+      }
+      return 0;
+    };
+
+    const calcObject = (extractObjFn) => {
+      const allKeys = new Set();
+      const ids = reportConfig.type === 'percent' 
+        ? [...(reportConfig.numeratorIds||[]), ...(reportConfig.denominatorIds||[])] 
+        : (reportConfig.kpiIds || []);
+      
+      const related = allKpis.filter(k => ids.includes(k.id?.toString()) || ids.includes(k.id));
+      related.forEach(k => {
+        const obj = extractObjFn(k) || {};
+        Object.keys(obj).forEach(key => allKeys.add(key));
+      });
+      
+      const res = {};
+      allKeys.forEach(key => {
+        res[key] = runCalc(k => (extractObjFn(k) || {})[key] || 0);
+      });
+      return res;
+    };
+
+    const newM = calcObject(k => k.monthlyAlloc);
+    // Ensure all 12 months exist so UI doesn't crash
+    ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].forEach(m => {
+      if (newM[m] === undefined) newM[m] = 0;
+    });
+
+    setMonthlyAlloc(newM);
+    setDailyAlloc(calcObject(k => k.dailyAlloc));
+    setWeeklyAlloc(calcObject(k => k.weeklyAlloc));
+    
+    // Set actuals so they also reflect live
+    // (Note: we need to use a separate state or just rely on the right panel using these states)
+    // Wait, the EditKpiModal has no setter for dailyActual except we can just use the setter if we add them.
+    // Let's just calculate the summed target for UI
+    setTotalTargetInput(runCalc(k => k.target));
+  }, [kpiType, reportConfig, allKpis]);
+
   const selectedTeamObj = teams.find(t => t.name === team);
   const allMembers = teams.flatMap(t => t.members);
   const ownerOptions = allMembers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i);
