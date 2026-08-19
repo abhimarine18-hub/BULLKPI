@@ -3275,21 +3275,74 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
           </div>
 
           {/* RIGHT COLUMN: TARGET SCHEDULING & DISTRIBUTION (takes 6/8 columns) */}
-          <div className="lg:col-span-6 flex flex-col min-h-0 space-y-4 pl-3 relative">
-            {kpiType === 'report' && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-2xl">
-                <div className="bg-white p-6 rounded-3xl shadow-xl border border-purple-100 max-w-sm text-center">
-                  <div className="h-14 w-14 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-2xl">📊</span>
+          <div className="lg:col-span-6 flex flex-col min-h-0 pl-3">
+            {kpiType === 'report' ? (
+              <div className="h-full flex flex-col bg-slate-50/50 rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
+                {/* Header */}
+                <div className="bg-purple-50 p-4 border-b border-purple-100 flex items-center justify-between shrink-0">
+                  <div>
+                    <h3 className="text-sm font-bold text-purple-900">Report Components Preview</h3>
+                    <p className="text-xs text-purple-700/80 mt-0.5">Review the individual targets and actuals of the selected KPIs.</p>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">Automated Report</h3>
-                  <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                    Targets and achievements are calculated automatically from your selected KPIs. Manual distribution is disabled.
-                  </p>
+                  <div className="text-right bg-white px-3 py-1.5 rounded-lg border border-purple-100 shadow-sm">
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Calculated Final Target</span>
+                    <span className="text-xl font-black text-slate-800">{totalTargetInput} <span className="text-xs font-bold text-slate-400">{unit}</span></span>
+                  </div>
+                </div>
+
+                {/* Body: Table(s) */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  {(() => {
+                     const SelectedKpiTable = ({ title, kpisList }) => (
+                       <div>
+                         {title && <h4 className="text-xs font-bold text-slate-700 uppercase mb-2">{title}</h4>}
+                         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                           <table className="w-full text-left border-collapse">
+                             <thead>
+                               <tr className="bg-slate-50 border-b border-slate-200">
+                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase">KPI Name</th>
+                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase">Owner</th>
+                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase text-right">Overall Target</th>
+                                 <th className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase text-right">YTD Actual</th>
+                               </tr>
+                             </thead>
+                             <tbody className="divide-y divide-slate-100">
+                               {kpisList.length === 0 ? (
+                                 <tr><td colSpan={4} className="px-4 py-8 text-center text-xs font-medium text-slate-400 italic">No KPIs selected</td></tr>
+                               ) : (
+                                 kpisList.map(k => (
+                                   <tr key={k.id} className="hover:bg-slate-50 transition-colors">
+                                     <td className="px-4 py-3 text-xs font-bold text-slate-700 max-w-[200px] truncate">{k.name}</td>
+                                     <td className="px-4 py-3 text-[11px] text-slate-500">{k.owner}</td>
+                                     <td className="px-4 py-3 text-xs font-bold text-slate-700 text-right">{k.target} <span className="text-[9px] text-slate-400 font-normal">{k.unit}</span></td>
+                                     <td className="px-4 py-3 text-xs font-bold text-teal-600 text-right">{Object.values(k.monthlyActual||{}).reduce((a,b)=>a+b,0)} <span className="text-[9px] text-teal-400 font-normal">{k.unit}</span></td>
+                                   </tr>
+                                 ))
+                               )}
+                             </tbody>
+                           </table>
+                         </div>
+                       </div>
+                     );
+
+                     if (reportConfig.type !== 'percent') {
+                       const list = allKpis.filter(k => reportConfig.kpiIds?.includes(k.id?.toString()) || reportConfig.kpiIds?.includes(k.id));
+                       return <SelectedKpiTable title="" kpisList={list} />;
+                     } else {
+                       const numList = allKpis.filter(k => reportConfig.numeratorIds?.includes(k.id?.toString()) || reportConfig.numeratorIds?.includes(k.id));
+                       const denList = allKpis.filter(k => reportConfig.denominatorIds?.includes(k.id?.toString()) || reportConfig.denominatorIds?.includes(k.id));
+                       return (
+                         <>
+                           <SelectedKpiTable title="Numerator KPIs (Top)" kpisList={numList} />
+                           <SelectedKpiTable title="Denominator KPIs (Bottom)" kpisList={denList} />
+                         </>
+                       );
+                     }
+                  })()}
                 </div>
               </div>
-            )}
-            
+            ) : (
+              <div className="flex flex-col min-h-0 space-y-4">
             {/* Target Assignment Info Header */}
             <div className="bg-orange-50/20 p-3 rounded-2xl border border-orange-100/50 shrink-0 flex items-center justify-between">
               <div>
@@ -3549,11 +3602,12 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                         </div>
                       );
                     }
-                    return rows;
                   })()}
                 </div>
                 </div>
               </div>
+            </div>
+            )}
             </div>
             )}
           </div>
