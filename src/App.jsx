@@ -5731,10 +5731,29 @@ function EmployeeApp({ kpis, onLog, teams }) {
 
 /* ==================== KPI COMPUTATION ENGINE ==================== */
 const computeReportKpis = (rawKpis) => {
-  const kpiMap = {};
-  rawKpis.forEach(k => kpiMap[k.id] = k);
+  const monthsList = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+  
+  // Pre-process activity KPIs: Auto-distribute targets if monthlyAlloc is missing but target > 0
+  const processedKpis = rawKpis.map(kpi => {
+    if (kpi.kpiType === 'report') return kpi;
+    const hasAlloc = kpi.monthlyAlloc && Object.values(kpi.monthlyAlloc).some(v => v > 0);
+    if (!hasAlloc && kpi.target > 0) {
+      const base = Math.floor(kpi.target / 12);
+      let remainder = kpi.target % 12;
+      const autoMonthly = {};
+      monthsList.forEach(m => {
+        autoMonthly[m] = base + (remainder > 0 ? 1 : 0);
+        if (remainder > 0) remainder--;
+      });
+      return { ...kpi, monthlyAlloc: autoMonthly };
+    }
+    return kpi;
+  });
 
-  return rawKpis.map(kpi => {
+  const kpiMap = {};
+  processedKpis.forEach(k => kpiMap[k.id] = k);
+
+  return processedKpis.map(kpi => {
     if (kpi.kpiType !== 'report') return kpi;
 
     const config = kpi.reportConfig || {};
