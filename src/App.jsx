@@ -1782,13 +1782,30 @@ function LogValueModal({ kpi, onClose, onSubmit }) {
 /* ---------------- KPI detail drawer (shared) ---------------- */
 
 function KpiDetail({ kpi, onClose, onLog }) {
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return new Date().toLocaleString('en-US', { month: 'short' });
+  });
+
   const status = getStatus(kpi);
+
+  const chartData = useMemo(() => {
+    const days = getDaysInMonth(selectedMonth);
+    return days.map(dStr => ({
+      d: dStr.slice(-2), // just day number for X-Axis
+      target: kpi.dailyAlloc?.[dStr] || 0,
+      actual: kpi.dailyActual?.[dStr] || 0
+    }));
+  }, [selectedMonth, kpi.dailyAlloc, kpi.dailyActual]);
+
+  const cells = useMemo(() => getCalendarCells(selectedMonth), [selectedMonth]);
+  const numRows = Math.ceil(cells.length / 7);
+
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
-      <div className="bg-white rounded-t-2xl md:rounded-2xl p-5 w-full max-w-lg max-h-[85vh] overflow-y-auto">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{kpi.name}</h3>
-          <button onClick={onClose} className="text-slate-400"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X className="h-5 w-5" /></button>
         </div>
         <div className="flex items-center gap-2 mb-4">
           <StatusBadge status={status} />
@@ -1796,49 +1813,94 @@ function KpiDetail({ kpi, onClose, onLog }) {
             {kpi.team} · {kpi.owner}
           </span>
         </div>
-        <div className="flex items-end gap-4 mb-4">
+        <div className="flex items-end gap-4 mb-2">
           <div>
             <p className="text-2xl font-semibold text-slate-900">{getLatest(kpi)}{kpi.unit}</p>
-            <p className="text-xs text-slate-400">Current actual</p>
+            <p className="text-xs text-slate-400">Current actual (Year)</p>
           </div>
           <div>
             <p className="text-2xl font-semibold text-slate-400">{kpi.target}{kpi.unit}</p>
-            <p className="text-xs text-slate-400">Target</p>
+            <p className="text-xs text-slate-400">Target (Year)</p>
           </div>
         </div>
-        <div className="h-40 mb-4">
+
+        {/* Month selector for the detailed view */}
+        <div className="flex items-center justify-between mt-3 mb-4 border-b border-slate-100 pb-2">
+          <div className="flex space-x-1 overflow-x-auto pb-1 scrollbar-hide">
+            {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => (
+              <button
+                key={m}
+                onClick={() => setSelectedMonth(m)}
+                className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors ${
+                  selectedMonth === m ? "bg-teal-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Date wise chart */}
+        <div className="h-40 mb-5">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={kpi.history} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <LineChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#fdf1e8" vertical={false} />
-              <XAxis dataKey="d" tick={{ fontSize: 11, fill: "#c4917a" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#c4917a" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="d" tick={{ fontSize: 10, fill: "#c4917a" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#c4917a" }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #fde3d3" }} />
-              <Line type="monotone" dataKey="v" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="target" name="Target" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="actual" name="Actual" stroke="#f97316" strokeWidth={2} dot={{ r: 2 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        {kpi.targetsList && kpi.targetsList.length > 0 && (
-          <div className="mb-4 pt-3 border-t border-orange-50">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Target Schedule ({kpi.targetType || "monthly"})
-            </p>
-            <div className="space-y-1.5 max-h-32 overflow-y-auto bg-orange-50/20 p-2.5 rounded-xl border border-orange-100/40">
-              {kpi.targetsList.map(t => (
-                <div key={t.id} className="flex justify-between text-xs py-1 px-1.5 bg-white rounded border border-orange-100/30">
-                  <span className="font-semibold text-slate-600">{t.label}</span>
-                  <span className="text-slate-500">
-                    <strong className="text-slate-800">{t.targetValue}</strong>{kpi.unit} by {t.targetDate}
-                  </span>
-                </div>
-              ))}
+        {/* Calendar View */}
+        <div className="mb-4 pt-3 border-t border-slate-100">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+            Target Schedule (Daily) - {selectedMonth}
+          </p>
+          <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/80 overflow-x-auto">
+            <div className="min-w-[360px]">
+              <div className="grid grid-cols-7 gap-1 text-center mb-1 text-[9px] font-bold text-slate-400">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+              </div>
+              <div className="space-y-1">
+                {Array.from({ length: numRows }).map((_, r) => {
+                  const rowCells = cells.slice(r * 7, (r + 1) * 7);
+                  return (
+                    <div key={r} className="grid grid-cols-7 gap-1 items-center">
+                      {rowCells.map((cell, cIdx) => {
+                        if (!cell || cell.isEmpty) {
+                          return <div key={`empty-${r}-${cIdx}`} className="bg-slate-100/30 rounded h-11 border border-dashed border-slate-200/60" />;
+                        }
+                        const dayTarget = kpi.dailyAlloc?.[cell.dateStr] || 0;
+                        const dayActual = kpi.dailyActual?.[cell.dateStr] || 0;
+                        const check = checkIsHolidayPure(cell.dateStr, kpi.holidaysEnabled ?? true, kpi.customHolidays || {});
+                        
+                        let cellBg = check.isHoliday ? "bg-rose-50/30 border-rose-100/50" : "bg-white border-slate-200/80 shadow-sm";
+
+                        return (
+                          <div key={cell.dateStr} className={`border rounded-[6px] p-1 text-center flex flex-col justify-between h-11 ${cellBg} transition-colors hover:border-slate-300`}>
+                            <div className="text-[9px] font-extrabold text-slate-500 text-left leading-none">{cell.dayNum}</div>
+                            <div className="flex justify-between items-end mt-auto">
+                              <span className="text-[8.5px] font-bold text-slate-400" title="Target">T:{formatIndianNumber(dayTarget)}</span>
+                              <span className={`text-[8.5px] font-extrabold ${dayActual > 0 ? "text-emerald-600" : "text-slate-300"}`} title="Actual">A:{formatIndianNumber(dayActual)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        )}
+        </div>
 
         <button
           onClick={onLog}
-          className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-xl transition-colors"
+          className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-xl transition-colors mt-2"
         >
           Log new value
         </button>
