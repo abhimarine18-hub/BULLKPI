@@ -2610,6 +2610,39 @@ const parseIndianNumber = (str) => {
   return Math.round(parseFloat(cleanStr) || 0);
 };
 
+const KpiCheckboxList = ({ kpis, selectedIds, onChange }) => {
+  const toggleId = (id) => {
+    const strId = id.toString();
+    if (selectedIds.includes(strId)) {
+      onChange(selectedIds.filter(x => x !== strId));
+    } else {
+      onChange([...selectedIds, strId]);
+    }
+  };
+
+  return (
+    <div className="border border-teal-200 rounded-lg max-h-40 overflow-y-auto bg-white shadow-inner divide-y divide-slate-50 mt-1 mb-2">
+      {kpis.map(k => (
+        <label key={k.id} className="flex items-start gap-3 p-2 hover:bg-slate-50 cursor-pointer transition-colors">
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(k.id.toString()) || selectedIds.includes(k.id)}
+            onChange={() => toggleId(k.id)}
+            className="mt-0.5 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-bold text-slate-700 truncate leading-tight">{k.name}</div>
+            <div className="text-[9px] text-slate-400 truncate mt-0.5">{k.team} • {k.owner}</div>
+          </div>
+        </label>
+      ))}
+      {kpis.length === 0 && (
+        <div className="p-4 text-center text-xs text-slate-400 italic">No activity KPIs available</div>
+      )}
+    </div>
+  );
+};
+
 function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, onAddMember, sidebarMinimized }) {
   const [kpiType, setKpiType] = useState(kpi.kpiType || 'activity');
   const [reportConfig, setReportConfig] = useState(kpi.reportConfig || { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] });
@@ -3056,56 +3089,30 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
                 {reportConfig.type !== 'percent' ? (
                   <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Included KPIs</label>
-                    <select
-                      multiple
-                      value={reportConfig.kpiIds || []}
-                      onChange={(e) => {
-                        const opts = Array.from(e.target.selectedOptions, option => option.value);
-                        setReportConfig(prev => ({ ...prev, kpiIds: opts }));
-                      }}
-                      className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold h-32 bg-white"
-                    >
-                      {allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity').map(k => (
-                        <option key={k.id} value={k.id}>{k.name}</option>
-                      ))}
-                    </select>
-                    <p className="text-[9px] text-teal-600/70 mt-1 leading-tight font-medium">Hold Ctrl (or Cmd) to select multiple KPIs.</p>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Select Included KPIs</label>
+                    <KpiCheckboxList
+                      kpis={allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity')}
+                      selectedIds={reportConfig.kpiIds || []}
+                      onChange={(newIds) => setReportConfig(prev => ({ ...prev, kpiIds: newIds }))}
+                    />
                   </div>
                 ) : (
                   <>
                     <div>
                       <label className="text-[10px] font-bold text-slate-600 block mb-1">Numerator KPIs (Top)</label>
-                      <select
-                        multiple
-                        value={reportConfig.numeratorIds || []}
-                        onChange={(e) => {
-                          const opts = Array.from(e.target.selectedOptions, option => option.value);
-                          setReportConfig(prev => ({ ...prev, numeratorIds: opts }));
-                        }}
-                        className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold h-24 bg-white"
-                      >
-                        {allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity').map(k => (
-                          <option key={k.id} value={k.id}>{k.name}</option>
-                        ))}
-                      </select>
+                      <KpiCheckboxList
+                        kpis={allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity')}
+                        selectedIds={reportConfig.numeratorIds || []}
+                        onChange={(newIds) => setReportConfig(prev => ({ ...prev, numeratorIds: newIds }))}
+                      />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-1">Denominator KPIs (Bottom)</label>
-                      <select
-                        multiple
-                        value={reportConfig.denominatorIds || []}
-                        onChange={(e) => {
-                          const opts = Array.from(e.target.selectedOptions, option => option.value);
-                          setReportConfig(prev => ({ ...prev, denominatorIds: opts }));
-                        }}
-                        className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold h-24 bg-white"
-                      >
-                        {allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity').map(k => (
-                          <option key={k.id} value={k.id}>{k.name}</option>
-                        ))}
-                      </select>
-                      <p className="text-[9px] text-teal-600/70 mt-1 leading-tight font-medium">Hold Ctrl (or Cmd) to select multiple.</p>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-1 mt-2">Denominator KPIs (Bottom)</label>
+                      <KpiCheckboxList
+                        kpis={allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity')}
+                        selectedIds={reportConfig.denominatorIds || []}
+                        onChange={(newIds) => setReportConfig(prev => ({ ...prev, denominatorIds: newIds }))}
+                      />
                     </div>
                   </>
                 )}
