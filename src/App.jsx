@@ -3044,7 +3044,9 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       customHolidays,
       holidaysEnabled,
       targetType: distributeEnabled ? "daily" : "monthly",
-      targetsList: Object.entries(dailyAlloc).filter(([_, val]) => val > 0).map(([dStr, val]) => ({ id: dStr, label: dStr, targetValue: val, targetDate: dStr }))
+      targetsList: Object.entries(dailyAlloc).filter(([_, val]) => val > 0).map(([dStr, val]) => ({ id: dStr, label: dStr, targetValue: val, targetDate: dStr })),
+      kpiType,
+      reportConfig
     });
     onClose();
   };
