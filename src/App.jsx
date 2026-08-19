@@ -1898,12 +1898,14 @@ function KpiDetail({ kpi, onClose, onLog }) {
           </div>
         </div>
 
-        <button
-          onClick={onLog}
-          className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-xl transition-colors mt-2"
-        >
-          Log new value
-        </button>
+        {kpi.kpiType !== 'report' && (
+          <button
+            onClick={onLog}
+            className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-xl transition-colors mt-2"
+          >
+            Log new value
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2608,7 +2610,10 @@ const parseIndianNumber = (str) => {
   return Math.round(parseFloat(cleanStr) || 0);
 };
 
-function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMember, sidebarMinimized }) {
+function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, onAddMember, sidebarMinimized }) {
+  const [kpiType, setKpiType] = useState(kpi.kpiType || 'activity');
+  const [reportConfig, setReportConfig] = useState(kpi.reportConfig || { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] });
+
   // Drive, Monitor, DO (owner) and Weightage configurations
   const [driveBy, setDriveBy] = useState(kpi.driveBy || "");
   const [monitorBy, setMonitorBy] = useState(kpi.monitorBy || "");
@@ -2652,25 +2657,14 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
     return defaultM;
   });
 
-  // Achievement (Actual) states
-  const [monthlyActual, setMonthlyActual] = useState(() => {
-    const defaultM = {};
-    ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].forEach(m => {
-      defaultM[m] = kpi.monthlyActual?.[m] ?? 0;
-    });
-    return defaultM;
-  });
-
-  // Daily Allocation state
-  const [dailyAlloc, setDailyAlloc] = useState(kpi.dailyAlloc || {});
-  const [dailyActual, setDailyActual] = useState(kpi.dailyActual || {});
-
-  // Revised target allocation state
-  const [revisedAlloc, setRevisedAlloc] = useState(kpi.revisedAlloc || {});
-
-  // Weekly Allocation state
   const [weeklyAlloc, setWeeklyAlloc] = useState(kpi.weeklyAlloc || {});
-  const [weeklyActual, setWeeklyActual] = useState(kpi.weeklyActual || {});
+  const [dailyAlloc, setDailyAlloc] = useState(kpi.dailyAlloc || {});
+
+  // For actuals & rollover tracking
+  const [dailyActual] = useState(kpi.dailyActual || {});
+  const [monthlyActual] = useState(kpi.monthlyActual || {});
+  const [weeklyActual] = useState(kpi.weeklyActual || {});
+  const [revisedAlloc, setRevisedAlloc] = useState(kpi.revisedAlloc || {});
 
   const selectedTeamObj = teams.find(t => t.name === team);
   const allMembers = teams.flatMap(t => t.members);
@@ -2955,6 +2949,103 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-8 gap-6 min-h-0 mb-4">          
           {/* LEFT COLUMN: KPI METADATA DETAILS (takes 2/8 columns) */}
           <div className="lg:col-span-2 space-y-4 overflow-y-auto pr-3 lg:border-r lg:border-slate-100 pb-2">
+            {/* KPI Type Toggle */}
+            <div className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+              <label className="text-[10px] font-bold text-slate-500 mb-2 block uppercase tracking-wider">KPI Data Source</label>
+              <div className="flex bg-slate-100 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setKpiType('activity')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${kpiType === 'activity' ? 'bg-white shadow-sm text-teal-700' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Activity (Manual)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKpiType('report')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-colors ${kpiType === 'report' ? 'bg-white shadow-sm text-teal-700' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Report (Computed)
+                </button>
+              </div>
+            </div>
+
+            {/* Report Configuration UI */}
+            {kpiType === 'report' && (
+              <div className="p-3 bg-teal-50/50 border border-teal-100 rounded-xl space-y-3">
+                <h4 className="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-2">Report Configuration</h4>
+                
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Calculation Type</label>
+                  <select
+                    value={reportConfig.type}
+                    onChange={(e) => setReportConfig(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold"
+                  >
+                    <option value="sum">Sum</option>
+                    <option value="average">Average</option>
+                    <option value="percent">Percentage (%)</option>
+                  </select>
+                </div>
+
+                {reportConfig.type !== 'percent' ? (
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Included KPIs</label>
+                    <select
+                      multiple
+                      value={reportConfig.kpiIds || []}
+                      onChange={(e) => {
+                        const opts = Array.from(e.target.selectedOptions, option => option.value);
+                        setReportConfig(prev => ({ ...prev, kpiIds: opts }));
+                      }}
+                      className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold h-32 bg-white"
+                    >
+                      {allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity').map(k => (
+                        <option key={k.id} value={k.id}>{k.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-[9px] text-teal-600/70 mt-1 leading-tight font-medium">Hold Ctrl (or Cmd) to select multiple KPIs.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-1">Numerator KPIs (Top)</label>
+                      <select
+                        multiple
+                        value={reportConfig.numeratorIds || []}
+                        onChange={(e) => {
+                          const opts = Array.from(e.target.selectedOptions, option => option.value);
+                          setReportConfig(prev => ({ ...prev, numeratorIds: opts }));
+                        }}
+                        className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold h-24 bg-white"
+                      >
+                        {allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity').map(k => (
+                          <option key={k.id} value={k.id}>{k.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-1">Denominator KPIs (Bottom)</label>
+                      <select
+                        multiple
+                        value={reportConfig.denominatorIds || []}
+                        onChange={(e) => {
+                          const opts = Array.from(e.target.selectedOptions, option => option.value);
+                          setReportConfig(prev => ({ ...prev, denominatorIds: opts }));
+                        }}
+                        className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold h-24 bg-white"
+                      >
+                        {allKpis.filter(k => k.id !== kpi.id && k.kpiType === 'activity').map(k => (
+                          <option key={k.id} value={k.id}>{k.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-[9px] text-teal-600/70 mt-1 leading-tight font-medium">Hold Ctrl (or Cmd) to select multiple.</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1 block uppercase tracking-wider">KPI Name *</label>
               <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-orange-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold" />
@@ -4035,7 +4126,12 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           <tbody className="divide-y divide-orange-50">
                             {teamKpis.map((kpi) => (
                               <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
-                                <td className="px-5 py-3.5 font-bold text-slate-800 text-xs max-w-xs truncate">{kpi.name}</td>
+                                <td className="px-5 py-3.5 font-bold text-slate-800 text-xs max-w-xs truncate">
+                                  {kpi.name}
+                                  {kpi.kpiType === 'report' && (
+                                    <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-600 uppercase tracking-wider border border-purple-100">Report</span>
+                                  )}
+                                </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-[11px] leading-relaxed max-w-xs truncate" title={kpi.description || `Key Performance Indicator: ${kpi.name}`}>
                                   {kpi.description || <span className="italic text-slate-350 font-normal">No description</span>}
                                 </td>
@@ -5144,6 +5240,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             dailyAlloc: {},
             dailyActual: {}
           }} 
+          allKpis={kpis}
           teams={teams} 
           sidebarMinimized={sidebarMinimized} 
           onClose={() => setAddKpiOpen(false)} 
@@ -5168,7 +5265,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
         <AddProjectModal teams={teams} kpis={kpis} project={editingProject} onClose={() => setEditingProject(null)} onSubmit={onAddProject} />
       )}
       {editingKpi && (
-        <EditKpiModal kpi={editingKpi} teams={teams} sidebarMinimized={sidebarMinimized} onClose={() => setEditingKpi(null)} onSubmit={onEditKpi} onAddVertical={onAddVertical} onAddMember={onAddMember} />
+        <EditKpiModal kpi={editingKpi} allKpis={kpis} teams={teams} sidebarMinimized={sidebarMinimized} onClose={() => setEditingKpi(null)} onSubmit={onEditKpi} onAddVertical={onAddVertical} onAddMember={onAddMember} />
       )}
       {columnMapModal && (
         <ExcelColumnMapModal
@@ -5329,7 +5426,10 @@ function EmployeeApp({ kpis, onLog, teams }) {
                   const bar = status === "on-track" ? "bg-teal-400" : status === "at-risk" ? "bg-orange-400" : "bg-rose-400";
                   return (
                     <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className={`shrink-0 w-36 rounded-2xl p-4 text-left ${tint}`}>
-                      <p className="text-xs font-medium text-slate-600 mb-2">{kpi.name}</p>
+                      <p className="text-[10px] font-bold text-slate-600 mb-1 leading-tight flex items-start justify-between gap-1">
+                        <span className="truncate">{kpi.name}</span>
+                        {kpi.kpiType === 'report' && <span className="shrink-0 inline-block px-1 py-[1px] bg-purple-200 text-purple-700 rounded-[3px] text-[8px] uppercase tracking-wider">Rep</span>}
+                      </p>
                       <p className="text-lg font-semibold text-slate-900 mb-2">{getLatest(kpi)}{kpi.unit}</p>
                       <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1">
                         <div className={`h-full rounded-full ${bar}`} style={{ width: `${progressPct(kpi)}%` }} />
@@ -5461,10 +5561,89 @@ function EmployeeApp({ kpis, onLog, teams }) {
   );
 }
 
+/* ==================== KPI COMPUTATION ENGINE ==================== */
+const computeReportKpis = (rawKpis) => {
+  const kpiMap = {};
+  rawKpis.forEach(k => kpiMap[k.id] = k);
+
+  return rawKpis.map(kpi => {
+    if (kpi.kpiType !== 'report') return kpi;
+
+    const config = kpi.reportConfig || {};
+    const op = config.type || 'sum';
+
+    const calcCombined = (ids, extractValFn) => {
+      if (!ids || !ids.length) return 0;
+      const vals = ids.map(id => kpiMap[id] ? extractValFn(kpiMap[id]) : 0);
+      if (op === 'sum') return vals.reduce((a, b) => a + b, 0);
+      if (op === 'average') return vals.reduce((a, b) => a + b, 0) / vals.length;
+      return 0;
+    };
+
+    const calcPercent = (numIds, denIds, extractValFn) => {
+      const numSum = (numIds || []).reduce((sum, id) => sum + (kpiMap[id] ? extractValFn(kpiMap[id]) : 0), 0);
+      const denSum = (denIds || []).reduce((sum, id) => sum + (kpiMap[id] ? extractValFn(kpiMap[id]) : 0), 0);
+      return denSum === 0 ? 0 : Math.round((numSum / denSum) * 100);
+    };
+
+    const runCalc = (extractValFn) => {
+      if (op === 'percent') {
+        return calcPercent(config.numeratorIds, config.denominatorIds, extractValFn);
+      }
+      return calcCombined(config.kpiIds, extractValFn);
+    };
+
+    // Calculate aggregated structures across all keys
+    const calcObject = (extractObjFn) => {
+      const allKeys = new Set();
+      const objects = [];
+      rawKpis.forEach(k => {
+        const obj = extractObjFn(k) || {};
+        objects.push(obj);
+        Object.keys(obj).forEach(key => allKeys.add(key));
+      });
+      
+      const res = {};
+      allKeys.forEach(key => {
+        res[key] = runCalc(k => (extractObjFn(k) || {})[key] || 0);
+      });
+      return res;
+    };
+
+    const newDaily = calcObject(k => k.dailyActual);
+    const newWeekly = calcObject(k => k.weeklyActual);
+    const newMonthly = calcObject(k => k.monthlyActual);
+
+    // Calculate history
+    const allHistoryDates = new Set();
+    rawKpis.forEach(k => {
+      (k.history || []).forEach(h => allHistoryDates.add(h.d));
+    });
+    
+    const sortedDates = Array.from(allHistoryDates).sort();
+    const newHistory = sortedDates.map(dStr => {
+      const v = runCalc(k => {
+        const h = (k.history || []).find(x => x.d === dStr);
+        return h ? h.v : 0;
+      });
+      return { d: dStr, v };
+    });
+
+    return {
+      ...kpi,
+      dailyActual: newDaily,
+      weeklyActual: newWeekly,
+      monthlyActual: newMonthly,
+      history: newHistory
+    };
+  });
+};
+
 /* ==================== ROOT APP ==================== */
 
 export default function App() {
   const [kpis, setKpis] = useState([]);
+  const computedKpis = useMemo(() => computeReportKpis(kpis), [kpis]);
   const [teams, setTeams] = useState([]);
   const [projects, setProjects] = useState([]);
   const [role, setRole] = useState("admin");
@@ -5532,7 +5711,9 @@ export default function App() {
             monthlyActual: k.monthly_actual || {},
             weeklyAlloc: k.weekly_alloc || {},
             weeklyActual: k.weekly_actual || {},
-            dailyAlloc: k.daily_alloc || {}
+            dailyAlloc: k.daily_alloc || {},
+            kpiType: k.kpi_type || 'activity',
+            reportConfig: k.report_config || {}
           })));
         }
 
@@ -5856,7 +6037,8 @@ export default function App() {
       daily_actual: newKpi.dailyActual || {},
       revised_alloc: newKpi.revisedAlloc || {},
       custom_holidays: newKpi.customHolidays || {},
-      holidays_enabled: newKpi.holidaysEnabled ?? true
+      kpi_type: newKpi.kpiType || 'activity',
+      report_config: newKpi.reportConfig || {}
     }).select().single();
 
     if (kpiRow) {
@@ -5883,7 +6065,9 @@ export default function App() {
         monthlyActual: kpiRow.monthly_actual || {},
         weeklyAlloc: kpiRow.weekly_alloc || {},
         weeklyActual: kpiRow.weekly_actual || {},
-        dailyAlloc: kpiRow.daily_alloc || {}
+        dailyAlloc: kpiRow.daily_alloc || {},
+        kpiType: kpiRow.kpi_type || 'activity',
+        reportConfig: kpiRow.report_config || {}
       };
       setKpis((prev) => [...prev, formattedKpi]);
     }
@@ -5916,7 +6100,9 @@ export default function App() {
       daily_actual: updatedKpi.dailyActual || {},
       revised_alloc: updatedKpi.revisedAlloc || {},
       custom_holidays: updatedKpi.customHolidays || {},
-      holidays_enabled: updatedKpi.holidaysEnabled ?? true
+      holidays_enabled: updatedKpi.holidaysEnabled ?? true,
+      kpi_type: updatedKpi.kpiType || 'activity',
+      report_config: updatedKpi.reportConfig || {}
     }).eq('id', updatedKpi.id);
   }
 
@@ -6092,7 +6278,7 @@ export default function App() {
       <div className="flex-1 w-full h-full flex flex-col min-h-0">
         {role === "admin" ? (
           <AdminApp 
-            kpis={kpis} 
+            kpis={computedKpis} 
             setKpis={setKpis}
             onLog={handleLog} 
             teams={teams} 
