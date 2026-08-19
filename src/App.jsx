@@ -2632,7 +2632,9 @@ function EditKpiModal({ kpi, teams, onClose, onSubmit, onAddVertical, onAddMembe
 
   // Advanced targeting configuration
   const [totalTargetInput, setTotalTargetInput] = useState(kpi.target || 0);
-  const [selectedMonth, setSelectedMonth] = useState("Apr");
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return new Date().toLocaleString('en-US', { month: 'short' });
+  });
 
   // Holiday & Leave States
   const [holidaysEnabled, setHolidaysEnabled] = useState(kpi.holidaysEnabled ?? true);
