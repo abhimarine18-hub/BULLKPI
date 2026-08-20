@@ -9,6 +9,8 @@ import {
   LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy
 } from "lucide-react";
 
+export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
+
 /* ---------------- Shared data (single source of truth) ---------------- */
 
 const initialKpis = []; /*
@@ -1740,7 +1742,7 @@ const STATUS_STYLES = {
 function StatusBadge({ status }) {
   const s = STATUS_STYLES[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${s.bg} ${s.text}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${s.bg} ${s.text}`}>
       <Circle className={`h-1.5 w-1.5 fill-current ${s.dot}`} />
       {s.label}
     </span>
@@ -1783,7 +1785,10 @@ function LogValueModal({ kpi, onClose, onSubmit }) {
 
 function KpiDetail({ kpi, onClose, onLog }) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    return new Date().toLocaleString('en-US', { month: 'short' });
+    const d = new Date();
+    const m = d.toLocaleString('en-US', { month: 'short' });
+    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
+    return `${m} ${yr}`;
   });
 
   const status = getStatus(kpi);
@@ -1827,7 +1832,7 @@ function KpiDetail({ kpi, onClose, onLog }) {
         {/* Month selector for the detailed view */}
         <div className="flex items-center justify-between mt-3 mb-4 border-b border-slate-100 pb-2">
           <div className="flex space-x-1 overflow-x-auto pb-1 scrollbar-hide">
-            {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => (
+            {MONTHS_LIST.map(m => (
               <button
                 key={m}
                 onClick={() => setSelectedMonth(m)}
@@ -1879,13 +1884,16 @@ function KpiDetail({ kpi, onClose, onLog }) {
                         const check = checkIsHolidayPure(cell.dateStr, kpi.holidaysEnabled ?? true, kpi.customHolidays || {});
                         
                         let cellBg = check.isHoliday ? "bg-rose-50/30 border-rose-100/50" : "bg-white border-slate-200/80 shadow-sm";
+                        if (!check.isHoliday && dayTarget > 0) {
+                          cellBg = "bg-teal-50/30 border-teal-200/80 ring-1 ring-teal-50 shadow-sm";
+                        }
 
                         return (
                           <div key={cell.dateStr} className={`border rounded-[6px] p-1 text-center flex flex-col justify-between h-11 ${cellBg} transition-colors hover:border-slate-300`}>
-                            <div className="text-[9px] font-extrabold text-slate-500 text-left leading-none">{cell.dayNum}</div>
+                            <div className={`text-[9px] font-extrabold text-left leading-none ${dayTarget > 0 ? 'text-teal-800' : 'text-slate-500'}`}>{cell.dayNum}</div>
                             <div className="flex justify-between items-end mt-auto">
-                              <span className="text-[8.5px] font-bold text-slate-400" title="Target">T:{formatIndianNumber(dayTarget)}</span>
-                              <span className={`text-[8.5px] font-extrabold ${dayActual > 0 ? "text-emerald-600" : "text-slate-300"}`} title="Actual">A:{formatIndianNumber(dayActual)}</span>
+                              <span className={`text-[8.5px] font-bold ${dayTarget > 0 ? 'text-teal-700' : 'text-slate-400'}`} title="Target">T:{formatIndianNumber(dayTarget) || 0}</span>
+                              <span className={`text-[8.5px] font-extrabold ${dayActual > 0 ? 'text-emerald-600' : 'text-slate-300'}`} title="Actual">A:{formatIndianNumber(dayActual) || 0}</span>
                             </div>
                           </div>
                         );
@@ -1930,7 +1938,7 @@ function ExcelColumnMapModal({ modal, onClose, onConfirm }) {
     { key: "direction", label: "UP/Down",        required: false },
     { key: "target",    label: "CY Target",      required: false },
   ];
-  const MONTHS = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+  const MONTHS = MONTHS_LIST;
 
   // Auto-detect sensible defaults from header names
   const autoDetect = (label) => {
@@ -2424,18 +2432,18 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
 }
 
 const FY_MONTHS = [
-  { name: "Apr", year: 2026, monthIdx: 3 },
-  { name: "May", year: 2026, monthIdx: 4 },
-  { name: "Jun", year: 2026, monthIdx: 5 },
-  { name: "Jul", year: 2026, monthIdx: 6 },
-  { name: "Aug", year: 2026, monthIdx: 7 },
-  { name: "Sep", year: 2026, monthIdx: 8 },
-  { name: "Oct", year: 2026, monthIdx: 9 },
-  { name: "Nov", year: 2026, monthIdx: 10 },
-  { name: "Dec", year: 2026, monthIdx: 11 },
-  { name: "Jan", year: 2027, monthIdx: 0 },
-  { name: "Feb", year: 2027, monthIdx: 1 },
-  { name: "Mar", year: 2027, monthIdx: 2 }
+  { name: "Apr 2026", year: 2026, monthIdx: 3 },
+  { name: "May 2026", year: 2026, monthIdx: 4 },
+  { name: "Jun 2026", year: 2026, monthIdx: 5 },
+  { name: "Jul 2026", year: 2026, monthIdx: 6 },
+  { name: "Aug 2026", year: 2026, monthIdx: 7 },
+  { name: "Sep 2026", year: 2026, monthIdx: 8 },
+  { name: "Oct 2026", year: 2026, monthIdx: 9 },
+  { name: "Nov 2026", year: 2026, monthIdx: 10 },
+  { name: "Dec 2026", year: 2026, monthIdx: 11 },
+  { name: "Jan 2027", year: 2027, monthIdx: 0 },
+  { name: "Feb 2027", year: 2027, monthIdx: 1 },
+  { name: "Mar 2027", year: 2027, monthIdx: 2 }
 ];
 
 const HOLIDAYS = [
@@ -2508,83 +2516,93 @@ const getFYearDays = () => {
   return days;
 };
 
-const checkIsHolidayPure = (dateStr, holidaysEnabled, customHolidays) => {
+const checkIsHolidayPure = (dateStr, holidaysEnabled, customHolidays, excludeSundays = true) => {
   if (!holidaysEnabled) return { isHoliday: false };
   if (customHolidays?.[dateStr]) {
     return { isHoliday: true, name: "Admin Holiday" };
   }
   const d = new Date(dateStr);
-  if (d.getDay() === 0) {
+  if (excludeSundays && d.getDay() === 0) {
     return { isHoliday: true, name: "Sunday" };
   }
   return { isHoliday: false };
 };
 
-const distributeMonthToSubperiods = (monthName, monthVal, currentDaily, currentWeekly, holidaysEnabled, customHolidays) => {
+const distributeMonthToSubperiods = (monthName, monthVal, currentDaily, currentWeekly, holidaysEnabled, customHolidays, excludeSundays = true) => {
   const cells = getCalendarCells(monthName);
   const numRows = Math.ceil(cells.length / 7);
 
-  const baseWeek = Math.floor(monthVal / numRows);
-  let remWeek = monthVal - (baseWeek * numRows);
-  const nextW = { ...currentWeekly };
-  for (let i = 1; i <= numRows; i++) {
-    nextW[`${monthName}-Week${i}`] = baseWeek + (remWeek > 0 ? 1 : 0);
-    if (remWeek > 0) remWeek--;
-  }
+  const allWorkingDays = [];
+  cells.forEach(cell => {
+    if (cell && !cell.isEmpty) {
+      if (!checkIsHolidayPure(cell.dateStr, holidaysEnabled, customHolidays, excludeSundays).isHoliday) {
+        allWorkingDays.push(cell.dateStr);
+      }
+    }
+  });
+
+  const totalWorkingDays = allWorkingDays.length || 1;
+  const baseDay = Math.floor(monthVal / totalWorkingDays);
+  let remDay = monthVal - (baseDay * totalWorkingDays);
 
   const nextD = { ...currentDaily };
-  for (let r = 0; r < numRows; r++) {
-    const wVal = nextW[`${monthName}-Week${r + 1}`] || 0;
-    const weekDays = getDaysInWeekRow(monthName, r);
-    const workingDays = weekDays.filter(d => !checkIsHolidayPure(d, holidaysEnabled, customHolidays).isHoliday);
-    const wCount = workingDays.length || weekDays.length || 7;
-    const baseDay = Math.floor(wVal / wCount);
-    let remDay = wVal - (baseDay * wCount);
-
-    weekDays.forEach(d => {
-      const check = checkIsHolidayPure(d, holidaysEnabled, customHolidays);
-      if (check.isHoliday) {
-        nextD[d] = 0;
+  
+  cells.forEach(cell => {
+    if (cell && !cell.isEmpty) {
+      if (checkIsHolidayPure(cell.dateStr, holidaysEnabled, customHolidays, excludeSundays).isHoliday) {
+        nextD[cell.dateStr] = 0;
       } else {
-        nextD[d] = baseDay + (remDay > 0 ? 1 : 0);
+        nextD[cell.dateStr] = baseDay + (remDay > 0 ? 1 : 0);
         if (remDay > 0) remDay--;
       }
-    });
+    }
+  });
+
+  const nextW = { ...currentWeekly };
+  for (let r = 0; r < numRows; r++) {
+    const weekDays = getDaysInWeekRow(monthName, r);
+    const weekSum = weekDays.reduce((sum, d) => sum + (nextD[d] || 0), 0);
+    nextW[`${monthName}-Week${r + 1}`] = weekSum;
   }
 
   return { nextW, nextD };
 };
 
-const distributeMonthActualToSubperiods = (monthName, monthVal, currentDailyAct, currentWeeklyAct, holidaysEnabled, customHolidays) => {
+const distributeMonthActualToSubperiods = (monthName, monthVal, currentDailyAct, currentWeeklyAct, holidaysEnabled, customHolidays, excludeSundays = true) => {
   const cells = getCalendarCells(monthName);
   const numRows = Math.ceil(cells.length / 7);
 
-  const baseWeek = Math.floor(monthVal / numRows);
-  let remWeek = monthVal - (baseWeek * numRows);
-  const nextWAct = { ...currentWeeklyAct };
-  for (let i = 1; i <= numRows; i++) {
-    nextWAct[`${monthName}-Week${i}`] = baseWeek + (remWeek > 0 ? 1 : 0);
-    if (remWeek > 0) remWeek--;
-  }
+  const allWorkingDays = [];
+  cells.forEach(cell => {
+    if (cell && !cell.isEmpty) {
+      if (!checkIsHolidayPure(cell.dateStr, holidaysEnabled, customHolidays, excludeSundays).isHoliday) {
+        allWorkingDays.push(cell.dateStr);
+      }
+    }
+  });
+
+  const totalWorkingDays = allWorkingDays.length || 1;
+  const baseDay = Math.floor(monthVal / totalWorkingDays);
+  let remDay = monthVal - (baseDay * totalWorkingDays);
 
   const nextDAct = { ...currentDailyAct };
-  for (let r = 0; r < numRows; r++) {
-    const wVal = nextWAct[`${monthName}-Week${r + 1}`] || 0;
-    const weekDays = getDaysInWeekRow(monthName, r);
-    const workingDays = weekDays.filter(d => !checkIsHolidayPure(d, holidaysEnabled, customHolidays).isHoliday);
-    const wCount = workingDays.length || weekDays.length || 7;
-    const baseDay = Math.floor(wVal / wCount);
-    let remDay = wVal - (baseDay * wCount);
-
-    weekDays.forEach(d => {
-      const check = checkIsHolidayPure(d, holidaysEnabled, customHolidays);
-      if (check.isHoliday) {
-        nextDAct[d] = 0;
+  
+  cells.forEach(cell => {
+    if (cell && !cell.isEmpty) {
+      if (checkIsHolidayPure(cell.dateStr, holidaysEnabled, customHolidays, excludeSundays).isHoliday) {
+        nextDAct[cell.dateStr] = 0;
       } else {
-        nextDAct[d] = baseDay + (remDay > 0 ? 1 : 0);
+        nextDAct[cell.dateStr] = baseDay + (remDay > 0 ? 1 : 0);
         if (remDay > 0) remDay--;
       }
-    });
+    }
+  });
+
+  const nextWAct = { ...currentWeeklyAct };
+  for (let r = 0; r < numRows; r++) {
+    const weekDays = getDaysInWeekRow(monthName, r);
+    const weekSum = weekDays.reduce((sum, d) => sum + (nextDAct[d] || 0), 0);
+    nextWAct[`${monthName}-Week${r + 1}`] = weekSum;
   }
 
   return { nextWAct, nextDAct };
@@ -2689,12 +2707,44 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   // Advanced targeting configuration
   const [totalTargetInput, setTotalTargetInput] = useState(kpi.target || 0);
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    return new Date().toLocaleString('en-US', { month: 'short' });
+    const d = new Date();
+    const m = d.toLocaleString('en-US', { month: 'short' });
+    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
+    return `${m} ${yr}`;
   });
 
   // Holiday & Leave States
   const [holidaysEnabled, setHolidaysEnabled] = useState(kpi.holidaysEnabled ?? true);
+  const [excludeSundays, setExcludeSundays] = useState(() => {
+    if (kpi.excludeSundays !== undefined) return kpi.excludeSundays;
+    if (kpi.dailyAlloc) {
+      for (const [dateStr, val] of Object.entries(kpi.dailyAlloc)) {
+        if (val > 0 && new Date(dateStr).getDay() === 0) {
+          return false;
+        }
+      }
+    }
+    return true;
+  });
   const [customHolidays, setCustomHolidays] = useState(kpi.customHolidays || {});
+
+  const handleAutoDistribute = (overrides = {}) => {
+    const effHolidays = overrides.customHolidays !== undefined ? overrides.customHolidays : customHolidays;
+    const effExclude = overrides.excludeSundays !== undefined ? overrides.excludeSundays : excludeSundays;
+
+    let nextW = { ...weeklyAlloc };
+    let nextD = { ...dailyAlloc };
+
+    MONTHS_LIST.forEach(m => {
+      const val = monthlyAlloc[m] || 0;
+      const subRes = distributeMonthToSubperiods(m, val, nextD, nextW, holidaysEnabled, effHolidays, effExclude);
+      nextW = subRes.nextW;
+      nextD = subRes.nextD;
+    });
+
+    setWeeklyAlloc(nextW);
+    setDailyAlloc(nextD);
+  };
   
   const [dailyLeave] = useState({});
   const [dailyPartialLeave] = useState({});
@@ -2702,7 +2752,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   // Monthly Allocation state
   const [monthlyAlloc, setMonthlyAlloc] = useState(() => {
     const defaultM = {};
-    ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].forEach(m => {
+    MONTHS_LIST.forEach(m => {
       defaultM[m] = kpi.monthlyAlloc?.[m] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
     });
     return defaultM;
@@ -2768,7 +2818,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
     const newM = calcObject(k => k.monthlyAlloc);
     // Ensure all 12 months exist so UI doesn't crash
-    ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].forEach(m => {
+    MONTHS_LIST.forEach(m => {
       if (newM[m] === undefined) newM[m] = 0;
     });
 
@@ -2796,9 +2846,9 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       return { isHoliday: true, name: "Admin Holiday" };
     }
 
-    // Default Sunday is a holiday
+    // Default Sunday is a holiday only if excludeSundays is true
     const d = new Date(dateStr);
-    if (d.getDay() === 0) {
+    if (excludeSundays && d.getDay() === 0) {
       return { isHoliday: true, name: "Sunday" };
     }
     
@@ -2814,12 +2864,12 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
     let nextW = { ...weeklyAlloc };
     let nextD = { ...dailyAlloc };
 
-    ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].forEach(m => {
+    MONTHS_LIST.forEach(m => {
       const monthVal = base + (remainder > 0 ? 1 : 0);
       if (remainder > 0) remainder--;
       nextM[m] = monthVal;
 
-      const subRes = distributeMonthToSubperiods(m, monthVal, nextD, nextW, holidaysEnabled, customHolidays);
+      const subRes = distributeMonthToSubperiods(m, monthVal, nextD, nextW, holidaysEnabled, customHolidays, excludeSundays);
       nextW = subRes.nextW;
       nextD = subRes.nextD;
     });
@@ -2831,26 +2881,31 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
   const handleMonthlyChange = (monthName, val) => {
     const numVal = Math.round(parseFloat(val) || 0);
+    
+    // First distribute based on current daily/weekly state
+    const subRes = distributeMonthToSubperiods(monthName, numVal, dailyAlloc, weeklyAlloc, holidaysEnabled, customHolidays, excludeSundays);
+    
+    // Apply updates safely outside of another setter's callback
+    setWeeklyAlloc(subRes.nextW);
+    setDailyAlloc(subRes.nextD);
+    
     setMonthlyAlloc(prev => {
       const nextM = { ...prev, [monthName]: numVal };
       const totalSum = Object.values(nextM).reduce((a, b) => a + b, 0);
       setTotalTargetInput(totalSum);
-
-      const subRes = distributeMonthToSubperiods(monthName, numVal, dailyAlloc, weeklyAlloc, holidaysEnabled, customHolidays);
-      setWeeklyAlloc(subRes.nextW);
-      setDailyAlloc(subRes.nextD);
-
       return nextM;
     });
   };
 
   const handleMonthlyActualChange = (monthName, val) => {
     const numVal = Math.round(parseFloat(val) || 0);
+
+    const subRes = distributeMonthActualToSubperiods(monthName, numVal, dailyActual, weeklyActual, holidaysEnabled, customHolidays, excludeSundays);
+    setWeeklyActual(subRes.nextWAct);
+    setDailyActual(subRes.nextDAct);
+
     setMonthlyActual(prev => {
       const nextM = { ...prev, [monthName]: numVal };
-      const subRes = distributeMonthActualToSubperiods(monthName, numVal, dailyActual, weeklyActual, holidaysEnabled, customHolidays);
-      setWeeklyActual(subRes.nextWAct);
-      setDailyActual(subRes.nextDAct);
       return nextM;
     });
   };
@@ -2917,25 +2972,22 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
   const handleDailyChange = (dateStr, val, monthName, weekIdx) => {
     const numVal = Math.round(parseFloat(val) || 0);
-    setDailyAlloc(prev => {
-      const nextD = { ...prev, [dateStr]: numVal };
+    const nextD = { ...dailyAlloc, [dateStr]: numVal };
+    
+    const weekDays = getDaysInWeekRow(monthName, weekIdx);
+    const wSum = weekDays.reduce((sum, d) => sum + (nextD[d] || 0), 0);
+    const weekId = `${monthName}-Week${weekIdx + 1}`;
+    
+    const mDays = getDaysInMonth(monthName);
+    const mSum = mDays.reduce((sum, d) => sum + (nextD[d] || 0), 0);
 
-      const weekDays = getDaysInWeekRow(monthName, weekIdx);
-      const wSum = weekDays.reduce((sum, d) => sum + (nextD[d] || 0), 0);
-      const weekId = `${monthName}-Week${weekIdx + 1}`;
-
-      setWeeklyAlloc(wPrev => ({ ...wPrev, [weekId]: wSum }));
-
-      const mDays = getDaysInMonth(monthName);
-      const mSum = mDays.reduce((sum, d) => sum + (nextD[d] || 0), 0);
-      setMonthlyAlloc(mPrev => {
-        const nextM = { ...mPrev, [monthName]: mSum };
-        const totalSum = Object.values(nextM).reduce((a, b) => a + b, 0);
-        setTotalTargetInput(totalSum);
-        return nextM;
-      });
-
-      return nextD;
+    setDailyAlloc(nextD);
+    setWeeklyAlloc(wPrev => ({ ...wPrev, [weekId]: wSum }));
+    setMonthlyAlloc(mPrev => {
+      const nextM = { ...mPrev, [monthName]: mSum };
+      const totalSum = Object.values(nextM).reduce((a, b) => a + b, 0);
+      setTotalTargetInput(totalSum);
+      return nextM;
     });
   };
 
@@ -2946,8 +2998,12 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
   // Revise target logic to roll over daily shortfalls to future working days
   const handleReviseTargets = () => {
-    const nextRevised = { ...dailyAlloc };
+    // Preserve other months, but reset the selected month's revised targets to its dailyAlloc baseline before calculating rollover
+    const nextRevised = { ...revisedAlloc };
     const days = getDaysInMonth(selectedMonth);
+    days.forEach(d => {
+      nextRevised[d] = dailyAlloc[d] || 0;
+    });
 
     let rolloverShortfall = 0;
     
@@ -3001,6 +3057,11 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       } else {
         nextH[dateStr] = true;
       }
+      
+      if (distributeEnabled) {
+        handleAutoDistribute({ customHolidays: nextH });
+      }
+      
       return nextH;
     });
   };
@@ -3320,7 +3381,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 {/* Body: Table(s) */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
                   {(() => {
-                     const monthsList = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+                     const monthsList = MONTHS_LIST;
                      const SelectedKpiTable = ({ title, kpisList }) => (
                        <div className="mb-4">
                          {title && <h4 className="text-xs font-bold text-slate-700 uppercase mb-2">{title}</h4>}
@@ -3403,18 +3464,44 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
             <div className="shrink-0">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-xs font-bold text-slate-600 block uppercase tracking-wider">Monthly Targets & Achievements (FY 2026-27) *</label>
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-600 select-none">
-                  <input 
-                    type="checkbox" 
-                    checked={distributeEnabled} 
-                    onChange={(e) => setDistributeEnabled(e.target.checked)} 
-                    className="w-4 h-4 rounded border-orange-200 text-teal-600 focus:ring-teal-300"
-                  />
-                  Enable Distribute (Daily/Weekly)
-                </label>
+                <div className="flex items-center gap-4">
+                  {distributeEnabled && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleAutoDistribute}
+                        className="text-xs font-bold px-2 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded hover:bg-teal-100 transition-colors"
+                      >
+                        Auto Distribute
+                      </button>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-600 select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={excludeSundays} 
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setExcludeSundays(isChecked);
+                            if (distributeEnabled) handleAutoDistribute({ excludeSundays: isChecked });
+                          }} 
+                          className="w-4 h-4 rounded border-orange-200 text-teal-600 focus:ring-teal-300"
+                        />
+                        Exclude Sundays
+                      </label>
+                    </>
+                  )}
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-600 select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={distributeEnabled} 
+                      onChange={(e) => setDistributeEnabled(e.target.checked)} 
+                      className="w-4 h-4 rounded border-orange-200 text-teal-600 focus:ring-teal-300"
+                    />
+                    Enable Distribute (Daily/Weekly)
+                  </label>
+                </div>
               </div>
               <div className="grid grid-cols-6 lg:grid-cols-12 gap-1.5">
-                {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
+                {MONTHS_LIST.map(m => {
                   const val = monthlyAlloc[m] || 0;
                   const act = monthlyActual[m] || 0;
                   const isSelected = selectedMonth === m;
@@ -3531,6 +3618,8 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                             // If selected for Time KPI
                             if (isTimeKpi && dayTarget > 0) {
                               cellBg = "bg-teal-50 border-teal-400 ring-2 ring-teal-100/50";
+                            } else if (!isTimeKpi && dayTarget > 0 && !check.isHoliday && !isLeave && !isPartialLeave) {
+                              cellBg = "bg-teal-50/20 border-teal-200 ring-1 ring-teal-50";
                             }
 
                             return (
@@ -3544,7 +3633,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                 className={`border rounded-xl p-1 text-center flex flex-col justify-between h-[60px] ${cellBg} shadow-sm transition-all hover:border-slate-300 ${isTimeKpi ? "cursor-pointer" : ""}`}
                               >
                                 <div className="flex justify-between items-center text-[10px] px-1 shrink-0">
-                                  <span className="font-bold text-slate-600">{cell.dayNum}</span>
+                                  <span className={`font-bold ${dayTarget > 0 ? "text-teal-800" : "text-slate-500"}`}>{cell.dayNum}</span>
                                   <div className="flex gap-1 items-center">
                                     {check.isHoliday && !isTimeKpi && (
                                       <button
@@ -3592,7 +3681,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                           type="text"
                                           value={formatIndianNumber(dayTarget)}
                                           onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
-                                          className="w-12 text-center text-xs focus:outline-none bg-transparent font-bold text-slate-800 border-b border-dashed border-slate-100"
+                                          className={`w-12 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
                                           placeholder="T:0"
                                           title="Original Target"
                                         />
@@ -3602,7 +3691,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                           </span>
                                         )}
                                       </div>
-                                      <div className="w-full text-center text-xs font-bold text-emerald-800 leading-none h-4" title="Achievement (Read-only)">
+                                      <div className={`w-full text-center text-xs font-bold leading-none h-4 ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
                                         {dayActual > 0 ? `A:${formatIndianNumber(dayActual)}` : "A:0"}
                                       </div>
                                     </>
@@ -3613,20 +3702,20 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                           })}
 
                           {/* 8th Column: Weekly Total */}
-                          <div className="border border-teal-200 rounded-xl p-1 text-center flex flex-col justify-between h-[60px] bg-teal-50/60 shadow-sm transition-all hover:border-teal-300">
-                            <span className="text-[9px] font-bold text-teal-850 block uppercase tracking-wider font-mono shrink-0">W{r + 1} Total</span>
+                          <div className={`border rounded-xl p-1 text-center flex flex-col justify-between h-[60px] shadow-sm transition-all ${weekVal > 0 ? 'bg-teal-50/60 border-teal-200 hover:border-teal-300' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'}`}>
+                            <span className={`text-[9px] font-bold block uppercase tracking-wider font-mono shrink-0 ${weekVal > 0 ? 'text-teal-850' : 'text-slate-400'}`}>W{r + 1} Total</span>
                             <div className="flex flex-col gap-0.5 mt-0.5">
                               {isTimeKpi ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5">
-                                  <span className="text-[10px] font-bold text-teal-800">T: {weekVal}</span>
-                                  <span className="text-[10px] font-bold text-emerald-800">A: {weekActVal}</span>
+                                  <span className={`text-[10px] font-bold ${weekVal > 0 ? 'text-teal-800' : 'text-slate-300'}`}>T: {weekVal}</span>
+                                  <span className={`text-[10px] font-bold ${weekActVal > 0 ? 'text-emerald-800' : 'text-slate-300'}`}>A: {weekActVal}</span>
                                 </div>
                               ) : (
                                 <>
-                                  <div className="w-full text-center text-xs font-extrabold text-teal-900 leading-none h-4" title="Weekly Target (Derived)">
+                                  <div className={`w-full text-center text-xs font-extrabold leading-none h-4 ${weekVal > 0 ? 'text-teal-900' : 'text-slate-300'}`} title="Weekly Target (Derived)">
                                     T: {formatIndianNumber(weekVal) || "0"}
                                   </div>
-                                  <div className="w-full text-center text-xs font-bold text-emerald-800 leading-none h-4" title="Weekly Achievement (Read-only)">
+                                  <div className={`w-full text-center text-xs font-bold leading-none h-4 ${weekActVal > 0 ? 'text-emerald-800' : 'text-slate-300'}`} title="Weekly Achievement (Read-only)">
                                     {weekActVal > 0 ? `A:${formatIndianNumber(weekActVal)}` : "A:0"}
                                   </div>
                                 </>
@@ -3705,7 +3794,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
   const handleDownloadTemplate = () => {
     const headers = [
-      ["KPI no", "KPI", "Team", "DO", "DRIVE", "MONITOR", "UOM", "UP/ Down", "CY Target", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]
+      ["KPI no", "KPI", "Team", "DO", "DRIVE", "MONITOR", "UOM", "UP/ Down", "CY Target", ...MONTHS_LIST]
     ];
     const sampleRow = [
       "1", 
@@ -3729,7 +3818,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
     const numVal = Math.round(parseFloat(val) || 0);
     const nextM = { ...(kpi.monthlyAlloc || {}) };
     
-    ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].forEach(m => {
+    MONTHS_LIST.forEach(m => {
       if (nextM[m] === undefined) {
         nextM[m] = Math.round(((kpi.target || 0) / 12) * 100) / 100;
       }
@@ -3744,7 +3833,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
       kpi.dailyAlloc || {}, 
       kpi.weeklyAlloc || {}, 
       kpi.holidaysEnabled !== false, 
-      kpi.customHolidays || {}
+      kpi.customHolidays || {},
+      kpi.excludeSundays ?? true
     );
 
     const updatedKpi = {
@@ -3810,25 +3900,21 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
   const handleLocalGridTargetChange = (kpiId, monthName, val) => {
     const numVal = parseFloat(val) || 0;
-    const year = ["Jan", "Feb", "Mar"].includes(monthName) ? 2027 : 2026;
-    const monthKey = `${monthName} ${year}`;
+    const monthKey = monthName;
     
     setGridKpis((prev) => prev.map((k) => {
       if (k.id === kpiId) {
-        const nextM = { ...(k.monthlyAlloc || {}) };
-        nextM[monthKey] = numVal;
-        
+        const nextM = { ...(k.monthlyAlloc || {}), [monthKey]: numVal };
+        const rawMonth = monthName.split(' ')[0];
+        const year = monthName.split(' ')[1] || (["Jan", "Feb", "Mar"].includes(rawMonth) ? "2027" : "2026");
         const totalTarget = Object.values(nextM).reduce((a, b) => a + b, 0);
 
-        let targetsList = k.targetsList || [];
-        const existingIdx = targetsList.findIndex(t => t.id === monthKey);
-        if (existingIdx !== -1) {
-          targetsList = targetsList.map((t, idx) => idx === existingIdx ? { ...t, targetValue: numVal } : t);
-        } else {
+        let targetsList = [...(k.targetsList || [])].filter(t => t.id !== monthKey);
+        if (numVal > 0) {
           let lastDay = "30";
-          if (["Jan", "Mar", "May", "Jul", "Aug", "Oct", "Dec"].includes(monthName)) lastDay = "31";
-          else if (monthName === "Feb") lastDay = "28";
-          const monthNum = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(monthName) + 1;
+          if (["Jan", "Mar", "May", "Jul", "Aug", "Oct", "Dec"].includes(rawMonth)) lastDay = "31";
+          else if (rawMonth === "Feb") lastDay = "28";
+          const monthNum = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(rawMonth) + 1;
           const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
           const targetDate = `${year}-${padMonth}-${lastDay}`;
           targetsList.push({ id: monthKey, label: monthKey, targetValue: numVal, targetDate });
@@ -3848,8 +3934,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
   const handleLocalGridActualChange = (kpiId, monthName, val) => {
     const numVal = parseFloat(val) || 0;
-    const year = ["Jan", "Feb", "Mar"].includes(monthName) ? 2027 : 2026;
-    const monthKey = `${monthName} ${year}`;
+    const monthKey = monthName;
 
     setGridKpis((prev) => prev.map((k) => {
       if (k.id === kpiId) {
@@ -4180,10 +4265,9 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                     className="appearance-none bg-white border border-orange-100 rounded-full pl-4 pr-9 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-200"
                   >
                     <option value="All Year">All Year</option>
-                    {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
-                      const yr = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
-                      return <option key={`${m} ${yr}`} value={`${m} ${yr}`}>{`${m} ${yr}`}</option>
-                    })}
+                    {MONTHS_LIST.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
                   </select>
                   <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -4201,8 +4285,9 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                   let dispLabel = "Target";
 
                   if (dashboardMonth !== "All Year") {
-                    dispTarget = kpi.monthlyAlloc?.[dashboardMonth] || 0;
-                    dispActual = kpi.monthlyActual?.[dashboardMonth] || 0;
+                    const mKey = dashboardMonth;
+                    dispTarget = kpi.monthlyAlloc?.[mKey] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
+                    dispActual = kpi.monthlyActual?.[mKey] || 0;
                     
                     if (kpi.direction === "higher") {
                       const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
@@ -4223,8 +4308,13 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                         <p className="text-sm font-medium text-slate-600">{kpi.name}</p>
                         <StatusBadge status={dispStatus} />
                       </div>
-                      <p className="text-2xl font-semibold text-slate-900">{dispActual}<span className="text-sm text-slate-400 ml-1">{kpi.unit}</span></p>
-                      <p className="text-xs text-slate-400 mt-1">{dispLabel} {dispTarget}{kpi.unit} · {kpi.team}</p>
+                      <p className="text-2xl font-semibold text-slate-900 truncate" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
+                        {dispActual}
+                        <span className="text-slate-400 font-medium mx-1">/</span>
+                        {dispTarget}
+                        <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">{dispLabel} · {kpi.team}</p>
                     </button>
                   );
                 })}
@@ -4265,9 +4355,24 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                 })}
                   </div>
                 </div>
-                <button onClick={() => setAddKpiOpen(true)} className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium px-4 py-2 rounded-full transition-colors">
-                  <Plus className="h-4 w-4" /> Add KPI
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <select 
+                      value={dashboardMonth} 
+                      onChange={(e) => setDashboardMonth(e.target.value)} 
+                      className="appearance-none bg-white border border-orange-100 rounded-full pl-4 pr-9 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    >
+                      <option value="All Year">All Year</option>
+                      {MONTHS_LIST.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                  <button onClick={() => setAddKpiOpen(true)} className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium px-4 py-2 rounded-full transition-colors">
+                    <Plus className="h-4 w-4" /> Add KPI
+                  </button>
+                </div>
               </div>
 
               {kpiView === "list" && (
@@ -4293,7 +4398,29 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-orange-50">
-                            {teamKpis.map((kpi) => (
+                            {teamKpis.map((kpi) => {
+                              let dispTarget = kpi.target;
+                              let dispActual = getLatest(kpi);
+                              let dispStatus = getStatus(kpi);
+                              
+                              if (dashboardMonth !== "All Year") {
+                                const mKey = dashboardMonth;
+                                dispTarget = kpi.monthlyAlloc?.[mKey] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
+                                dispActual = kpi.monthlyActual?.[mKey] || 0;
+                                
+                                if (kpi.direction === "higher") {
+                                  const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
+                                  if (ratio >= 1) dispStatus = "on-track";
+                                  else if (ratio >= 0.8) dispStatus = "at-risk";
+                                  else dispStatus = "off-track";
+                                } else {
+                                  if (dispActual <= dispTarget) dispStatus = "on-track";
+                                  else if (dispActual <= dispTarget * 1.2) dispStatus = "at-risk";
+                                  else dispStatus = "off-track";
+                                }
+                              }
+
+                              return (
                               <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
                                 <td className="px-5 py-3.5 font-bold text-slate-800 text-xs max-w-xs truncate">
                                   {kpi.name}
@@ -4308,15 +4435,15 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-600 font-mono font-bold uppercase tracking-wider">{kpi.unit.trim()}</span>
                                 </td>
                                 <td className="px-5 py-3.5">
-                                  <span className="capitalize font-bold text-slate-800 block text-[11px]">{kpi.targetType || "monthly"}</span>
-                                  <span className="text-[10px] text-slate-400 block mt-0.5">{kpi.target}{kpi.unit}</span>
+                                  <span className="capitalize font-bold text-slate-800 block text-[11px]">{dashboardMonth === 'All Year' ? kpi.targetType || "monthly" : dashboardMonth.split(' ')[0]}</span>
+                                  <span className="text-[10px] text-slate-400 block mt-0.5">{dispTarget}{kpi.unit}</span>
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-600 text-[11px] space-y-1">
                                   <div><span className="text-[9px] font-bold uppercase text-teal-700 bg-teal-50 px-1 rounded mr-1">Do</span><span className="font-bold text-slate-750">{kpi.owner}</span></div>
                                   {kpi.driveBy && <div><span className="text-[9px] font-bold uppercase text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive</span><span className="font-medium text-slate-600">{kpi.driveBy}</span></div>}
                                   {kpi.monitorBy && <div><span className="text-[9px] font-bold uppercase text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor</span><span className="font-medium text-slate-600">{kpi.monitorBy}</span></div>}
                                 </td>
-                                <td className="px-5 py-3.5"><StatusBadge status={getStatus(kpi)} /></td>
+                                <td className="px-5 py-3.5"><StatusBadge status={dispStatus} /></td>
                                 <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex justify-end gap-1.5">
                                     <button 
@@ -4350,7 +4477,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                            );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -4370,19 +4498,51 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                       </div>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {teamKpis.map((kpi) => (
+                        {teamKpis.map((kpi) => {
+                          let dispTarget = kpi.target;
+                          let dispActual = getLatest(kpi);
+                          let dispStatus = getStatus(kpi);
+                          
+                          if (dashboardMonth !== "All Year") {
+                            const mKey = dashboardMonth;
+                            dispTarget = kpi.monthlyAlloc?.[mKey] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
+                            dispActual = kpi.monthlyActual?.[mKey] || 0;
+                            
+                            if (kpi.direction === "higher") {
+                              const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
+                              if (ratio >= 1) dispStatus = "on-track";
+                              else if (ratio >= 0.8) dispStatus = "at-risk";
+                              else dispStatus = "off-track";
+                            } else {
+                              if (dispActual <= dispTarget) dispStatus = "on-track";
+                              else if (dispActual <= dispTarget * 1.2) dispStatus = "at-risk";
+                              else dispStatus = "off-track";
+                            }
+                          }
+
+                          return (
                           <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group">
                             <div className="flex items-start justify-between mb-3">
                               <p className="text-sm font-semibold text-slate-700 pr-6">{kpi.name}</p>
-                              <StatusBadge status={getStatus(kpi)} />
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                <StatusBadge status={dispStatus} />
+                                <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-700">
+                                  {kpi.kpiType || 'Activity'}
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-2xl font-semibold text-slate-900">{getLatest(kpi)}<span className="text-sm text-slate-400 ml-1">{kpi.unit}</span></p>
+                            <p className="text-2xl font-semibold text-slate-900 truncate" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
+                              {dispActual}
+                              <span className="text-slate-400 font-medium mx-1">/</span>
+                              {dispTarget}
+                              <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
+                            </p>
                             
                             <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-50">
-                              <div className="space-y-0.5 text-[10px]">
-                                <div><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
-                                {kpi.driveBy && <div><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
-                                {kpi.monitorBy && <div><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+                                <div className="whitespace-nowrap"><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
+                                {kpi.driveBy && <div className="whitespace-nowrap"><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
+                                {kpi.monitorBy && <div className="whitespace-nowrap"><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
                               </div>
                               <div className="flex gap-2">
                                 <button
@@ -4400,7 +4560,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                               </div>
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -4422,7 +4583,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                             <tr className="border-b border-orange-50 text-left bg-slate-50/50">
                               <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-48 sticky left-0 bg-slate-50/50 z-10">KPI Title</th>
                               <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-24">Do</th>
-                              {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => (
+                              {MONTHS_LIST.map(m => (
                                 <th key={m} className="px-2 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-center w-16">{m}</th>
                               ))}
                               <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-center w-20">Total</th>
@@ -4436,7 +4597,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                 <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
                                   <td className="px-3 py-2.5 font-bold text-slate-800 text-xs max-w-xs truncate sticky left-0 bg-white hover:bg-orange-50/20 z-10">{kpi.name}</td>
                                   <td className="px-3 py-2.5 text-slate-600 font-medium text-[11px] truncate">{kpi.owner}</td>
-                                  {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
+                                  {MONTHS_LIST.map(m => {
                                     const val = kpi.monthlyAlloc?.[m] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
                                     return (
                                       <td key={m} className="px-1.5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -4553,8 +4714,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   ))}
                                 </div>
                               </div>
-                          );
-                      })}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -5242,7 +5403,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>UOM</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '80px', minWidth: '80px', maxWidth: '80px' }}>UP/Down</th>
                         <th className="border-r border-slate-200 px-3 py-2" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>CY Target</th>
-                        {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => (
+                        {MONTHS_LIST.map(m => (
                           <th key={m} className="border-r border-slate-200 px-2 py-2 text-center" style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}>{m}</th>
                         ))}
                       </tr>
@@ -5299,9 +5460,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                             </td>
 
                             {/* J to U: Monthly target + actual cells */}
-                            {["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"].map(m => {
-                              const year = ["Jan", "Feb", "Mar"].includes(m) ? 2027 : 2026;
-                              const monthKey = `${m} ${year}`;
+                            {MONTHS_LIST.map(m => {
+                              const monthKey = m;
                               const targetVal = kpi.monthlyAlloc?.[monthKey] || 0;
                               const actualVal = kpi.monthlyActual?.[monthKey] ?? "";
                               
@@ -5442,7 +5602,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
           onClose={() => setColumnMapModal(null)}
           onConfirm={async (colMap, rows, headerIdx) => {
             try {
-              const MONTHS = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+              const MONTHS = MONTHS_LIST;
               const get = (row, key) => {
                 const idx = colMap[key] !== "" ? parseInt(colMap[key]) : -1;
                 return idx >= 0 && row[idx] !== undefined ? String(row[idx]).trim() : "";
@@ -5466,14 +5626,15 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                   if (idx >= 0 && row[idx] !== undefined && row[idx] !== null && row[idx] !== "") {
                     const val = parseFloat(row[idx]);
                     if (!isNaN(val)) {
-                      const year = ["Jan","Feb","Mar"].includes(m) ? 2027 : 2026;
-                      const monthKey = `${m} ${year}`;
+                      const monthKey = m;
                       monthlyAlloc[monthKey] = val;
-                      const monthNum = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(m) + 1;
+                      const rawMonth = m.split(' ')[0];
+                      const year = m.split(' ')[1] || (["Jan","Feb","Mar"].includes(rawMonth) ? "2027" : "2026");
+                      const monthNum = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(rawMonth) + 1;
                       const padMonth = monthNum < 10 ? "0" + monthNum : monthNum;
                       let lastDay = "30";
-                      if (["Jan","Mar","May","Jul","Aug","Oct","Dec"].includes(m)) lastDay = "31";
-                      else if (m === "Feb") lastDay = "28";
+                      if (["Jan","Mar","May","Jul","Aug","Oct","Dec"].includes(rawMonth)) lastDay = "31";
+                      else if (rawMonth === "Feb") lastDay = "28";
                       targetsList.push({ id: monthKey, label: monthKey, targetValue: val, targetDate: `${year}-${padMonth}-${lastDay}` });
                     }
                   }
@@ -5732,7 +5893,7 @@ function EmployeeApp({ kpis, onLog, teams }) {
 
 /* ==================== KPI COMPUTATION ENGINE ==================== */
 const computeReportKpis = (rawKpis) => {
-  const monthsList = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+  const monthsList = MONTHS_LIST;
   
   // Pre-process activity KPIs: Auto-distribute targets if monthlyAlloc is missing but target > 0
   const processedKpis = rawKpis.map(kpi => {
@@ -6276,7 +6437,7 @@ export default function App() {
       return handleAddKpi(updatedKpi);
     }
     setKpis((prev) => prev.map((k) => k.id === updatedKpi.id ? updatedKpi : k));
-    await supabase.from('kpis').update({
+    const { error } = await supabase.from('kpis').update({
       name: updatedKpi.name,
       unit: updatedKpi.unit,
       target: updatedKpi.target,
@@ -6302,6 +6463,10 @@ export default function App() {
       kpi_type: updatedKpi.kpiType || 'activity',
       report_config: updatedKpi.reportConfig || {}
     }).eq('id', updatedKpi.id);
+    if (error) {
+      console.error("Supabase update error in handleEditKpi:", error);
+      alert("Failed to save KPI to database. See console for details.");
+    }
   }
 
   async function handleDeleteKpi(id) {
