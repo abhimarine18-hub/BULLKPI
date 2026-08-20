@@ -1786,7 +1786,7 @@ function LogValueModal({ kpi, onClose, onSubmit }) {
 
 /* ---------------- KPI detail drawer (shared) ---------------- */
 
-function KpiDetail({ kpi, onClose, onLog }) {
+function KpiDetail({ kpi, allKpis, onClose, onLog }) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const d = new Date();
     const m = d.toLocaleString('en-US', { month: 'short' });
@@ -1795,6 +1795,7 @@ function KpiDetail({ kpi, onClose, onLog }) {
   });
 
   const status = getStatus(kpi);
+  const parentKpi = allKpis ? allKpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id)) : null;
 
   const chartData = useMemo(() => {
     const days = getDaysInMonth(selectedMonth);
@@ -1821,6 +1822,21 @@ function KpiDetail({ kpi, onClose, onLog }) {
             {kpi.team} · {kpi.owner}
           </span>
         </div>
+        
+        {parentKpi && (
+          <div className="mb-4 bg-amber-50 rounded-xl p-3.5 border border-amber-100 flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <GitBranch className="w-3 h-3" /> Triggered by Parent KPI
+              </p>
+              <p className="text-sm font-semibold text-amber-900 pr-2">{parentKpi.name}</p>
+            </div>
+            <div className="text-right shrink-0 bg-white/60 px-3 py-1.5 rounded-lg border border-amber-50/50">
+              <p className="text-lg font-bold text-amber-600">{parentKpi.target}<span className="text-[10px] ml-0.5 text-amber-500 font-semibold">{parentKpi.unit}</span></p>
+              <p className="text-[9px] text-amber-500/80 uppercase font-bold tracking-wide">Parent Target</p>
+            </div>
+          </div>
+        )}
         <div className="flex items-end gap-4 mb-2">
           <div>
             <p className="text-2xl font-semibold text-slate-900">{getLatest(kpi)}{kpi.unit}</p>
@@ -6098,7 +6114,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
       </main>
 
       {detailKpi && (
-        <KpiDetail kpi={detailKpi} onClose={() => setDetailId(null)} onLog={() => { setLoggingId(detailKpi.id); }} />
+        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => { setLoggingId(detailKpi.id); }} />
       )}
       {loggingKpi && (
         <LogValueModal kpi={loggingKpi} onClose={() => setLoggingId(null)} onSubmit={onLog} />
@@ -6438,7 +6454,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
       </div>
 
       {detailKpi && (
-        <KpiDetail kpi={detailKpi} onClose={() => setDetailId(null)} onLog={() => setLoggingId(detailKpi.id)} />
+        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => setLoggingId(detailKpi.id)} />
       )}
       {loggingKpi && (
         <LogValueModal kpi={loggingKpi} onClose={() => setLoggingId(null)} onSubmit={onLog} />
