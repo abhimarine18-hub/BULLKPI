@@ -3913,21 +3913,19 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                           {/* Right Side: KPI Context and Inputs */}
                           <div className="flex-1 flex flex-col gap-1.5 px-4 border-l border-slate-200 min-w-0 pr-12">
                             {/* Parent KPI Line */}
-                            {parentKpi && (
+                            {parentKpi && pt > 0 && (
                               <div className="text-[10px] text-slate-600 leading-tight flex flex-wrap items-center gap-x-2">
                                 <span className="font-bold text-amber-700">Parent KPI:</span> 
                                 <span className="truncate max-w-[200px]" title={parentKpi.name}>{parentKpi.name}</span>
                                 <span className="font-bold text-slate-400">Do:</span> 
                                 <span>{parentKpi.owner || parentKpi.doBy}</span>
-                                <span className="font-bold text-slate-400">Target Date:</span> 
+                                <span className="font-bold text-slate-400">Delivery Date:</span> 
                                 <span className="underline">{cell.dayNum} {selectedMonth}</span>
-                                {pt > 0 && (
-                                  <span className="ml-1 bg-amber-50 px-1 rounded border border-amber-100 font-bold text-amber-800 text-[9px] flex items-center gap-1.5">
-                                    <span>PT: {formatIndianNumber(pt)}</span>
-                                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                    <span>PS: {pa >= pt ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}</span>
-                                  </span>
-                                )}
+                                <span className="ml-1 bg-amber-50 px-1 rounded border border-amber-100 font-bold text-amber-800 text-[9px] flex items-center gap-1.5">
+                                  <span>PT: {formatIndianNumber(pt)}</span>
+                                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                  <span>PS: {pa >= pt ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}</span>
+                                </span>
                               </div>
                             )}
 
