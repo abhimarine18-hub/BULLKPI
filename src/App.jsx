@@ -4678,9 +4678,9 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                               <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
                                 <td className="px-5 py-3.5 font-bold text-slate-800 text-xs max-w-xs truncate">
                                   {kpi.name}
-                                  {kpi.kpiType === 'report' && (
-                                    <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-600 uppercase tracking-wider border border-purple-100">Report</span>
-                                  )}
+                                  <span className={`ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                    {kpi.kpiType === 'report' ? 'Report' : 'Activity'}
+                                  </span>
                                 </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-[11px] leading-relaxed max-w-xs truncate" title={kpi.description || `Key Performance Indicator: ${kpi.name}`}>
                                   {kpi.description || <span className="italic text-slate-350 font-normal">No description</span>}
@@ -4780,7 +4780,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                               <p className="text-sm font-semibold text-slate-700 pr-6">{kpi.name}</p>
                               <div className="flex flex-col items-end gap-1 shrink-0">
                                 <StatusBadge status={dispStatus} />
-                                <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-700">
+                                <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
                                   {kpi.kpiType || 'Activity'}
                                 </span>
                               </div>
@@ -6075,7 +6075,9 @@ function EmployeeApp({ kpis, onLog, teams }) {
                     <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className={`shrink-0 w-36 rounded-2xl p-4 text-left ${tint}`}>
                       <p className="text-[10px] font-bold text-slate-600 mb-1 leading-tight flex items-start justify-between gap-1">
                         <span className="truncate">{kpi.name}</span>
-                        {kpi.kpiType === 'report' && <span className="shrink-0 inline-block px-1 py-[1px] bg-purple-200 text-purple-700 rounded-[3px] text-[8px] uppercase tracking-wider">Rep</span>}
+                        <span className={`shrink-0 inline-block px-1 py-[1px] rounded-[3px] text-[8px] uppercase tracking-wider ${kpi.kpiType === 'report' ? 'bg-purple-200 text-purple-700' : 'bg-blue-200 text-blue-700'}`}>
+                          {kpi.kpiType === 'report' ? 'Rep' : 'Act'}
+                        </span>
                       </p>
                       <p className="text-lg font-semibold text-slate-900 mb-2">{getLatest(kpi)}{kpi.unit}</p>
                       <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1">
