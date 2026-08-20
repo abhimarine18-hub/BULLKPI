@@ -3738,49 +3738,69 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-0.5 mt-0.5">
-                                  {parentKpi && (
-                                    <div className="text-[8.5px] font-bold text-center block leading-tight bg-amber-50 text-amber-700 rounded py-0.5 mb-0.5 w-full">
-                                      PT: {formatIndianNumber(parentTarget)}
-                                      {parentTarget > 0 && (
-                                        <span className="ml-1">
+                                <div className="flex flex-col gap-0.5 mt-0.5 w-full">
+                                  {/* TOP ROW: PT (Left) and T (Right) */}
+                                  <div className="flex items-center justify-between w-full min-h-[16px]">
+                                    {/* Left: PT */}
+                                    <div className="flex-1 text-left flex items-center">
+                                      {parentKpi && (
+                                        <div className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 py-0.5 rounded leading-none border border-amber-100 whitespace-nowrap">
+                                          PT: {formatIndianNumber(parentTarget)}
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Right: T */}
+                                    <div className="flex items-center justify-end shrink-0 pl-1">
+                                      {isTimeKpi ? (
+                                        <span className={`text-[10px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>
+                                          {dayTarget > 0 ? "T: Set" : "T: 0"}
+                                        </span>
+                                      ) : (
+                                        <div className="flex items-center justify-end gap-0.5 leading-none">
+                                          <span className="text-[10px] font-bold text-slate-400">T:</span>
+                                          <input
+                                            type="text"
+                                            value={formatIndianNumber(dayTarget)}
+                                            onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
+                                            className={`w-6 text-center text-[10.5px] focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
+                                            placeholder="0"
+                                            title="Original Target"
+                                          />
+                                          {dayRevised !== dayTarget && dayActual !== dayTarget && (
+                                            <span className="text-[8.5px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-0.5 rounded ml-0.5" title="Revised Target">
+                                              R:{formatIndianNumber(dayRevised)}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* BOTTOM ROW: PS (Left) and A (Right) */}
+                                  <div className="flex items-center justify-between w-full min-h-[14px]">
+                                    {/* Left: PS */}
+                                    <div className="flex-1 text-left flex items-center">
+                                      {parentKpi && parentTarget > 0 && (
+                                        <div className="text-[9px] font-bold leading-none whitespace-nowrap">
                                           PS: {parentActual >= parentTarget ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Right: A */}
+                                    <div className="flex items-center justify-end shrink-0 pl-1">
+                                      {isTimeKpi ? (
+                                        <span className={`text-[10px] font-bold ${dayActual > 0 ? "text-emerald-700" : "text-slate-300"}`}>
+                                          {dayActual > 0 ? "A: Done" : "A: 0"}
+                                        </span>
+                                      ) : (
+                                        <span className={`text-[10px] font-bold ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
+                                          {dayActual > 0 ? `A: ${formatIndianNumber(dayActual)}` : "A: 0"}
                                         </span>
                                       )}
                                     </div>
-                                  )}
-                                  {isTimeKpi ? (
-                                    <div className="flex flex-col items-center justify-center gap-0.5">
-                                      <span className={`text-[10px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>
-                                        {dayTarget > 0 ? "T: Target Set" : "T: 0"}
-                                      </span>
-                                      <span className={`text-[10px] font-bold ${dayActual > 0 ? "text-emerald-700" : "text-slate-300"}`}>
-                                        {dayActual > 0 ? "A: Completed" : "A: 0"}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <div className="flex items-center justify-center gap-1 leading-none">
-                                        <span className="text-[10.5px] font-bold text-slate-400">T:</span>
-                                        <input
-                                          type="text"
-                                          value={formatIndianNumber(dayTarget)}
-                                          onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
-                                          className={`w-6 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
-                                          placeholder="0"
-                                          title="Original Target"
-                                        />
-                                        {dayRevised !== dayTarget && dayActual !== dayTarget && (
-                                          <span className="text-[9px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-0.5 rounded" title="Revised Target">
-                                            R:{formatIndianNumber(dayRevised)}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className={`w-full text-center text-[10.5px] font-bold leading-none h-3 ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
-                                        {dayActual > 0 ? `A: ${formatIndianNumber(dayActual)}` : "A: 0"}
-                                      </div>
-                                    </>
-                                  )}
+                                  </div>
                                 </div>
                               </div>
                             );
