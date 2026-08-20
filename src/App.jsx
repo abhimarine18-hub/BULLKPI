@@ -3891,7 +3891,13 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
               ) : (
                 <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar space-y-2">
                   {(() => {
-                    const daysInMonth = getCalendarCells(selectedMonth).filter(c => !c.isEmpty);
+                    const daysInMonth = getCalendarCells(selectedMonth).filter(c => !c.isEmpty).filter(cell => {
+                      if (parentKpi) {
+                        const pt = parentKpi.dailyAlloc?.[cell.dateStr] || 0;
+                        return pt > 0;
+                      }
+                      return true;
+                    });
                     return daysInMonth.map((cell) => {
                       const dayTarget = dailyAlloc[cell.dateStr] || 0;
                       const dayActual = dailyActual[cell.dateStr] || 0;
