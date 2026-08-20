@@ -4716,6 +4716,31 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                         <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
                       </p>
                       <p className="text-xs text-slate-400 mt-1">{dispLabel} · {kpi.team}</p>
+                        {(() => {
+                          const childKpi = kpis.find(k => String(k.id) === String(kpi.reportConfig?.followUpKpiId));
+                          const parentKpi = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
+                          return (
+                            <>
+                              {parentKpi && (
+                                <div className="whitespace-nowrap flex items-center gap-1 w-full mt-2">
+                                  <span className="font-bold text-amber-700 bg-amber-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-amber-100">
+                                    <GitBranch className="w-2.5 h-2.5"/> Parent KPI
+                                  </span>
+                                  <span className="truncate text-amber-900 font-semibold max-w-[150px] text-[10px]">{parentKpi.name}</span>
+                                </div>
+                              )}
+                              {childKpi && (
+                                <div className="whitespace-nowrap flex items-center gap-1 w-full mt-2">
+                                  <span className="font-bold text-indigo-700 bg-indigo-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-indigo-100">
+                                    <GitBranch className="w-2.5 h-2.5"/> Child KPI
+                                  </span>
+                                  <span className="truncate text-indigo-900 font-semibold max-w-[150px] text-[10px]">{childKpi.name}</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+
                     </button>
                   );
                 })}
@@ -4832,8 +4857,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   </span>
                                 
                                     {(() => {
-                                      const childKpi = kpis.find(k => k.id === kpi.reportConfig?.followUpKpiId);
-                                      const parentKpi = kpis.find(k => k.reportConfig?.followUpKpiId === kpi.id);
+                                      const childKpi = kpis.find(k => String(k.id) === String(kpi.reportConfig?.followUpKpiId));
+                                      const parentKpi = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
                                       return (
                                         <>
                                           {parentKpi && (
@@ -4976,8 +5001,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                 {kpi.driveBy && <div className="whitespace-nowrap"><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
                                 {kpi.monitorBy && <div className="whitespace-nowrap"><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
                                 {(() => {
-                                  const childKpi = kpis.find(k => k.id === kpi.reportConfig?.followUpKpiId);
-                                  const parentKpi = kpis.find(k => k.reportConfig?.followUpKpiId === kpi.id);
+                                  const childKpi = kpis.find(k => String(k.id) === String(kpi.reportConfig?.followUpKpiId));
+                                  const parentKpi = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
                                   return (
                                     <>
                                       {parentKpi && (
