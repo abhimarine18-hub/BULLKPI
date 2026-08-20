@@ -3827,7 +3827,8 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
         // Find completed projects for this KPI on this date
         const completedForKpiDate = parsedProjects.filter(p => p.meta.status === 'completed' && p.kpiId === kpi.id && p.meta.targetDate === dateStr);
         
-        for (let i = 0; i < targetVal; i++) {
+        const loopCount = Math.min(Number(targetVal), 10); // Prevent browser freeze for huge targets
+        for (let i = 0; i < loopCount; i++) {
           actionSlots.push({
             id: `slot_${kpi.id}_${dateStr}_${i}`,
             kpiId: kpi.id,
