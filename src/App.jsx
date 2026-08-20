@@ -3520,7 +3520,23 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
             ) : (
               <div className="flex flex-col min-h-0 space-y-4">
             {/* Target Assignment Info Header */}
-            <div className="bg-orange-50/20 p-3 rounded-2xl border border-orange-100/50 shrink-0 flex items-center justify-between">
+            <div className="flex flex-col gap-2 shrink-0">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-1.5">
+                {parentKpi && (
+                  <div className="text-[11px] text-slate-700 leading-tight">
+                    <span className="font-bold text-amber-700">Parent KPI:</span> {parentKpi.name} 
+                    <span className="font-bold ml-3 text-slate-500">Do:</span> {parentKpi.owner || parentKpi.doBy} 
+                    <span className="font-bold ml-3 text-slate-500">Target:</span> {parentKpi.target} {parentKpi.unit}
+                  </div>
+                )}
+                <div className="text-[11px] text-slate-700 leading-tight">
+                  <span className="font-bold text-teal-700">Children KPI:</span> {kpi.name} 
+                  <span className="font-bold ml-3 text-slate-500">Do:</span> {kpi.owner || kpi.doBy} 
+                  <span className="font-bold ml-3 text-slate-500">Target:</span> {kpi.target} {kpi.unit}
+                </div>
+              </div>
+
+            <div className="bg-orange-50/20 p-3 rounded-2xl border border-orange-100/50 flex items-center justify-between">
               <div>
                 <span className="text-sm font-bold text-slate-800 block">Target & Achievement Planning</span>
                 <span className="text-xs text-slate-500 block mt-0.5">
@@ -3553,6 +3569,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                   Save Targets
                 </button>
               </div>
+            </div>
             </div>
 
             {/* Scrollable Month Line Editor (Grid: fits all 12 on one screen width) */}
@@ -3896,11 +3913,11 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                       const check = checkIsHoliday(cell.dateStr);
 
                       return (
-                        <div key={cell.dateStr} className={`flex items-center justify-between p-2.5 rounded-lg border ${check ? 'bg-rose-50/30 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
+                        <div key={cell.dateStr} className={`relative flex items-center justify-between p-2.5 rounded-lg border ${check ? 'bg-rose-50/30 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
+                          {check && <span className="absolute top-1 right-1 text-[8px] text-rose-400 font-bold bg-rose-50 px-1 rounded border border-rose-100/50">Hol</span>}
                           <div className="flex items-center gap-3 w-32 shrink-0">
                             <div className={`text-sm font-bold ${check ? 'text-rose-500' : 'text-slate-700'}`}>{cell.dayNum}</div>
                             <div className={`text-xs font-semibold ${check ? 'text-rose-400' : 'text-slate-500'}`}>{cell.dayName}</div>
-                            {check && <span className="text-[9px] text-rose-400 font-bold bg-rose-50 px-1 rounded ml-1">Hol</span>}
                           </div>
                           
                           <div className="flex-1 flex flex-col gap-1 px-4 border-l border-slate-200 min-w-[120px]">
