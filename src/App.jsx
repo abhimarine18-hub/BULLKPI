@@ -3513,7 +3513,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                         isSelected ? "bg-teal-50/50 border-teal-500 shadow-sm ring-2 ring-teal-100" : "bg-white border-orange-100 hover:border-orange-200"
                       }`}
                     >
-                      <span className="text-xs font-bold text-slate-600 block mb-1 uppercase tracking-wider">{m}</span>
+                      <span className="text-[10px] xl:text-xs font-bold text-slate-600 block mb-1 uppercase tracking-wider whitespace-nowrap">{m}</span>
                       {isTimeKpi ? (
                         <div className="w-full text-center border border-orange-200 rounded-lg py-1 text-xs bg-slate-50 font-bold text-slate-700 mb-1" title="Target count (derived)">
                           T: {val} {val === 1 ? "day" : "days"}
