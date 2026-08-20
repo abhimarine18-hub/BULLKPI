@@ -4909,7 +4909,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                       title="Duplicate KPI"
                                     >
                                       <Copy className="h-3.5 w-3.5" />
-                                    </button>\n                                      <button 
+                                    </button>
+                                      <button 
                                       onClick={() => setEditingKpi(kpi)} 
                                       className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
                                       title="Edit KPI"
@@ -4984,75 +4985,69 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           }
 
                           return (
-                          <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group">
-                            <div className="flex items-start justify-between mb-3">
-                              <p className="text-[13px] font-semibold text-slate-700 pr-3 leading-snug">{kpi.name}</p>
-                              <div className="flex flex-col xl:flex-row items-end xl:items-center gap-1.5 shrink-0">
-                                <StatusBadge status={dispStatus} />
-                                <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
-                                  {kpi.kpiType || 'Activity'}
-                                </span>
-                              </div>
-                            </div>
-                            <p className="text-2xl font-semibold text-slate-900 truncate" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
-                              {dispActual}
-                              <span className="text-slate-400 font-medium mx-1">/</span>
-                              {dispTarget}
-                              <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
-                            </p>
-                            
-                            <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-orange-50">
-                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9.5px]">
-                                <div className="whitespace-nowrap"><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
-                                {kpi.driveBy && <div className="whitespace-nowrap"><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
-                                {kpi.monitorBy && <div className="whitespace-nowrap"><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
-                                {(() => {
-                                  const childKpi = kpis.find(k => String(k.id) === String(kpi.reportConfig?.followUpKpiId));
-                                  const parentKpi = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
-                                  return (
-                                    <>
-                                      {parentKpi && (
-                                        <div className="whitespace-nowrap flex items-center gap-1 w-full mt-1">
-                                          <span className="font-bold text-amber-700 bg-amber-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-amber-100">
-                                            <GitBranch className="w-2.5 h-2.5"/> Parent KPI
-                                          </span>
-                                          <span className="truncate text-amber-900 font-semibold max-w-[150px]">{parentKpi.name}</span>
-                                        </div>
-                                      )}
-                                      {childKpi && (
-                                        <div className="whitespace-nowrap flex items-center gap-1 w-full mt-1">
-                                          <span className="font-bold text-indigo-700 bg-indigo-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-indigo-100">
-                                            <GitBranch className="w-2.5 h-2.5"/> Child KPI
-                                          </span>
-                                          <span className="truncate text-indigo-900 font-semibold max-w-[150px]">{childKpi.name}</span>
-                                        </div>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, name: kpi.name + ' (Copy)' }); }}
-                                  className="text-indigo-600 hover:text-indigo-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-indigo-50 transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
-                                  title="Duplicate KPI"
-                                >
-                                  <Copy className="w-3 h-3"/> Duplicate
-                                </button>\n                                <button
-                                  onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }}
-                                  className="text-teal-600 hover:text-teal-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-teal-50 transition-colors opacity-0 group-hover:opacity-100"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); onDeleteKpi && onDeleteKpi(kpi.id); }}
-                                  className="text-rose-600 hover:text-rose-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          </div>
+                          <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group flex flex-col h-full">
+  <div className="flex items-start justify-between mb-2">
+    <p className="text-[13px] font-semibold text-slate-700 pr-3 leading-snug">{kpi.name}</p>
+    <div className="flex flex-col items-end gap-1.5 shrink-0">
+      <div className="flex items-center gap-1.5">
+        <StatusBadge status={dispStatus} />
+        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider ${kpi.kpiType === "report" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"}`}>
+          {kpi.kpiType === "report" ? "Report" : "Activity"}
+        </span>
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1 bg-white/80 p-0.5 rounded-md backdrop-blur-sm">
+        <button onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, name: kpi.name + " (Copy)" }); }} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50 transition-colors" title="Duplicate KPI">
+          <Copy className="w-3.5 h-3.5"/>
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }} className="text-teal-600 hover:text-teal-800 p-1 rounded hover:bg-teal-50 transition-colors" title="Edit KPI">
+          <Pencil className="w-3.5 h-3.5"/>
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onDeleteKpi && onDeleteKpi(kpi.id); }} className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 transition-colors" title="Delete KPI">
+          <Trash2 className="w-3.5 h-3.5"/>
+        </button>
+      </div>
+    </div>
+  </div>
+  <p className="text-2xl font-semibold text-slate-900 truncate mb-1" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
+    {dispActual}
+    <span className="text-slate-400 font-medium mx-1">/</span>
+    {dispTarget}
+    <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
+  </p>
+  <div className="mt-auto">
+    {(() => {
+      const childKpi = kpis.find(k => String(k.id) === String(kpi.reportConfig?.followUpKpiId));
+      const parentKpi = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
+      return (
+        <>
+          {parentKpi && (
+            <div className="whitespace-nowrap flex items-center gap-1 w-full mb-1.5">
+              <span className="font-bold text-amber-700 bg-amber-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-amber-100">
+                <GitBranch className="w-2.5 h-2.5"/> Parent KPI
+              </span>
+              <span className="truncate text-amber-900 font-semibold max-w-[150px] text-[10px]">{parentKpi.name}</span>
+            </div>
+          )}
+          {childKpi && (
+            <div className="whitespace-nowrap flex items-center gap-1 w-full mb-1.5">
+              <span className="font-bold text-indigo-700 bg-indigo-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-indigo-100">
+                <GitBranch className="w-2.5 h-2.5"/> Child KPI
+              </span>
+              <span className="truncate text-indigo-900 font-semibold max-w-[150px] text-[10px]">{childKpi.name}</span>
+            </div>
+          )}
+        </>
+      );
+    })()}
+    <div className="flex items-center pt-2 border-t border-orange-50 overflow-hidden mt-1">
+      <div className="flex flex-nowrap items-center gap-x-2.5 text-[9.5px] w-full">
+        <div className="whitespace-nowrap shrink-0"><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
+        {kpi.driveBy && <div className="whitespace-nowrap shrink-0"><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
+        {kpi.monitorBy && <div className="whitespace-nowrap truncate min-w-0"><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
+      </div>
+    </div>
+  </div>
+</div>
                         );
                         })}
                       </div>
