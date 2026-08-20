@@ -3989,6 +3989,10 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleReason, setRescheduleReason] = useState("");
 
+  // KPI Search dropdown states
+  const [kpiSearchQuery, setKpiSearchQuery] = useState("");
+  const [showKpiDropdown, setShowKpiDropdown] = useState(false);
+
   const myKpis = kpis.filter(k => k.owner === user);
   const myProjects = projects.filter(p => {
     if (p.assignedTo !== user) return false;
@@ -4558,18 +4562,73 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                   />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="text-xs font-bold text-slate-600 block mb-1">Linked KPI (Optional)</label>
-                  <select 
-                    value={taskKpiId} 
-                    onChange={(e) => setTaskKpiId(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
-                  >
-                    <option value="">None (Independent Task)</option>
-                    {kpis.filter(k => k.owner === taskAssignee).map(k => (
-                      <option key={k.id} value={k.id}>{k.name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search all KPIs..."
+                      value={kpiSearchQuery}
+                      onFocus={() => setShowKpiDropdown(true)}
+                      onChange={(e) => {
+                        setKpiSearchQuery(e.target.value);
+                        setShowKpiDropdown(true);
+                      }}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
+                    />
+                    {taskKpiId && (
+                      <span className="absolute right-8 top-2 bg-teal-50 text-teal-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                        Linked
+                      </span>
+                    )}
+                    {(kpiSearchQuery || showKpiDropdown) ? (
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setTaskKpiId("");
+                          setKpiSearchQuery("");
+                          setShowKpiDropdown(false);
+                        }}
+                        className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {showKpiDropdown && (
+                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-50">
+                      <div 
+                        onClick={() => {
+                          setTaskKpiId("");
+                          setKpiSearchQuery("None (Independent Task)");
+                          setShowKpiDropdown(false);
+                        }}
+                        className="px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 cursor-pointer font-semibold border-b border-slate-100"
+                      >
+                        None (Independent Task)
+                      </div>
+                      {kpis
+                        .filter(k => k.name.toLowerCase().includes(kpiSearchQuery.toLowerCase()) || (k.owner && k.owner.toLowerCase().includes(kpiSearchQuery.toLowerCase())))
+                        .map(k => (
+                          <div
+                            key={k.id}
+                            onClick={() => {
+                              setTaskKpiId(k.id);
+                              setKpiSearchQuery(k.name);
+                              setShowKpiDropdown(false);
+                            }}
+                            className={`px-3 py-2 text-xs hover:bg-slate-50 cursor-pointer flex flex-col gap-0.5 border-b border-slate-50 ${String(taskKpiId) === String(k.id) ? 'bg-teal-50/50' : ''}`}
+                          >
+                            <span className="font-bold text-slate-800">{k.name}</span>
+                            <span className="text-[10px] text-slate-400 font-semibold">{k.owner} · {k.team}</span>
+                          </div>
+                        ))}
+                      {kpis.filter(k => k.name.toLowerCase().includes(kpiSearchQuery.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-4 text-xs text-slate-400 italic text-center">No matching KPIs found</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -4625,6 +4684,8 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
                   setTaskTitle("");
                   setTaskObjective("");
                   setTaskOutcome("");
+                  setKpiSearchQuery("");
+                  setTaskKpiId("");
                 }}
                 className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm"
               >
