@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -3763,11 +3763,239 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 const ADMIN_NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "kpis", label: "KPIs", icon: Target },
+  { id: "review", label: "Morning Review", icon: Coffee },
   { id: "okrs", label: "OKRs", icon: TrendingUp },
   { id: "projects", label: "Projects", icon: FolderGit2 },
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "settings", label: "Settings", icon: Settings },
 ];
+
+function MorningReviewScreen({ teams, kpis }) {
+  const [selectedMember, setSelectedMember] = useState(null);
+  
+  // Flatten members list and sort alphabetically
+  const allMembers = useMemo(() => {
+    return teams.flatMap(t => t.members.map(m => ({ ...m, teamName: t.name })))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [teams]);
+
+  // Determine current dates
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  // Find current monthName and weekId
+  let currentMonthName = "";
+  let currentWeekId = "";
+  for (let m of MONTHS_LIST) {
+    const cells = getCalendarCells(m);
+    if (cells.some(c => c && c.dateStr === todayStr)) {
+      currentMonthName = m;
+      const numRows = Math.ceil(cells.length / 7);
+      for (let r = 0; r < numRows; r++) {
+        const weekDays = getDaysInWeekRow(m, r);
+        if (weekDays.includes(todayStr)) {
+          currentWeekId = `${m}-Week${r + 1}`;
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  // Next month logic
+  let nextMonthName = "";
+  if (today.getDate() >= 28 && currentMonthName) {
+    const idx = MONTHS_LIST.indexOf(currentMonthName);
+    if (idx >= 0 && idx < MONTHS_LIST.length - 1) {
+      nextMonthName = MONTHS_LIST[idx + 1];
+    }
+  }
+
+  // Support Notes state
+  const [notes, setNotes] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('morning_review_notes')) || {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleNotesChange = (memberId, text) => {
+    const newNotes = { ...notes, [memberId]: text };
+    setNotes(newNotes);
+    localStorage.setItem('morning_review_notes', JSON.stringify(newNotes));
+  };
+
+  if (!selectedMember) {
+    return (
+      <div className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden">
+        <div className="bg-white border-b border-orange-100 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm z-10">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Poppins, sans-serif" }}>Morning Review</h1>
+            <p className="text-xs text-slate-500 font-medium">Daily team follow-ups & deliverables</p>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {allMembers.map(m => (
+              <button 
+                key={m.id || m.name}
+                onClick={() => setSelectedMember(m)}
+                className="bg-white border border-slate-200 hover:border-teal-400 hover:shadow-md rounded-2xl p-4 text-left transition-all group"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-10 w-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold group-hover:bg-teal-100 group-hover:text-teal-600 transition-colors">
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800">{m.name}</h3>
+                    <p className="text-xs text-slate-500">{m.teamName}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Get deliverables for the selected member
+  const memberKpis = kpis.filter(k => k.owner === selectedMember.name);
+  
+  const dailyKpis = memberKpis.filter(k => k.dailyAlloc?.[todayStr] > 0 || k.dailyActual?.[todayStr] > 0);
+  const weeklyKpis = memberKpis.filter(k => currentWeekId && (k.weeklyAlloc?.[currentWeekId] > 0 || k.weeklyActual?.[currentWeekId] > 0));
+  const nextMonthKpis = nextMonthName ? memberKpis.filter(k => k.monthlyAlloc?.[nextMonthName] > 0) : [];
+
+  return (
+    <div className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden">
+      <div className="bg-white border-b border-orange-100 px-6 py-4 flex items-center gap-4 shrink-0 shadow-sm z-10">
+        <button onClick={() => setSelectedMember(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Poppins, sans-serif" }}>Review: {selectedMember.name}</h1>
+          <p className="text-xs text-slate-500 font-medium">{selectedMember.teamName}</p>
+        </div>
+      </div>
+      
+      <div className="flex-1 overflow-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          
+          {/* Daily Deliverables */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Deliverables for Today</h2>
+            </div>
+            <div className="p-4">
+              {dailyKpis.length > 0 ? (
+                <div className="space-y-3">
+                  {dailyKpis.map(k => (
+                    <div key={k.id} className="flex justify-between items-center bg-orange-50/50 p-3 rounded-xl border border-orange-100">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{k.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{k.team}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Target vs Actual</p>
+                        <p className="text-sm font-bold text-teal-700">
+                          {k.dailyActual?.[todayStr] || 0} / {k.dailyAlloc?.[todayStr] || 0}
+                          <span className="text-xs text-slate-500 ml-1">{k.unit}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic text-center py-4">No daily targets assigned for today.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Weekly Deliverables */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Deliverables for This Week</h2>
+            </div>
+            <div className="p-4">
+              {weeklyKpis.length > 0 ? (
+                <div className="space-y-3">
+                  {weeklyKpis.map(k => (
+                    <div key={k.id} className="flex justify-between items-center bg-teal-50/30 p-3 rounded-xl border border-teal-100">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{k.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{k.team}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Target vs Actual</p>
+                        <p className="text-sm font-bold text-teal-700">
+                          {k.weeklyActual?.[currentWeekId] || 0} / {k.weeklyAlloc?.[currentWeekId] || 0}
+                          <span className="text-xs text-slate-500 ml-1">{k.unit}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic text-center py-4">No weekly targets assigned for this week.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Support Required */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Support Required / Notes</h2>
+            </div>
+            <div className="p-4">
+              <textarea
+                value={notes[selectedMember.id || selectedMember.name] || ""}
+                onChange={(e) => handleNotesChange(selectedMember.id || selectedMember.name, e.target.value)}
+                placeholder={`Type any support ${selectedMember.name} needs or general notes here...`}
+                className="w-full h-32 p-3 text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-teal-400 focus:bg-white transition-colors resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Next Month Plan (Only visible >= 28th) */}
+          {nextMonthName && (
+            <div className="bg-white rounded-2xl shadow-sm border border-purple-200 overflow-hidden ring-1 ring-purple-100">
+              <div className="bg-purple-50 border-b border-purple-100 px-4 py-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-purple-900 uppercase tracking-wider">Plan for {nextMonthName}</h2>
+                <span className="text-[10px] font-bold bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full">End of Month Review</span>
+              </div>
+              <div className="p-4">
+                {nextMonthKpis.length > 0 ? (
+                  <div className="space-y-3">
+                    {nextMonthKpis.map(k => (
+                      <div key={k.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">{k.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{k.team}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Monthly Target</p>
+                          <p className="text-sm font-bold text-purple-700">
+                            {k.monthlyAlloc?.[nextMonthName] || 0}
+                            <span className="text-xs text-slate-500 ml-1">{k.unit}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500 italic text-center py-4">No targets planned for {nextMonthName} yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onUploadKpis }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
@@ -4723,6 +4951,10 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                 </div>
               )}
             </>
+          )}
+
+          {screen === "review" && (
+            <MorningReviewScreen teams={teams} kpis={kpis} />
           )}
 
           {screen === "okrs" && (
