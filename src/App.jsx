@@ -4704,13 +4704,14 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
                   return (
                     <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-2">
                         <p className="text-sm font-medium text-slate-600">{kpi.name}</p>
                         <StatusBadge status={dispStatus} />
                       </div>
-                      <p className="text-2xl font-semibold text-slate-900 truncate" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
+                      <p className="text-xl font-bold text-slate-900 truncate flex items-baseline" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
                         {dispActual}
-                        <span className="text-slate-400 font-medium mx-1">/</span>
+                        <span className="text-slate-400 font-medium mx-1 text-sm">/</span>
+                              <span className="text-lg">{dispTarget}</span>
                         {dispTarget}
                         <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
                       </p>
@@ -4923,12 +4924,12 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           }
 
                           return (
-                          <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group">
+                          <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group">
                             <div className="flex items-start justify-between mb-3">
-                              <p className="text-sm font-semibold text-slate-700 pr-6">{kpi.name}</p>
-                              <div className="flex flex-col items-end gap-1 shrink-0">
+                              <p className="text-[13px] font-semibold text-slate-700 pr-3 leading-snug">{kpi.name}</p>
+                              <div className="flex flex-col xl:flex-row items-end xl:items-center gap-1.5 shrink-0">
                                 <StatusBadge status={dispStatus} />
-                                <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
+                                <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
                                   {kpi.kpiType || 'Activity'}
                                 </span>
                               </div>
@@ -4940,8 +4941,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                               <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
                             </p>
                             
-                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-orange-50">
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
+                            <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-orange-50">
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9.5px]">
                                 <div className="whitespace-nowrap"><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
                                 {kpi.driveBy && <div className="whitespace-nowrap"><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
                                 {kpi.monitorBy && <div className="whitespace-nowrap"><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
