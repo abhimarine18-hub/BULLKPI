@@ -3997,7 +3997,7 @@ function MorningReviewScreen({ teams, kpis }) {
 }
 
 
-function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onUploadKpis }) {
+function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -5014,7 +5014,14 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             </div>
           )}
 
-          {screen === "projects" && (
+          {screen === "projects" && (() => {
+            const openProjects = projects.filter(p => p.status !== "bin" && p.stages[p.currentStageIdx]?.status !== "completed");
+            const completedProjects = projects.filter(p => p.status !== "bin" && p.stages.length > 0 && p.stages[p.currentStageIdx]?.status === "completed" && p.currentStageIdx === p.stages.length - 1);
+            const binProjects = projects.filter(p => p.status === "bin");
+
+            const activeList = projectTab === "open" ? openProjects : (projectTab === "completed" ? completedProjects : binProjects);
+
+            return (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-slate-400">Track initiatives, milestones, and linked KPI improvements.</p>
@@ -5023,8 +5030,33 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                 </button>
               </div>
 
+              {/* Project Tabs */}
+              <div className="flex gap-6 border-b border-slate-200">
+                <button 
+                  onClick={() => setProjectTab("open")}
+                  className={`pb-3 text-sm font-bold transition-colors relative ${projectTab === "open" ? "text-teal-600" : "text-slate-400 hover:text-slate-600"}`}
+                >
+                  Open ({openProjects.length})
+                  {projectTab === "open" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-teal-500 rounded-t-full" />}
+                </button>
+                <button 
+                  onClick={() => setProjectTab("completed")}
+                  className={`pb-3 text-sm font-bold transition-colors relative ${projectTab === "completed" ? "text-teal-600" : "text-slate-400 hover:text-slate-600"}`}
+                >
+                  Completed ({completedProjects.length})
+                  {projectTab === "completed" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-teal-500 rounded-t-full" />}
+                </button>
+                <button 
+                  onClick={() => setProjectTab("bin")}
+                  className={`pb-3 text-sm font-bold transition-colors relative flex items-center gap-1.5 ${projectTab === "bin" ? "text-rose-600" : "text-slate-400 hover:text-slate-600"}`}
+                >
+                  <Trash2 className="h-4 w-4" /> Bin ({binProjects.length})
+                  {projectTab === "bin" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-rose-500 rounded-t-full" />}
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 gap-5">
-                {projects.map((proj) => {
+                {activeList.map((proj) => {
                   return (
                     <div key={proj.id} className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row justify-between gap-6">
                       <div className="flex-1 space-y-3">
@@ -5042,20 +5074,41 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                               </span>
                             </div>
                             <div className="flex items-center gap-2 ml-auto">
-                              <button
-                                onClick={() => setEditingProject(proj)}
-                                className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
-                                title="Edit Project Details"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                onClick={() => onDeleteProject(proj.id)}
-                                className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
-                                title="Delete Project"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                              {projectTab === "bin" ? (
+                                <>
+                                  <button
+                                    onClick={() => onRestoreProject(proj.id)}
+                                    className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all font-bold text-xs"
+                                    title="Restore Project"
+                                  >
+                                    Restore
+                                  </button>
+                                  <button
+                                    onClick={() => onDeleteProject(proj.id, true)}
+                                    className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all font-bold text-xs"
+                                    title="Permanently Delete"
+                                  >
+                                    Force Delete
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => setEditingProject(proj)}
+                                    className="text-slate-400 hover:text-teal-600 p-1.5 rounded-lg border border-slate-100 hover:bg-teal-50 transition-all"
+                                    title="Edit Project Details"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => onDeleteProject(proj.id)}
+                                    className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
+                                    title="Move to Bin"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -5147,7 +5200,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             })}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {screen === "settings" && (() => {
             const allPlayers = teams.flatMap(t => t.members.map(m => ({
@@ -6322,6 +6376,7 @@ export default function App() {
           let linkedKpiIds = [];
           let memberNames = [p.lead];
           let targetDate = "";
+          let projectStatus = "open";
           if (p.stages && p.stages.length > 0) {
             targetDate = p.stages[p.stages.length - 1].targetDate || "";
           }
@@ -6333,6 +6388,7 @@ export default function App() {
               linkedKpiIds = parsed.linkedKpiIds || (parsed.linkedKpiId ? [parsed.linkedKpiId] : []);
               memberNames = parsed.memberNames || [p.lead];
               targetDate = parsed.targetDate || targetDate;
+              projectStatus = parsed.status || "open";
             }
           } catch (e) {
             // Not JSON
@@ -6346,6 +6402,7 @@ export default function App() {
             leadName: p.lead,
             memberNames,
             targetDate,
+            status: projectStatus,
             team: p.team,
             stages: p.stages || [],
             currentStageIdx: p.current_stage_idx || 0
@@ -6721,7 +6778,8 @@ export default function App() {
       resultAndImprovement: newProject.resultAndImprovement,
       linkedKpiIds: newProject.linkedKpiIds || [],
       memberNames: newProject.memberNames,
-      targetDate: newProject.targetDate
+      targetDate: newProject.targetDate,
+      status: newProject.status || "open"
     });
 
     let teamName = newProject.team || "Digital Marketing";
@@ -6785,14 +6843,49 @@ export default function App() {
     }).eq('id', projectId);
   }
 
-  async function handleDeleteProject(id) {
-    if (window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-      const { error } = await supabase.from('projects').delete().eq('id', id);
-      if (error) {
-        console.error("Error deleting project from Supabase:", error);
+  async function handleDeleteProject(id, force = false) {
+    if (force) {
+      if (window.confirm("Are you sure you want to PERMANENTLY delete this project? This action cannot be undone.")) {
+        setProjects((prev) => prev.filter((p) => p.id !== id));
+        const { error } = await supabase.from('projects').delete().eq('id', id);
+        if (error) console.error("Error deleting project from Supabase:", error);
       }
+      return;
     }
+
+    if (window.confirm("Are you sure you want to move this project to the bin? It will wait for admin approval to be permanently removed.")) {
+      const proj = projects.find(p => p.id === id);
+      if (!proj) return;
+      const updatedProj = { ...proj, status: "bin" };
+      
+      const descriptionJson = JSON.stringify({
+        resultAndImprovement: updatedProj.resultAndImprovement,
+        linkedKpiIds: updatedProj.linkedKpiIds,
+        memberNames: updatedProj.memberNames,
+        targetDate: updatedProj.targetDate,
+        status: "bin"
+      });
+
+      setProjects((prev) => prev.map((p) => p.id === id ? updatedProj : p));
+      await supabase.from('projects').update({ description: descriptionJson }).eq('id', id);
+    }
+  }
+
+  async function handleRestoreProject(id) {
+    const proj = projects.find(p => p.id === id);
+    if (!proj) return;
+    const updatedProj = { ...proj, status: "open" };
+    
+    const descriptionJson = JSON.stringify({
+      resultAndImprovement: updatedProj.resultAndImprovement,
+      linkedKpiIds: updatedProj.linkedKpiIds,
+      memberNames: updatedProj.memberNames,
+      targetDate: updatedProj.targetDate,
+      status: "open"
+    });
+
+    setProjects((prev) => prev.map((p) => p.id === id ? updatedProj : p));
+    await supabase.from('projects').update({ description: descriptionJson }).eq('id', id);
   }
 
   async function handleUploadKpis(kpisToUpload, metadata) {
