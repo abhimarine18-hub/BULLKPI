@@ -4830,7 +4830,21 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                   <span className={`ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
                                     {kpi.kpiType === 'report' ? 'Report' : 'Activity'}
                                   </span>
-                                </td>
+                                
+                                    {kpi.reportConfig?.followUpKpiId && (() => {
+                                      const followUp = kpis.find(k => k.id === kpi.reportConfig.followUpKpiId);
+                                      return followUp ? (
+                                        <div className="mt-1.5 flex items-center gap-1">
+                                          <span className="font-bold text-indigo-700 bg-indigo-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-indigo-100">
+                                            <GitBranch className="w-2.5 h-2.5"/> Triggers:
+                                          </span>
+                                          <span className="truncate text-indigo-900 font-semibold text-[10px] max-w-[200px]">
+                                            {followUp.name}
+                                          </span>
+                                        </div>
+                                      ) : null;
+                                    })()}
+                                  </td>
                                 <td className="px-5 py-3.5 text-slate-500 text-[11px] leading-relaxed max-w-xs truncate" title={kpi.description || `Key Performance Indicator: ${kpi.name}`}>
                                   {kpi.description || <span className="italic text-slate-350 font-normal">No description</span>}
                                 </td>
@@ -4945,7 +4959,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9.5px]">
                                 <div className="whitespace-nowrap"><span className="font-bold text-teal-700 bg-teal-50 px-1 rounded mr-1">Do:</span>{kpi.owner}</div>
                                 {kpi.driveBy && <div className="whitespace-nowrap"><span className="font-bold text-orange-700 bg-orange-50 px-1 rounded mr-1">Drive:</span>{kpi.driveBy}</div>}
-                                {kpi.monitorBy && <div className="whitespace-nowrap"><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}
+                                {kpi.monitorBy && <div className="whitespace-nowrap"><span className="font-bold text-purple-700 bg-purple-50 px-1 rounded mr-1">Monitor:</span>{kpi.monitorBy}</div>}\n                                {kpi.reportConfig?.followUpKpiId && (() => { const followUp = kpis.find(k => k.id === kpi.reportConfig.followUpKpiId); return followUp ? <div className="whitespace-nowrap flex items-center gap-1 w-full mt-0.5"><span className="font-bold text-indigo-700 bg-indigo-50 px-1 rounded flex items-center gap-0.5"><GitBranch className="w-2.5 h-2.5"/> Triggers:</span><span className="truncate text-indigo-900 font-semibold max-w-[150px]">{followUp.name}</span></div> : null; })()}
                               </div>
                               <div className="flex gap-2">
                                 <button
