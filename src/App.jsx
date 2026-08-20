@@ -1710,7 +1710,10 @@ const campaignsData = [
 
 /* ---------------- Status logic (shared) ---------------- */
 
-function getLatest(kpi) { return kpi.history[kpi.history.length - 1].v; }
+function getLatest(kpi) { 
+  if (!kpi.history || kpi.history.length === 0) return 0;
+  return kpi.history[kpi.history.length - 1].v || 0; 
+}
 
 function getStatus(kpi) {
   const latest = getLatest(kpi);
