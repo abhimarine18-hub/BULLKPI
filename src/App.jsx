@@ -3747,24 +3747,35 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                   </div>
                                 </div>
                                 <div className="flex flex-col gap-0.5 mt-0.5">
+                                  {parentKpi && (
+                                    <div className="text-[8.5px] font-bold text-center block leading-tight bg-amber-50 text-amber-700 rounded py-0.5 mb-0.5 w-full">
+                                      PT: {formatIndianNumber(parentTarget)}
+                                      {parentTarget > 0 && (
+                                        <span className="ml-1">
+                                          PS: {parentActual >= parentTarget ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                   {isTimeKpi ? (
                                     <div className="flex flex-col items-center justify-center gap-0.5">
                                       <span className={`text-[10px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>
-                                        {dayTarget > 0 ? "🎯 Target Set" : "—"}
+                                        {dayTarget > 0 ? "T: Target Set" : "T: 0"}
                                       </span>
                                       <span className={`text-[10px] font-bold ${dayActual > 0 ? "text-emerald-700" : "text-slate-300"}`}>
-                                        {dayActual > 0 ? "✓ Completed" : "—"}
+                                        {dayActual > 0 ? "A: Completed" : "A: 0"}
                                       </span>
                                     </div>
                                   ) : (
                                     <>
                                       <div className="flex items-center justify-center gap-1 leading-none">
+                                        <span className="text-[10.5px] font-bold text-slate-400">T:</span>
                                         <input
                                           type="text"
                                           value={formatIndianNumber(dayTarget)}
                                           onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
-                                          className={`w-12 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
-                                          placeholder="T:0"
+                                          className={`w-6 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
+                                          placeholder="0"
                                           title="Original Target"
                                         />
                                         {dayRevised !== dayTarget && dayActual !== dayTarget && (
@@ -3773,20 +3784,9 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                           </span>
                                         )}
                                       </div>
-                                      <div className={`w-full text-center text-xs font-bold leading-none h-4 ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
-                                        {dayActual > 0 ? `A:${formatIndianNumber(dayActual)}` : "A:0"}
+                                      <div className={`w-full text-center text-[10.5px] font-bold leading-none h-3 ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
+                                        {dayActual > 0 ? `A: ${formatIndianNumber(dayActual)}` : "A: 0"}
                                       </div>
-                                      {parentKpi && (
-                                        <div className="text-[8.5px] font-bold text-center block mt-0.5 leading-tight bg-amber-50 text-amber-700 rounded py-0.5">
-                                          P.T: {formatIndianNumber(parentTarget)}
-                                          {parentTarget > 0 && (
-                                            <>
-                                              <br/>
-                                              {parentActual >= parentTarget ? <span className="text-emerald-600">P.St: Done</span> : <span className="text-rose-600 animate-pulse">P.St: Pend</span>}
-                                            </>
-                                          )}
-                                        </div>
-                                      )}
                                     </>
                                   )}
                                 </div>
