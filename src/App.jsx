@@ -2716,6 +2716,7 @@ const KpiCheckboxList = ({ kpis, selectedIds, onChange }) => {
 };
 
 function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, onAddMember, sidebarMinimized }) {
+  const parentKpi = allKpis ? allKpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id)) : null;
   const [kpiType, setKpiType] = useState(kpi.kpiType || 'activity');
   const [reportConfig, setReportConfig] = useState(kpi.reportConfig || { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] });
 
@@ -3602,6 +3603,15 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                       <div className="w-full text-center border border-emerald-200 rounded-lg py-1 text-xs bg-emerald-50/40 font-bold text-emerald-800" title="Monthly Achievement (Read-only)">
                         A: {formatIndianNumber(act) || "0"}
                       </div>
+                      {parentKpi && (
+                        <div className="w-full mt-1 text-center border border-amber-200 rounded-lg py-0.5 text-[9px] bg-amber-50 font-bold text-amber-800 leading-tight">
+                           P.Tar: {parentKpi.monthlyAlloc?.[m] || 0}
+                           <br/>
+                           <span className={(parentKpi.monthlyActual?.[m] || 0) >= (parentKpi.monthlyAlloc?.[m] || 0) && (parentKpi.monthlyAlloc?.[m] || 0) > 0 ? "text-emerald-600" : ((parentKpi.monthlyAlloc?.[m] || 0) > 0 ? "text-rose-600" : "")}>
+                             P.St: {(parentKpi.monthlyAlloc?.[m] || 0) > 0 ? ((parentKpi.monthlyActual?.[m] || 0) >= (parentKpi.monthlyAlloc?.[m] || 0) ? "Done" : "Pend") : "N/A"}
+                           </span>
+                        </div>
+                      )}
                     </div>
                 );
             })}
@@ -3667,6 +3677,8 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                             const dayTarget = dailyAlloc[cell.dateStr] || 0;
                             const dayRevised = revisedAlloc[cell.dateStr] ?? dayTarget;
                             const dayActual = dailyActual[cell.dateStr] || 0;
+                            const parentTarget = parentKpi?.dailyAlloc?.[cell.dateStr] || 0;
+                            const parentActual = parentKpi?.dailyActual?.[cell.dateStr] || 0;
                             const check = checkIsHoliday(cell.dateStr);
 
                             const isLeave = dailyLeave[cell.dateStr];
@@ -3764,6 +3776,17 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                       <div className={`w-full text-center text-xs font-bold leading-none h-4 ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
                                         {dayActual > 0 ? `A:${formatIndianNumber(dayActual)}` : "A:0"}
                                       </div>
+                                      {parentKpi && (
+                                        <div className="text-[8.5px] font-bold text-center block mt-0.5 leading-tight bg-amber-50 text-amber-700 rounded py-0.5">
+                                          P.T: {formatIndianNumber(parentTarget)}
+                                          {parentTarget > 0 && (
+                                            <>
+                                              <br/>
+                                              {parentActual >= parentTarget ? <span className="text-emerald-600">P.St: Done</span> : <span className="text-rose-600 animate-pulse">P.St: Pend</span>}
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
                                     </>
                                   )}
                                 </div>
