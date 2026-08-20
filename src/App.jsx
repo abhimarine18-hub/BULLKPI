@@ -2728,6 +2728,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const [description, setDescription] = useState(kpi.description || "");
   const [unit, setUnit] = useState(kpi.unit);
   const isTimeKpi = unit.trim().toLowerCase() === "time";
+  const [targetView, setTargetView] = useState("calendar");
   const [distributeEnabled, setDistributeEnabled] = useState(kpi.targetType !== "monthly");
   
   // Inline creation states for team/member
@@ -3499,6 +3500,22 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                      }
                   })()}
                 </div>
+                <div className="flex items-center gap-1 bg-white border border-slate-200 p-0.5 rounded-lg shrink-0">
+                  <button 
+                    onClick={() => setTargetView("calendar")}
+                    className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${targetView === 'calendar' ? 'bg-orange-50 text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    title="Calendar View"
+                  >
+                    <CalendarRange className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setTargetView("list")}
+                    className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${targetView === 'list' ? 'bg-orange-50 text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    title="List View"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col min-h-0 space-y-4">
@@ -3520,6 +3537,20 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                   }`}
                 >
                   {holidaysEnabled ? "Disable Holidays" : "Enable Holidays"}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-1.5 rounded-lg transition-colors text-xs border border-slate-200"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={!canSubmit || !hasChanges}
+                  onClick={handleSubmit}
+                  className="bg-teal-500 hover:bg-teal-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold px-4 py-1.5 rounded-lg transition-colors text-xs shadow-sm"
+                >
+                  Save Targets
                 </button>
               </div>
             </div>
@@ -3634,9 +3665,26 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                     );
                   })()}
                 </div>
+                <div className="flex items-center gap-1 bg-white border border-slate-200 p-0.5 rounded-lg shrink-0">
+                  <button 
+                    onClick={() => setTargetView("calendar")}
+                    className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${targetView === 'calendar' ? 'bg-orange-50 text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    title="Calendar View"
+                  >
+                    <CalendarRange className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setTargetView("list")}
+                    className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${targetView === 'list' ? 'bg-orange-50 text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                    title="List View"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Scrollable grid section */}
+              {targetView === 'calendar' ? (
               <div className="flex-1 min-h-0 overflow-x-auto pr-1">
                 <div className="min-w-[650px] pr-1">
                   {/* 8-column calendar header */}
@@ -3835,6 +3883,68 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 </div>
                 </div>
               </div>
+              ) : (
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar space-y-2">
+                  {(() => {
+                    const daysInMonth = getCalendarCells(selectedMonth).filter(c => !c.isEmpty);
+                    return daysInMonth.map((cell) => {
+                      const dayTarget = dailyAlloc[cell.dateStr] || 0;
+                      const dayActual = dailyActual[cell.dateStr] || 0;
+                      const dayRevised = revisedAlloc[cell.dateStr] ?? dayTarget;
+                      const pt = parentKpi ? (parentKpi.dailyAlloc?.[cell.dateStr] || 0) : 0;
+                      const pa = parentKpi ? (parentKpi.dailyActual?.[cell.dateStr] || 0) : 0;
+                      const check = checkIsHoliday(cell.dateStr);
+
+                      return (
+                        <div key={cell.dateStr} className={`flex items-center justify-between p-2.5 rounded-lg border ${check ? 'bg-rose-50/30 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center gap-3 w-32 shrink-0">
+                            <div className={`text-sm font-bold ${check ? 'text-rose-500' : 'text-slate-700'}`}>{cell.dayNum}</div>
+                            <div className={`text-xs font-semibold ${check ? 'text-rose-400' : 'text-slate-500'}`}>{cell.dayName}</div>
+                            {check && <span className="text-[9px] text-rose-400 font-bold bg-rose-50 px-1 rounded ml-1">Hol</span>}
+                          </div>
+                          
+                          <div className="flex-1 flex flex-col gap-1 px-4 border-l border-slate-200 min-w-[120px]">
+                            {parentKpi && pt > 0 && (
+                              <>
+                                <div className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 inline-block w-fit">
+                                  PT: {formatIndianNumber(pt)}
+                                </div>
+                                <div className="text-[10px] font-bold mt-0.5">
+                                  PS: {pa >= pt ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-6 shrink-0 border-l border-slate-200 pl-4 justify-end min-w-[150px]">
+                            <div className="flex items-center gap-2">
+                              {isTimeKpi ? (
+                                 <span className={`text-[11px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>{dayTarget > 0 ? "T: Set" : "T: 0"}</span>
+                              ) : (
+                                 <div className="flex flex-col gap-1 items-end">
+                                   <div className="flex items-center gap-1">
+                                     <span className="text-[10px] font-bold text-slate-400">T:</span>
+                                     <input type="text" value={formatIndianNumber(dayTarget)} onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, null)} className={`w-12 text-right text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`} placeholder="0" />
+                                   </div>
+                                   {dayRevised !== dayTarget && dayActual !== dayTarget && (
+                                     <span className="text-[9px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-1 rounded">R:{formatIndianNumber(dayRevised)}</span>
+                                   )}
+                                 </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center justify-end min-w-[50px]">
+                              <span className={`text-[11px] font-bold ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`}>
+                                A: {dayActual > 0 ? formatIndianNumber(dayActual) : "0"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
             </div>
             )}
             </div>
@@ -3842,23 +3952,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-3 border-t border-orange-100 pt-4 mt-auto shrink-0">
-          <button
-            onClick={onClose}
-            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-colors text-sm"
-          >
-            Close
-          </button>
-          <button
-            type="button"
-            disabled={!canSubmit || !hasChanges}
-            onClick={handleSubmit}
-            className="flex-1 bg-teal-500 hover:bg-teal-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-colors text-sm shadow-sm"
-          >
-            Save Target Assignments
-          </button>
-        </div>
+
       </div>
     </div>
   );
