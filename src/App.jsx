@@ -3521,20 +3521,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
               <div className="flex flex-col min-h-0 space-y-4">
             {/* Target Assignment Info Header */}
             <div className="flex flex-col gap-2 shrink-0">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-1.5">
-                {parentKpi && (
-                  <div className="text-[11px] text-slate-700 leading-tight">
-                    <span className="font-bold text-amber-700">Parent KPI:</span> {parentKpi.name} 
-                    <span className="font-bold ml-3 text-slate-500">Do:</span> {parentKpi.owner || parentKpi.doBy} 
-                    <span className="font-bold ml-3 text-slate-500">Target:</span> {parentKpi.target} {parentKpi.unit}
-                  </div>
-                )}
-                <div className="text-[11px] text-slate-700 leading-tight">
-                  <span className="font-bold text-teal-700">Children KPI:</span> {kpi.name} 
-                  <span className="font-bold ml-3 text-slate-500">Do:</span> {kpi.owner || kpi.doBy} 
-                  <span className="font-bold ml-3 text-slate-500">Target:</span> {kpi.target} {kpi.unit}
-                </div>
-              </div>
+
 
             <div className="bg-orange-50/20 p-3 rounded-2xl border border-orange-100/50 flex items-center justify-between">
               <div>
@@ -3661,6 +3648,20 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
             {/* Selected Month Breakdown Sub-view (Unified Calendar Grid with Weekly Total) */}
             {distributeEnabled && (
               <div className="flex-1 flex flex-col min-h-0 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 overflow-hidden">
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2 mb-4 shrink-0">
+                  {parentKpi && (
+                    <div className="text-xs text-slate-700 leading-tight">
+                      <span className="font-bold text-amber-700">Parent KPI :</span> {parentKpi.name} 
+                      <span className="font-bold ml-3 text-slate-500">Do:</span> {parentKpi.owner || parentKpi.doBy} 
+                      <span className="font-bold ml-3 text-slate-500">Target:</span> {parentKpi.target} {parentKpi.unit}
+                    </div>
+                  )}
+                  <div className="text-xs text-slate-700 leading-tight">
+                    <span className="font-bold text-teal-700">Children KPI :</span> {kpi.name} 
+                    <span className="font-bold ml-3 text-slate-500">Do:</span> {kpi.owner || kpi.doBy} 
+                    <span className="font-bold ml-3 text-slate-500">Target:</span> {kpi.target} {kpi.unit}
+                  </div>
+                </div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-2 shrink-0 mb-3">
                 <div>
                   <h4 className="text-sm font-bold text-slate-800">
@@ -3933,7 +3934,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                             )}
                           </div>
 
-                          <div className="flex items-center gap-6 shrink-0 border-l border-slate-200 pl-4 justify-end min-w-[150px]">
+                          <div className="flex items-center gap-6 shrink-0 border-l border-slate-200 pl-4 pr-10 justify-end min-w-[170px]">
                             <div className="flex items-center gap-2">
                               {isTimeKpi ? (
                                  <span className={`text-[11px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>{dayTarget > 0 ? "T: Set" : "T: 0"}</span>
