@@ -2730,6 +2730,12 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const isTimeKpi = unit.trim().toLowerCase() === "time";
   const [targetView, setTargetView] = useState("calendar");
   const [distributeEnabled, setDistributeEnabled] = useState(kpi.targetType !== "monthly");
+  const [handoffEnabled, setHandoffEnabled] = useState(kpi.reportConfig?.handoffEnabled || false);
+  const [handoffMode, setHandoffMode] = useState(kpi.reportConfig?.handoffMode || "drive_social");
+  const [parentLabel, setParentLabel] = useState(kpi.reportConfig?.parentLabel || "Google Drive Link");
+  const [childLabel, setChildLabel] = useState(kpi.reportConfig?.childLabel || "Social Media Link");
+  const [cutoffTime, setCutoffTime] = useState(kpi.reportConfig?.cutoffTime || "17:30");
+  const [bufferMinutes, setBufferMinutes] = useState(kpi.reportConfig?.bufferMinutes || 30);
   
   // Inline creation states for team/member
   const [showAddTeam, setShowAddTeam] = useState(false);
@@ -3162,7 +3168,15 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       targetType: distributeEnabled ? "daily" : "monthly",
       targetsList: Object.entries(dailyAlloc).filter(([_, val]) => val > 0).map(([dStr, val]) => ({ id: dStr, label: dStr, targetValue: val, targetDate: dStr })),
       kpiType,
-      reportConfig
+      reportConfig: {
+        ...reportConfig,
+        handoffEnabled,
+        handoffMode,
+        parentLabel: handoffMode === "drive_social" ? "Google Drive Link" : (handoffMode === "link_handoff" ? "Deliverable Link" : parentLabel),
+        childLabel: handoffMode === "drive_social" ? "Social Media Link" : (handoffMode === "link_handoff" ? "Proof of Posting Link" : childLabel),
+        cutoffTime,
+        bufferMinutes: Number(bufferMinutes)
+      }
     });
     setOriginalState(JSON.stringify(getCurrentState()));
   };
@@ -3425,6 +3439,87 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 {allKpis.filter(k => k.id !== kpi.id).map(k => <option key={k.id} value={k.id}>{k.name} ({k.owner || 'Unassigned'})</option>)}
               </select>
             </div>
+
+            {/* Handoff Settings panel */}
+            {reportConfig.followUpKpiId && (
+              <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    Enable Handoff Mode
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={handoffEnabled}
+                    onChange={(e) => setHandoffEnabled(e.target.checked)}
+                    className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                  />
+                </div>
+
+                {handoffEnabled && (
+                  <div className="space-y-2.5 pt-2 border-t border-slate-200">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-1">Workflow Mode</label>
+                      <select
+                        value={handoffMode}
+                        onChange={(e) => setHandoffMode(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold bg-white"
+                      >
+                        <option value="drive_social">Drive File & Social Post</option>
+                        <option value="link_handoff">Generic Link Handoff</option>
+                        <option value="custom">Custom Handoff Labels</option>
+                      </select>
+                    </div>
+
+                    {handoffMode === "custom" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-500 block mb-0.5">Parent Input Label</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Catalog Link"
+                            value={parentLabel}
+                            onChange={(e) => setParentLabel(e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-500 block mb-0.5">Child Input Label</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Print Proof Link"
+                            value={childLabel}
+                            onChange={(e) => setChildLabel(e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-500 block mb-0.5">Cutoff Time (Child Target)</label>
+                        <input
+                          type="time"
+                          value={cutoffTime}
+                          onChange={(e) => setCutoffTime(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-500 block mb-0.5">Buffer Minutes</label>
+                        <input
+                          type="number"
+                          value={bufferMinutes}
+                          onChange={(e) => setBufferMinutes(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* RIGHT COLUMN: TARGET SCHEDULING & DISTRIBUTION (takes 6/8 columns) */}
@@ -3989,6 +4084,9 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
   const [editingSlot, setEditingSlot] = useState(null);
   const [title, setTitle] = useState("");
   const [objective, setObjective] = useState("");
+  const [submissionLink, setSubmissionLink] = useState("");
+  const [delayReason, setDelayReason] = useState("");
+  const [isReportingDelay, setIsReportingDelay] = useState(false);
 
   const myKpis = kpis.filter(k => k.owner === user);
   const myProjects = projects.filter(p => {
@@ -4063,20 +4161,114 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
             const isCompleted = slot.type === 'alloc' ? !!slot.completedProject : false;
             
             if (editingSlot === slot.id) {
+              const kpiObj = kpis.find(k => k.id === slot.kpiId);
+              const parentKpiObj = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(slot.kpiId));
+              const isParentHandoff = kpiObj?.reportConfig?.handoffEnabled && kpiObj?.reportConfig?.followUpKpiId;
+              const isChildHandoff = parentKpiObj?.reportConfig?.handoffEnabled;
+
+              let parentLink = "";
+              let parentDelayed = false;
+              let parentDelayReason = "";
+              if (isChildHandoff && slot.type === 'pending') {
+                 try {
+                   const meta = JSON.parse(slot.pendingProject.description);
+                   parentLink = meta.parentLink || "";
+                   parentDelayed = meta.parentDelayed || false;
+                   parentDelayReason = meta.parentDelayReason || "";
+                 } catch(e) {}
+              }
+
               return (
-                <div key={slot.id} className="bg-white rounded-3xl p-5 border border-orange-200 shadow-sm">
-                  <h3 className="text-sm font-bold text-slate-700 mb-3">{slot.kpiName} - Action Details</h3>
-                  <div className="space-y-3 mb-4">
-                    <input type="text" placeholder="Title (e.g., Onam Poster)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
-                    <textarea placeholder="Objective / Notes" value={objective} onChange={(e) => setObjective(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" rows={2} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => {
-                      onCompleteAction({ ...slot, title, objective });
-                      setEditingSlot(null);
-                    }} className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors">Mark as Completed</button>
-                    <button onClick={() => setEditingSlot(null)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-xl text-sm transition-colors">Cancel</button>
-                  </div>
+                <div key={slot.id} className="bg-white rounded-3xl p-5 border border-orange-200 shadow-sm space-y-3">
+                  <h3 className="text-sm font-bold text-slate-700">{slot.kpiName} - Action Details</h3>
+                  
+                  {isChildHandoff && parentDelayed && (
+                    <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl text-xs font-semibold animate-pulse">
+                      ⚠️ Parent Delivery Delayed: {parentDelayReason}
+                    </div>
+                  )}
+
+                  {isChildHandoff && parentLink && (
+                    <div className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs flex items-center justify-between">
+                      <span className="text-slate-500 font-medium">Parent Deliverable:</span>
+                      <a href={parentLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline font-bold">
+                        Download / View File
+                      </a>
+                    </div>
+                  )}
+
+                  {!isReportingDelay ? (
+                    <>
+                      <div className="space-y-3 mb-4">
+                        <input type="text" placeholder="Title (e.g., Onam Poster)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                        <textarea placeholder="Objective / Notes" value={objective} onChange={(e) => setObjective(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" rows={2} />
+                        
+                        {isParentHandoff && (
+                          <input 
+                            type="text" 
+                            placeholder={kpiObj.reportConfig.parentLabel || "Google Drive Link"} 
+                            value={submissionLink} 
+                            onChange={(e) => setSubmissionLink(e.target.value)} 
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                          />
+                        )}
+
+                        {isChildHandoff && slot.type === 'pending' && (
+                          <input 
+                            type="text" 
+                            placeholder={parentKpiObj.reportConfig.childLabel || "Social Media Link"} 
+                            value={submissionLink} 
+                            onChange={(e) => setSubmissionLink(e.target.value)} 
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => {
+                          if ((isParentHandoff || (isChildHandoff && slot.type === 'pending')) && !submissionLink.trim()) {
+                            alert("Please provide the required submission link before completing.");
+                            return;
+                          }
+                          onCompleteAction({ ...slot, title, objective, submissionLink });
+                          setEditingSlot(null);
+                          setSubmissionLink("");
+                        }} className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors">Mark as Completed</button>
+                        
+                        {isParentHandoff && (
+                          <button onClick={() => setIsReportingDelay(true)} className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold py-2 px-4 rounded-xl text-sm transition-colors">Report Delay</button>
+                        )}
+                        
+                        <button onClick={() => { setEditingSlot(null); setSubmissionLink(""); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-xl text-sm transition-colors">Cancel</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-600 block">Delay Reason</label>
+                        <textarea 
+                          placeholder="Why is this deliverable delayed? (e.g. Waiting for footage approval)" 
+                          value={delayReason} 
+                          onChange={(e) => setDelayReason(e.target.value)} 
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300" 
+                          rows={3} 
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <button onClick={() => {
+                          if (!delayReason.trim()) {
+                            alert("Please enter a delay reason.");
+                            return;
+                          }
+                          onCompleteAction({ ...slot, isDelayed: true, delayReason, title: "Delayed: " + slot.kpiName });
+                          setIsReportingDelay(false);
+                          setEditingSlot(null);
+                          setDelayReason("");
+                        }} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors">Submit Delay</button>
+                        <button onClick={() => setIsReportingDelay(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-xl text-sm transition-colors">Back</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             }
@@ -4091,7 +4283,25 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
                   <h3 className={`text-base font-bold ${isCompleted ? 'text-teal-800' : 'text-slate-800'}`}>
                     {isCompleted ? slot.completedProject.title : slot.type === 'pending' ? slot.pendingProject.title : `Pending Action ${slot.slotIndex + 1}`}
                   </h3>
-                  {isCompleted && slot.completedProject.meta.objective && <p className="text-sm text-teal-600 mt-1">{slot.completedProject.meta.objective}</p>}
+                  {isCompleted && (() => {
+                    let meta = {};
+                    try { meta = JSON.parse(slot.completedProject.description); } catch(e) {}
+                    return (
+                      <div className="mt-2 space-y-1">
+                        {meta.objective && <p className="text-sm text-teal-600 font-medium">{meta.objective}</p>}
+                        {meta.submissionLink && (
+                          <div className="text-xs text-slate-500 mt-1">
+                            <span className="font-bold">Link:</span> <a href={meta.submissionLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline font-semibold">{meta.submissionLink}</a>
+                          </div>
+                        )}
+                        {meta.isDelayed && (
+                          <div className="text-xs text-rose-600 mt-1 font-semibold">
+                            ⚠️ Delayed: {meta.delayReason}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {slot.type === 'pending' && slot.pendingProject.meta.objective && <p className="text-sm text-amber-600 mt-1">{slot.pendingProject.meta.objective}</p>}
                 </div>
                 {!isCompleted && (
@@ -7224,29 +7434,37 @@ export default function App() {
   
   async function handleCompleteAction(actionData) {
     const isPending = actionData.type === 'pending';
+    const isDelayed = actionData.isDelayed || false;
+    
     const descriptionJson = JSON.stringify({
       objective: actionData.objective,
       targetDate: actionData.date,
       type: "action_item",
-      status: "completed"
+      status: isDelayed ? "delayed" : "completed",
+      submissionLink: actionData.submissionLink || "",
+      isDelayed: isDelayed,
+      delayReason: actionData.delayReason || ""
     });
 
     let kpi = kpis.find(k => k.id === actionData.kpiId);
     let assignedTo = isPending ? (actionData.pendingProject?.assignedTo || kpi?.owner) : (kpi?.owner || "Unassigned");
     let teamName = kpi?.team || "Digital Marketing";
 
+    let completedProjectData = null;
+
     if (isPending) {
-      await supabase.from('projects').update({
+      const { data } = await supabase.from('projects').update({
         name: actionData.title,
         description: descriptionJson,
-        status: "completed"
-      }).eq('id', actionData.pendingProject.id);
+        status: isDelayed ? "delayed" : "completed"
+      }).eq('id', actionData.pendingProject.id).select().single();
       
+      completedProjectData = data;
       setProjects(prev => prev.map(p => p.id === actionData.pendingProject.id ? {
         ...p,
         name: actionData.title,
         description: descriptionJson,
-        status: "completed"
+        status: isDelayed ? "delayed" : "completed"
       } : p));
     } else {
       const dbPayload = {
@@ -7256,10 +7474,11 @@ export default function App() {
         assigned_to: assignedTo,
         kpi_id: actionData.kpiId,
         target_date: actionData.date,
-        status: "completed"
+        status: isDelayed ? "delayed" : "completed"
       };
       
       const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
+      completedProjectData = data;
       if (!error && data) {
         const formatted = {
           id: data.id,
@@ -7277,7 +7496,7 @@ export default function App() {
       }
     }
 
-    if (!isPending && kpi) {
+    if (!isPending && kpi && !isDelayed) {
       const nextM = { ...(kpi.monthlyActual || {}) };
       const mKey = MONTHS_LIST.find(m => m.startsWith(actionData.date.substring(5,7)) || new Date(actionData.date).toLocaleString('default', { month: 'short' }) + " " + actionData.date.substring(0,4) === m) || Object.keys(kpi.monthlyAlloc || {})[0];
       if (mKey) {
@@ -7290,11 +7509,34 @@ export default function App() {
     if (!isPending && actionData.followUpKpiId) {
       const followUpKpi = kpis.find(k => k.id === actionData.followUpKpiId);
       if (followUpKpi) {
+        // Calculate child target date with 30-min cutoff buffer shifting logic:
+        let targetDateForChild = actionData.date;
+        if (kpi && kpi.reportConfig?.handoffEnabled) {
+          const now = new Date();
+          const cutoffStr = kpi.reportConfig.cutoffTime || "17:30";
+          const bufferMins = Number(kpi.reportConfig.bufferMinutes || 30);
+          
+          const [cutoffHours, cutoffMinutes] = cutoffStr.split(':').map(Number);
+          const cutoffDate = new Date(now);
+          cutoffDate.setHours(cutoffHours, cutoffMinutes, 0, 0);
+          
+          const bufferLimitDate = new Date(cutoffDate.getTime() - bufferMins * 60000);
+          
+          if (now.getTime() >= bufferLimitDate.getTime()) {
+            const nextD = new Date(now);
+            nextD.setDate(nextD.getDate() + 1);
+            targetDateForChild = nextD.toISOString().split('T')[0];
+          }
+        }
+
         const followUpDesc = JSON.stringify({
           objective: "Follow-up for: " + actionData.title,
-          targetDate: actionData.date,
+          targetDate: targetDateForChild,
           type: "action_item",
-          status: "pending"
+          status: "pending",
+          parentLink: actionData.submissionLink || "",
+          parentDelayed: isDelayed,
+          parentDelayReason: actionData.delayReason || ""
         });
         const followUpPayload = {
           name: "Pending: " + actionData.title,
@@ -7302,7 +7544,7 @@ export default function App() {
           team: followUpKpi.team || "Digital Marketing",
           assigned_to: followUpKpi.owner || "Unassigned",
           kpi_id: followUpKpi.id,
-          target_date: actionData.date,
+          target_date: targetDateForChild,
           status: "open"
         };
         const { data } = await supabase.from('projects').insert(followUpPayload).select().single();
