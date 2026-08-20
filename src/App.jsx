@@ -4904,6 +4904,12 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                 <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex justify-end gap-1.5">
                                     <button 
+                                      onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, name: kpi.name + ' (Copy)' }); }}
+                                      className="text-indigo-600 hover:text-indigo-800 p-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-all"
+                                      title="Duplicate KPI"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </button>\n                                      <button 
                                       onClick={() => setEditingKpi(kpi)} 
                                       className="text-teal-600 hover:text-teal-800 p-1.5 rounded-lg border border-teal-100 hover:bg-teal-50 transition-all"
                                       title="Edit KPI"
@@ -5027,6 +5033,12 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                               </div>
                               <div className="flex gap-2">
                                 <button
+                                  onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, name: kpi.name + ' (Copy)' }); }}
+                                  className="text-indigo-600 hover:text-indigo-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-indigo-50 transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
+                                  title="Duplicate KPI"
+                                >
+                                  <Copy className="w-3 h-3"/> Duplicate
+                                </button>\n                                <button
                                   onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }}
                                   className="text-teal-600 hover:text-teal-800 text-xs font-semibold px-2 py-0.5 rounded hover:bg-teal-50 transition-colors opacity-0 group-hover:opacity-100"
                                 >
