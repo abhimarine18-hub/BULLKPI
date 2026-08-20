@@ -2821,7 +2821,8 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const getCurrentState = () => ({
     name, description, unit, direction, team, owner, driveBy, monitorBy, weightage, totalTargetInput,
     monthlyAlloc, monthlyActual, weeklyAlloc, weeklyActual, dailyAlloc, dailyActual,
-    revisedAlloc, customHolidays, holidaysEnabled, kpiType, reportConfig, distributeEnabled, excludeSundays
+    revisedAlloc, customHolidays, holidaysEnabled, kpiType, reportConfig, distributeEnabled, excludeSundays,
+    handoffEnabled, handoffMode, parentLabel, childLabel, cutoffTime, bufferMinutes
   });
   
   const [originalState, setOriginalState] = useState(() => JSON.stringify(getCurrentState()));
