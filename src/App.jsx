@@ -3749,22 +3749,6 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                     );
                   })()}
                 </div>
-                <div className="flex items-center gap-1 bg-white border border-slate-200 p-0.5 rounded-lg shrink-0">
-                  <button 
-                    onClick={() => setTargetView("calendar")}
-                    className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${targetView === 'calendar' ? 'bg-orange-50 text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                    title="Calendar View"
-                  >
-                    <CalendarRange className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => setTargetView("list")}
-                    className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${targetView === 'list' ? 'bg-orange-50 text-orange-600 shadow-sm' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                    title="List View"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
 
               {/* Scrollable grid section */}
