@@ -3966,7 +3966,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
 
 
-function ActionScreen({ kpis, projects, user, onCompleteAction }) {
+function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
   const [activeDate, setActiveDate] = useState(new Date().toISOString().split('T')[0]);
   const [editingSlot, setEditingSlot] = useState(null);
   const [title, setTitle] = useState("");
@@ -5459,7 +5459,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             </>
           )}
 
-          {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={activeMemberFilter ? activeMemberFilter.name : "Krithika"} onCompleteAction={handleCompleteAction} /> )}
+          {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={activeMemberFilter ? activeMemberFilter.name : "Krithika"} onCompleteAction={handleCompleteAction} teams={teams} /> )}
 
           {screen === "kpis" && (
             <>
@@ -6980,7 +6980,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
       >
         <div className="flex-1 overflow-y-auto flex flex-col">
 
-        {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={CURRENT_EMPLOYEE} onCompleteAction={handleCompleteAction} /> )}
+        {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={CURRENT_EMPLOYEE} onCompleteAction={handleCompleteAction} teams={teams} /> )}
 
         {screen === "home" && (
           <>
