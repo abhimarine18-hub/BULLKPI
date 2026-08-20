@@ -3974,6 +3974,20 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
   const [submissionLink, setSubmissionLink] = useState("");
   const [delayReason, setDelayReason] = useState("");
   const [isReportingDelay, setIsReportingDelay] = useState(false);
+  
+  // Delegated Task modal states
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskObjective, setTaskObjective] = useState("");
+  const [taskOutcome, setTaskOutcome] = useState("");
+  const [taskTargetDate, setTaskTargetDate] = useState(new Date().toISOString().split('T')[0]);
+  const [taskAssignee, setTaskAssignee] = useState("");
+  const [taskKpiId, setTaskKpiId] = useState("");
+
+  // Rescheduling state
+  const [reschedulingProjectId, setReschedulingProjectId] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
 
   const myKpis = kpis.filter(k => k.owner === user);
   const myProjects = projects.filter(p => {
@@ -4028,8 +4042,35 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
     });
   });
 
+  // Add accepted/delayed delegated tasks to active day checklist
+  const activeTasks = parsedProjects.filter(p => p.meta.type === 'delegated_task' && (p.meta.status === 'accepted' || p.meta.status === 'delayed'));
+  activeTasks.forEach(p => {
+    actionSlots.push({
+      id: `delegated_${p.id}`,
+      kpiId: p.kpiId || null,
+      kpiName: p.kpiId ? (kpis.find(k => k.id === p.kpiId)?.name || "Linked KPI") : "Independent Task",
+      date: p.targetDate,
+      pendingProject: p,
+      type: 'delegated_active'
+    });
+  });
+
   // Filter slots for active date
   const slotsForDate = actionSlots.filter(s => s.date === activeDate);
+
+  // Get all members for Assignee Dropdown
+  const allMembers = teams.flatMap(t => t.members);
+  const assigneeOptions = allMembers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i);
+
+  // New Incoming Task Requests (pending delegated tasks)
+  const incomingTaskRequests = parsedProjects.filter(p => p.meta.type === 'delegated_task' && p.meta.status === 'pending');
+
+  // Past Pending Work (incomplete before activeDate)
+  const pastPendingSlots = actionSlots.filter(s => {
+    if (s.date >= activeDate) return false;
+    const isCompleted = s.type === 'alloc' ? !!s.completedProject : (s.pendingProject?.status === 'completed' || s.pendingProject?.meta?.status === 'completed');
+    return !isCompleted;
+  });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50/50 p-6 overflow-hidden">
@@ -4037,15 +4078,279 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
           <ListTodo className="h-6 w-6 text-teal-600" /> Action Screen
         </h2>
-        <input type="date" value={activeDate} onChange={(e) => setActiveDate(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-2 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-300" />
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => {
+              setShowDelegateModal(true);
+              if (assigneeOptions.length > 0) setTaskAssignee(assigneeOptions[0].name);
+            }} 
+            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm hover:shadow-md"
+          >
+            <Plus className="h-4 w-4" /> Delegate Task
+          </button>
+          <input type="date" value={activeDate} onChange={(e) => setActiveDate(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-2 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-300" />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4">
+        {/* Incoming Task Requests Panel */}
+        {incomingTaskRequests.length > 0 && (
+          <div className="bg-amber-50/40 border border-amber-100 rounded-3xl p-5 space-y-3 mb-4 shadow-sm">
+            <h3 className="text-sm font-bold text-amber-800 flex items-center gap-1.5 uppercase tracking-wider">
+              <GitBranch className="h-4 w-4" /> New Task Requests ({incomingTaskRequests.length})
+            </h3>
+            <div className="space-y-3">
+              {incomingTaskRequests.map(task => {
+                const isRescheduling = reschedulingProjectId === task.id;
+                return (
+                  <div key={task.id} className="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm space-y-3">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">{task.title}</h4>
+                      <p className="text-xs text-slate-500 mt-1 font-semibold">
+                        Assigned By: {task.meta.creator || "Manager"} · Target: {task.targetDate}
+                      </p>
+                      {task.meta.objective && (
+                        <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded-lg italic">
+                          Objective: {task.meta.objective}
+                        </p>
+                      )}
+                      {task.meta.expectedOutcome && (
+                        <p className="text-xs text-slate-600 mt-1.5 bg-slate-50 p-2 rounded-lg italic">
+                          Outcome: {task.meta.expectedOutcome}
+                        </p>
+                      )}
+                    </div>
+
+                    {!isRescheduling ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        <button 
+                          onClick={() => onCompleteAction({ type: 'accept_task', project: task })}
+                          className="px-3.5 py-1.5 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-lg text-xs transition-colors"
+                        >
+                          Accept Task
+                        </button>
+                        {task.meta.rescheduleCount === 0 && (
+                          <button 
+                            onClick={() => {
+                              setReschedulingProjectId(task.id);
+                              setRescheduleDate(task.targetDate);
+                            }}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition-colors"
+                          >
+                            Reschedule
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 p-3 rounded-xl space-y-2 border border-slate-200">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">New Target Date</label>
+                            <input 
+                              type="date" 
+                              value={rescheduleDate} 
+                              onChange={(e) => setRescheduleDate(e.target.value)} 
+                              className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Reschedule Reason</label>
+                            <input 
+                              type="text" 
+                              placeholder="Why reschedule?" 
+                              value={rescheduleReason} 
+                              onChange={(e) => setRescheduleReason(e.target.value)} 
+                              className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white" 
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <button 
+                            onClick={() => {
+                              if (!rescheduleReason.trim()) {
+                                alert("Please enter a reason for rescheduling.");
+                                return;
+                              }
+                              onCompleteAction({ type: 'reschedule_task', project: task, newDate: rescheduleDate, reason: rescheduleReason });
+                              setReschedulingProjectId(null);
+                              setRescheduleReason("");
+                            }}
+                            className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs transition-colors"
+                          >
+                            Submit
+                          </button>
+                          <button 
+                            onClick={() => setReschedulingProjectId(null)}
+                            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION: Past Pending Work */}
+        {pastPendingSlots.length > 0 && (
+          <div className="bg-rose-50/20 border border-rose-100/50 rounded-3xl p-5 space-y-3 mb-4 shadow-sm">
+            <h3 className="text-sm font-bold text-rose-800 flex items-center gap-1.5 uppercase tracking-wider">
+              ⚠️ Past Pending Work (Needs Attention)
+            </h3>
+            <div className="space-y-3">
+              {pastPendingSlots.map(slot => {
+                const isCompleted = slot.type === 'alloc' ? !!slot.completedProject : false;
+                if (editingSlot === slot.id) {
+                  const kpiObj = kpis.find(k => k.id === slot.kpiId);
+                  const parentKpiObj = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(slot.kpiId));
+                  const isParentHandoff = kpiObj?.reportConfig?.handoffEnabled && kpiObj?.reportConfig?.followUpKpiId;
+                  const isChildHandoff = parentKpiObj?.reportConfig?.handoffEnabled;
+
+                  let parentLink = "";
+                  let parentDelayed = false;
+                  let parentDelayReason = "";
+                  if (isChildHandoff && slot.type === 'pending') {
+                     try {
+                       const meta = JSON.parse(slot.pendingProject.description);
+                       parentLink = meta.parentLink || "";
+                       parentDelayed = meta.parentDelayed || false;
+                       parentDelayReason = meta.parentDelayReason || "";
+                     } catch(e) {}
+                  }
+
+                  return (
+                    <div key={slot.id} className="bg-white rounded-2xl p-4 border border-rose-200 shadow-sm space-y-3">
+                      <h4 className="text-xs font-bold text-rose-700 uppercase tracking-wider">{slot.kpiName} - Action Details</h4>
+                      
+                      {isChildHandoff && parentDelayed && (
+                        <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl text-xs font-semibold">
+                          ⚠️ Parent Delivery Delayed: {parentDelayReason}
+                        </div>
+                      )}
+
+                      {isChildHandoff && parentLink && (
+                        <div className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">Parent Deliverable:</span>
+                          <a href={parentLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline font-bold">
+                            Download / View File
+                          </a>
+                        </div>
+                      )}
+
+                      {!isReportingDelay ? (
+                        <>
+                          <div className="space-y-3">
+                            <input type="text" placeholder="Title (e.g., Onam Poster)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                            <textarea placeholder="Objective / Notes" value={objective} onChange={(e) => setObjective(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" rows={2} />
+                            
+                            {isParentHandoff && (
+                              <input 
+                                type="text" 
+                                placeholder={kpiObj.reportConfig.parentLabel || "Google Drive Link"} 
+                                value={submissionLink} 
+                                onChange={(e) => setSubmissionLink(e.target.value)} 
+                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                              />
+                            )}
+
+                            {isChildHandoff && slot.type === 'pending' && (
+                              <input 
+                                type="text" 
+                                placeholder={parentKpiObj.reportConfig.childLabel || "Social Media Link"} 
+                                value={submissionLink} 
+                                onChange={(e) => setSubmissionLink(e.target.value)} 
+                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold"
+                              />
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => {
+                              if ((isParentHandoff || (isChildHandoff && slot.type === 'pending')) && !submissionLink.trim()) {
+                                alert("Please provide the required submission link before completing.");
+                                return;
+                              }
+                              onCompleteAction({ ...slot, title, objective, submissionLink });
+                              setEditingSlot(null);
+                              setSubmissionLink("");
+                            }} className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Mark as Completed</button>
+                            
+                            {isParentHandoff && (
+                              <button onClick={() => setIsReportingDelay(true)} className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Report Delay</button>
+                            )}
+                            
+                            <button onClick={() => { setEditingSlot(null); setSubmissionLink(""); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Cancel</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-600 block">Delay Reason & Support Needed</label>
+                            <textarea 
+                              placeholder="Why is it delayed & what support is needed?" 
+                              value={delayReason} 
+                              onChange={(e) => setDelayReason(e.target.value)} 
+                              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300" 
+                              rows={2} 
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <button onClick={() => {
+                              if (!delayReason.trim()) {
+                                alert("Please enter a reason.");
+                                return;
+                              }
+                              onCompleteAction({ ...slot, isDelayed: true, delayReason, title: "Delayed: " + slot.kpiName });
+                              setIsReportingDelay(false);
+                              setEditingSlot(null);
+                              setDelayReason("");
+                            }} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Submit Blocker</button>
+                            <button onClick={() => setIsReportingDelay(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1.5 px-3 rounded-lg text-xs transition-colors">Back</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={slot.id} className="bg-white rounded-2xl p-4 border border-rose-100 shadow-sm flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-2 py-0.5 rounded">{slot.kpiName}</span>
+                        <span className="text-[9px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">Due: {slot.date}</span>
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-sm">
+                        {slot.type === 'pending' ? slot.pendingProject.title : "Pending Action " + (slot.slotIndex + 1)}
+                      </h4>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setEditingSlot(slot.id);
+                        setTitle(slot.type === 'pending' ? slot.pendingProject.title : '');
+                      }}
+                      className="px-3.5 py-1.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-lg text-xs transition-colors shadow-sm"
+                    >
+                      Resolve Blocker
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION: Today's Scheduled Tasks */}
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1 pt-2">Today's Schedule</h3>
         {slotsForDate.length === 0 ? (
           <div className="text-center text-slate-400 py-10 bg-white rounded-3xl border border-slate-100">No actions scheduled for this date.</div>
         ) : (
           slotsForDate.map(slot => {
-            const isCompleted = slot.type === 'alloc' ? !!slot.completedProject : false;
+            const isCompleted = slot.type === 'alloc' ? !!slot.completedProject : (slot.type === 'delegated_active' ? slot.pendingProject?.status === 'completed' : false);
             
             if (editingSlot === slot.id) {
               const kpiObj = kpis.find(k => k.id === slot.kpiId);
@@ -4206,6 +4511,129 @@ function ActionScreen({ kpis, projects, user, onCompleteAction }) {
           })
         )}
       </div>
+
+      {/* Delegate Task Modal */}
+      {showDelegateModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <GitBranch className="h-5 w-5 text-teal-600" /> Delegate Task
+              </h3>
+              <button onClick={() => setShowDelegateModal(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Assign To</label>
+                <select 
+                  value={taskAssignee} 
+                  onChange={(e) => setTaskAssignee(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold bg-white"
+                >
+                  {assigneeOptions.map(m => (
+                    <option key={m.name} value={m.name}>{m.name} ({m.teamName || 'Team'})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Task Title</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Design Onam Banner" 
+                  value={taskTitle} 
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Target Date</label>
+                  <input 
+                    type="date" 
+                    value={taskTargetDate} 
+                    onChange={(e) => setTaskTargetDate(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Linked KPI (Optional)</label>
+                  <select 
+                    value={taskKpiId} 
+                    onChange={(e) => setTaskKpiId(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
+                  >
+                    <option value="">None (Independent Task)</option>
+                    {kpis.filter(k => k.owner === taskAssignee).map(k => (
+                      <option key={k.id} value={k.id}>{k.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Objective of the Task</label>
+                <textarea 
+                  placeholder="Explain why this task is needed..." 
+                  value={taskObjective} 
+                  onChange={(e) => setTaskObjective(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Expected Outcome</label>
+                <textarea 
+                  placeholder="What is the expected deliverable/result?" 
+                  value={taskOutcome} 
+                  onChange={(e) => setTaskOutcome(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button 
+                onClick={() => setShowDelegateModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (!taskTitle.trim() || !taskAssignee) {
+                    alert("Please provide a title and assignee.");
+                    return;
+                  }
+                  onCompleteAction({
+                    type: 'create_delegated_task',
+                    taskData: {
+                      title: taskTitle,
+                      assignee: taskAssignee,
+                      targetDate: taskTargetDate,
+                      kpiId: taskKpiId ? Number(taskKpiId) : null,
+                      objective: taskObjective,
+                      outcome: taskOutcome,
+                      creator: user
+                    }
+                  });
+                  setShowDelegateModal(false);
+                  setTaskTitle("");
+                  setTaskObjective("");
+                  setTaskOutcome("");
+                }}
+                className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm"
+              >
+                Assign Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -7320,7 +7748,78 @@ export default function App() {
 
   
   async function handleCompleteAction(actionData) {
-    const isPending = actionData.type === 'pending';
+    if (actionData.type === 'create_delegated_task') {
+      const task = actionData.taskData;
+      let teamName = "Digital Marketing";
+      const assignedMember = teams.flatMap(t => t.members).find(m => m.name === task.assignee);
+      if (assignedMember) {
+        const teamObj = teams.find(t => t.members.some(m => m.name === task.assignee));
+        if (teamObj) teamName = teamObj.name;
+      }
+      const descriptionJson = JSON.stringify({
+        type: "delegated_task",
+        objective: task.objective,
+        expectedOutcome: task.outcome,
+        targetDate: task.targetDate,
+        status: "pending",
+        kpiId: task.kpiId || null,
+        creator: task.creator,
+        rescheduleCount: 0,
+        rescheduleReason: ""
+      });
+      const dbPayload = {
+        name: task.title,
+        description: descriptionJson,
+        team: teamName,
+        assigned_to: task.assignee,
+        kpi_id: task.kpiId || null,
+        target_date: task.targetDate,
+        status: "open"
+      };
+      const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
+      if (!error && data) {
+        setProjects(prev => [...prev, {
+          id: data.id,
+          title: data.name,
+          description: data.description,
+          team: data.team,
+          assignedTo: data.assigned_to,
+          kpiId: data.kpi_id,
+          targetDate: data.target_date,
+          status: data.status,
+          createdAt: data.created_at,
+          memberNames: []
+        }]);
+      }
+      return;
+    }
+
+    if (actionData.type === 'accept_task') {
+      const p = actionData.project;
+      let meta = {};
+      try { meta = JSON.parse(p.description); } catch(e) {}
+      meta.status = "accepted";
+      const descriptionJson = JSON.stringify(meta);
+      await supabase.from('projects').update({ description: descriptionJson, status: "open" }).eq('id', p.id);
+      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, status: "open" } : proj));
+      return;
+    }
+
+    if (actionData.type === 'reschedule_task') {
+      const p = actionData.project;
+      let meta = {};
+      try { meta = JSON.parse(p.description); } catch(e) {}
+      meta.status = "accepted";
+      meta.targetDate = actionData.newDate;
+      meta.rescheduleCount = (meta.rescheduleCount || 0) + 1;
+      meta.rescheduleReason = actionData.reason;
+      const descriptionJson = JSON.stringify(meta);
+      await supabase.from('projects').update({ description: descriptionJson, target_date: actionData.newDate, status: "open" }).eq('id', p.id);
+      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, targetDate: actionData.newDate, status: "open" } : proj));
+      return;
+    }
+
+    const isPending = actionData.type === 'pending' || actionData.type === 'delegated_active';
     const isDelayed = actionData.isDelayed || false;
     
     const descriptionJson = JSON.stringify({
