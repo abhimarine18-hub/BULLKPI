@@ -4759,8 +4759,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                   }
 
                   return (
-                    <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-2xl p-4 hover:border-orange-200 hover:shadow-sm transition-all">
-                      <div className="flex items-start justify-between mb-2">
+                    <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all">
+                      <div className="flex items-start justify-between mb-0.5">
                         <p className="text-sm font-medium text-slate-600">{kpi.name}</p>
                         <StatusBadge status={dispStatus} />
                       </div>
@@ -5041,17 +5041,17 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           }
 
                           return (
-                          <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group flex flex-col h-full">
-  <div className="flex items-start justify-between mb-2">
+                          <div key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-2.5 hover:border-orange-200 hover:shadow-sm transition-all cursor-pointer relative group flex flex-col h-full">
+  <div className="flex items-start justify-between mb-0.5">
     <p className="text-[13px] font-semibold text-slate-700 pr-3 leading-snug">{kpi.name}</p>
-    <div className="flex flex-col items-end gap-1.5 shrink-0">
+    <div className="flex flex-col items-end gap-0.5 shrink-0">
       <div className="flex items-center gap-1.5">
         <StatusBadge status={dispStatus} />
         <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider ${kpi.kpiType === "report" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"}`}>
           {kpi.kpiType === "report" ? "Report" : "Activity"}
         </span>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-1 bg-white/80 p-0.5 rounded-md backdrop-blur-sm">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-0 bg-white/80 p-0.5 rounded-md backdrop-blur-sm">
         <button onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, name: kpi.name + " (Copy)" }); }} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50 transition-colors" title="Duplicate KPI">
           <Copy className="w-3.5 h-3.5"/>
         </button>
@@ -5064,7 +5064,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
       </div>
     </div>
   </div>
-  <p className="text-2xl font-semibold text-slate-900 truncate mb-1" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
+  <p className="text-2xl font-semibold text-slate-900 truncate mb-0.5" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
     {dispActual}
     <span className="text-slate-400 font-medium mx-1">/</span>
     {dispTarget}
