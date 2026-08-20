@@ -2726,7 +2726,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
     }
     return true;
   });
-  const [customHolidays, setCustomHolidays] = useState(kpi.customHolidays || {});
+
 
   const handleClearTargets = () => {
     if (window.confirm("Are you sure you want to clear all daily and weekly targets for all dates?")) {
@@ -2773,6 +2773,16 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const [monthlyActual] = useState(kpi.monthlyActual || {});
   const [weeklyActual] = useState(kpi.weeklyActual || {});
   const [revisedAlloc, setRevisedAlloc] = useState(kpi.revisedAlloc || {});
+  const [customHolidays, setCustomHolidays] = useState(kpi.customHolidays || {});
+
+  const getCurrentState = () => ({
+    name, description, unit, direction, team, owner, driveBy, monitorBy, weightage, totalTargetInput,
+    monthlyAlloc, monthlyActual, weeklyAlloc, weeklyActual, dailyAlloc, dailyActual,
+    revisedAlloc, customHolidays, holidaysEnabled, kpiType, reportConfig, distributeEnabled, excludeSundays
+  });
+  
+  const [originalState, setOriginalState] = useState(() => JSON.stringify(getCurrentState()));
+  const hasChanges = JSON.stringify(getCurrentState()) !== originalState;
 
   // Live computation for Report KPIs so right side updates dynamically
   useEffect(() => {
@@ -3116,7 +3126,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       kpiType,
       reportConfig
     });
-    onClose();
+    setOriginalState(JSON.stringify(getCurrentState()));
   };
 
   
@@ -3757,12 +3767,13 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
             onClick={onClose}
             className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-colors text-sm"
           >
-            Cancel
+            Close
           </button>
           <button
-            disabled={!canSubmit}
+            type="button"
+            disabled={!canSubmit || !hasChanges}
             onClick={handleSubmit}
-            className="flex-1 bg-teal-500 hover:bg-teal-600 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-colors text-sm shadow-sm"
+            className="flex-1 bg-teal-500 hover:bg-teal-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-colors text-sm shadow-sm"
           >
             Save Target Assignments
           </button>
