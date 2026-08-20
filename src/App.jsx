@@ -3671,7 +3671,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                           {/* 7 Days of the Row */}
                           {rowCells.map((cell, cIdx) => {
                             if (!cell || cell.isEmpty) {
-                              return <div key={`empty-${r}-${cIdx}`} className="bg-slate-100/20 rounded-xl h-[60px] border border-dashed border-slate-100" />;
+                              return <div key={`empty-${r}-${cIdx}`} className="bg-slate-100/20 rounded-xl h-auto min-h-[65px] pb-1 border border-dashed border-slate-100" />;
                             }
 
                             const dayTarget = dailyAlloc[cell.dateStr] || 0;
@@ -3712,7 +3712,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                     handleDailyChange(cell.dateStr, dayTarget > 0 ? 0 : 1, selectedMonth, r);
                                   }
                                 }}
-                                className={`border rounded-xl p-1 text-center flex flex-col justify-between h-[60px] ${cellBg} shadow-sm transition-all hover:border-slate-300 ${isTimeKpi ? "cursor-pointer" : ""}`}
+                                className={`border rounded-xl p-1 text-center flex flex-col justify-between h-auto min-h-[65px] pb-1 ${cellBg} shadow-sm transition-all hover:border-slate-300 ${isTimeKpi ? "cursor-pointer" : ""}`}
                               >
                                 <div className="flex justify-between items-center text-[10px] px-1 shrink-0">
                                   <span className={`font-bold ${dayTarget > 0 ? "text-teal-800" : "text-slate-500"}`}>{cell.dayNum}</span>
@@ -3795,7 +3795,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                           })}
 
                           {/* 8th Column: Weekly Total */}
-                          <div className={`border rounded-xl p-1 text-center flex flex-col justify-between h-[60px] shadow-sm transition-all ${weekVal > 0 ? 'bg-teal-50/60 border-teal-200 hover:border-teal-300' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'}`}>
+                          <div className={`border rounded-xl p-1 text-center flex flex-col justify-between h-auto min-h-[65px] pb-1 shadow-sm transition-all ${weekVal > 0 ? 'bg-teal-50/60 border-teal-200 hover:border-teal-300' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'}`}>
                             <span className={`text-[9px] font-bold block uppercase tracking-wider font-mono shrink-0 ${weekVal > 0 ? 'text-teal-850' : 'text-slate-400'}`}>W{r + 1} Total</span>
                             <div className="flex flex-col gap-0.5 mt-0.5">
                               {isTimeKpi ? (
