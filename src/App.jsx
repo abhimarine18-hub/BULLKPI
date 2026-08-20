@@ -3648,20 +3648,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
             {/* Selected Month Breakdown Sub-view (Unified Calendar Grid with Weekly Total) */}
             {distributeEnabled && (
               <div className="flex-1 flex flex-col min-h-0 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2 mb-4 shrink-0">
-                  {parentKpi && (
-                    <div className="text-xs text-slate-700 leading-tight">
-                      <span className="font-bold text-amber-700">Parent KPI :</span> {parentKpi.name} 
-                      <span className="font-bold ml-3 text-slate-500">Do:</span> {parentKpi.owner || parentKpi.doBy} 
-                      <span className="font-bold ml-3 text-slate-500">Target:</span> {parentKpi.target} {parentKpi.unit}
-                    </div>
-                  )}
-                  <div className="text-xs text-slate-700 leading-tight">
-                    <span className="font-bold text-teal-700">Children KPI :</span> {kpi.name} 
-                    <span className="font-bold ml-3 text-slate-500">Do:</span> {kpi.owner || kpi.doBy} 
-                    <span className="font-bold ml-3 text-slate-500">Target:</span> {kpi.target} {kpi.unit}
-                  </div>
-                </div>
+
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 pb-2 shrink-0 mb-3">
                 <div>
                   <h4 className="text-sm font-bold text-slate-800">
@@ -3915,46 +3902,72 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
                       return (
                         <div key={cell.dateStr} className={`relative flex items-center justify-between p-2.5 rounded-lg border ${check ? 'bg-rose-50/30 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
-                          {check && <span className="absolute top-1 right-1 text-[8px] text-rose-400 font-bold bg-rose-50 px-1 rounded border border-rose-100/50">Hol</span>}
-                          <div className="flex items-center gap-3 w-32 shrink-0">
+                          {check && <span className="absolute top-1 right-1 text-[8px] text-rose-400 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100/50">Hol</span>}
+                          
+                          {/* Left Side: Date */}
+                          <div className="flex items-center gap-3 w-16 shrink-0">
                             <div className={`text-sm font-bold ${check ? 'text-rose-500' : 'text-slate-700'}`}>{cell.dayNum}</div>
                             <div className={`text-xs font-semibold ${check ? 'text-rose-400' : 'text-slate-500'}`}>{cell.dayName}</div>
                           </div>
                           
-                          <div className="flex-1 flex flex-col gap-1 px-4 border-l border-slate-200 min-w-[120px]">
-                            {parentKpi && pt > 0 && (
-                              <>
-                                <div className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 inline-block w-fit">
-                                  PT: {formatIndianNumber(pt)}
-                                </div>
-                                <div className="text-[10px] font-bold mt-0.5">
-                                  PS: {pa >= pt ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}
-                                </div>
-                              </>
+                          {/* Right Side: KPI Context and Inputs */}
+                          <div className="flex-1 flex flex-col gap-1.5 px-4 border-l border-slate-200 min-w-0 pr-12">
+                            {/* Parent KPI Line */}
+                            {parentKpi && (
+                              <div className="text-[10px] text-slate-600 leading-tight flex flex-wrap items-center gap-x-2">
+                                <span className="font-bold text-amber-700">Parent KPI:</span> 
+                                <span className="truncate max-w-[200px]" title={parentKpi.name}>{parentKpi.name}</span>
+                                <span className="font-bold text-slate-400">Do:</span> 
+                                <span>{parentKpi.owner || parentKpi.doBy}</span>
+                                <span className="font-bold text-slate-400">Target Date:</span> 
+                                <span className="underline">{cell.dayNum} {selectedMonth}</span>
+                                {pt > 0 && (
+                                  <span className="ml-1 bg-amber-50 px-1 rounded border border-amber-100 font-bold text-amber-800 text-[9px] flex items-center gap-1.5">
+                                    <span>PT: {formatIndianNumber(pt)}</span>
+                                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                    <span>PS: {pa >= pt ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}</span>
+                                  </span>
+                                )}
+                              </div>
                             )}
-                          </div>
 
-                          <div className="flex items-center gap-6 shrink-0 border-l border-slate-200 pl-4 pr-10 justify-end min-w-[170px]">
-                            <div className="flex items-center gap-2">
-                              {isTimeKpi ? (
-                                 <span className={`text-[11px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>{dayTarget > 0 ? "T: Set" : "T: 0"}</span>
-                              ) : (
-                                 <div className="flex flex-col gap-1 items-end">
-                                   <div className="flex items-center gap-1">
-                                     <span className="text-[10px] font-bold text-slate-400">T:</span>
-                                     <input type="text" value={formatIndianNumber(dayTarget)} onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, null)} className={`w-12 text-right text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`} placeholder="0" />
-                                   </div>
-                                   {dayRevised !== dayTarget && dayActual !== dayTarget && (
-                                     <span className="text-[9px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-1 rounded">R:{formatIndianNumber(dayRevised)}</span>
-                                   )}
-                                 </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center justify-end min-w-[50px]">
-                              <span className={`text-[11px] font-bold ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`}>
-                                A: {dayActual > 0 ? formatIndianNumber(dayActual) : "0"}
-                              </span>
+                            {/* Children KPI Line */}
+                            <div className="text-[10.5px] text-slate-600 leading-tight flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <span className="font-bold text-teal-700">Children KPI:</span> 
+                              <span className="truncate max-w-[200px]" title={kpi.name}>{kpi.name}</span>
+                              <span className="font-bold text-slate-400">Do:</span> 
+                              <span>{kpi.owner || kpi.doBy}</span>
+                              <span className="font-bold text-slate-400">Target Date:</span> 
+                              <span className="underline">{cell.dayNum} {selectedMonth}</span>
+
+                              {/* Target Inputs and Actual Displays inline */}
+                              <div className="ml-auto flex items-center gap-3 bg-white px-2 py-0.5 rounded border border-slate-100">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] font-bold text-slate-400">T:</span>
+                                  {isTimeKpi ? (
+                                    <span className={`text-[10px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>{dayTarget > 0 ? "Set" : "0"}</span>
+                                  ) : (
+                                    <input 
+                                      type="text" 
+                                      value={formatIndianNumber(dayTarget)} 
+                                      onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, null)} 
+                                      className={`w-9 text-right text-[10px] focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`} 
+                                      placeholder="0" 
+                                    />
+                                  )}
+                                  {dayRevised !== dayTarget && dayActual !== dayTarget && (
+                                    <span className="text-[8px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-0.5 rounded ml-0.5">R:{formatIndianNumber(dayRevised)}</span>
+                                  )}
+                                </div>
+                                
+                                <div className="border-l border-slate-100 h-3"></div>
+
+                                <div className="flex items-center">
+                                  <span className={`text-[10px] font-bold ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`}>
+                                    A: {dayActual > 0 ? formatIndianNumber(dayActual) : "0"}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
