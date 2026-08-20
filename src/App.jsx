@@ -2728,6 +2728,13 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   });
   const [customHolidays, setCustomHolidays] = useState(kpi.customHolidays || {});
 
+  const handleClearTargets = () => {
+    if (window.confirm("Are you sure you want to clear all daily and weekly targets for all dates?")) {
+      setDailyAlloc({});
+      setWeeklyAlloc({});
+    }
+  };
+
   const handleAutoDistribute = (overrides = {}) => {
     const effHolidays = overrides.customHolidays !== undefined ? overrides.customHolidays : customHolidays;
     const effExclude = overrides.excludeSundays !== undefined ? overrides.excludeSundays : excludeSundays;
@@ -3467,6 +3474,13 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 <div className="flex items-center gap-4">
                   {distributeEnabled && (
                     <>
+                      <button
+                        type="button"
+                        onClick={handleClearTargets}
+                        className="text-xs font-bold px-2 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded hover:bg-rose-100 transition-colors"
+                      >
+                        Clear Targets
+                      </button>
                       <button
                         type="button"
                         onClick={handleAutoDistribute}
