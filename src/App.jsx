@@ -4167,7 +4167,7 @@ function MorningReviewScreen({ teams, kpis }) {
 }
 
 
-function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis }) {
+function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction }) {
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -7270,6 +7270,7 @@ export default function App() {
             onDeleteMember={handleDeleteMember}
             onDeleteTeam={handleDeleteTeam}
             onUploadKpis={handleUploadKpis}
+            handleCompleteAction={handleCompleteAction}
           />
         ) : (
           <EmployeeApp kpis={kpis} onLog={handleLog} teams={teams} projects={projects} handleCompleteAction={handleCompleteAction} />
