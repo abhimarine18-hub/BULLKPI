@@ -4005,6 +4005,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
   const [addKpiOpen, setAddKpiOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [projectTab, setProjectTab] = useState("open");
   const [editingKpi, setEditingKpi] = useState(null);
   const [kpiView, setKpiView] = useState("grid");
   const [showTemplate, setShowTemplate] = useState(false);
@@ -5031,6 +5032,11 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="text-base font-bold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{proj.title}</h3>
+                              {projectTab === "bin" && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100">
+                                  Waiting for admin approval to remove
+                                </span>
+                              )}
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
                                 Active: {proj.stages[proj.currentStageIdx]?.name}
                               </span>
@@ -6886,6 +6892,7 @@ export default function App() {
             onEditKpi={handleEditKpi}
             onDeleteKpi={handleDeleteKpi}
             onDeleteProject={handleDeleteProject}
+            onRestoreProject={handleRestoreProject}
             onDeleteMember={handleDeleteMember}
             onDeleteTeam={handleDeleteTeam}
             onUploadKpis={handleUploadKpis}
