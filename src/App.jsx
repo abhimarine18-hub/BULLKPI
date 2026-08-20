@@ -3380,6 +3380,16 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 </select>
               </div>
             </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <label className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1 uppercase tracking-wider">
+                <GitBranch className="h-3 w-3" /> Triggers Follow-up KPI (Optional)
+              </label>
+              <select value={reportConfig.followUpKpiId || ''} onChange={(e) => setReportConfig(prev => ({ ...prev, followUpKpiId: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                <option value="">None</option>
+                {allKpis.filter(k => k.id !== kpi.id).map(k => <option key={k.id} value={k.id}>{k.name} ({k.owner || 'Unassigned'})</option>)}
+              </select>
+            </div>
           </div>
 
           {/* RIGHT COLUMN: TARGET SCHEDULING & DISTRIBUTION (takes 6/8 columns) */}
@@ -3786,10 +3796,142 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   );
 }
 
+
+
+function ActionScreen({ kpis, projects, user, onCompleteAction }) {
+  const [activeDate, setActiveDate] = useState(new Date().toISOString().split('T')[0]);
+  const [editingSlot, setEditingSlot] = useState(null);
+  const [title, setTitle] = useState("");
+  const [objective, setObjective] = useState("");
+
+  const myKpis = kpis.filter(k => k.owner === user);
+  const myProjects = projects.filter(p => {
+    if (p.assignedTo !== user) return false;
+    try {
+      const meta = JSON.parse(p.description);
+      return meta.type === "action_item";
+    } catch(e) { return false; }
+  });
+
+  const parsedProjects = myProjects.map(p => {
+    let meta = {};
+    try { meta = JSON.parse(p.description); } catch(e) {}
+    return { ...p, meta };
+  });
+
+  // Calculate action slots from KPI dailyAlloc
+  const actionSlots = [];
+  myKpis.forEach(kpi => {
+    Object.entries(kpi.dailyAlloc || {}).forEach(([dateStr, targetVal]) => {
+      if (targetVal > 0) {
+        // Find completed projects for this KPI on this date
+        const completedForKpiDate = parsedProjects.filter(p => p.meta.status === 'completed' && p.kpiId === kpi.id && p.meta.targetDate === dateStr);
+        
+        for (let i = 0; i < targetVal; i++) {
+          actionSlots.push({
+            id: `slot_${kpi.id}_${dateStr}_${i}`,
+            kpiId: kpi.id,
+            kpiName: kpi.name,
+            date: dateStr,
+            slotIndex: i,
+            followUpKpiId: kpi.reportConfig?.followUpKpiId,
+            completedProject: completedForKpiDate[i] || null,
+            type: 'alloc'
+          });
+        }
+      }
+    });
+  });
+
+  // Add pending actions triggered by other people's KPIs
+  const pendingActions = parsedProjects.filter(p => p.meta.status === 'pending');
+  pendingActions.forEach(p => {
+    actionSlots.push({
+      id: `pending_${p.id}`,
+      kpiId: p.kpiId,
+      kpiName: kpis.find(k => k.id === p.kpiId)?.name || "Linked KPI",
+      date: p.meta.targetDate,
+      pendingProject: p,
+      type: 'pending'
+    });
+  });
+
+  // Filter slots for active date
+  const slotsForDate = actionSlots.filter(s => s.date === activeDate);
+
+  return (
+    <div className="flex-1 flex flex-col h-full bg-slate-50/50 p-6 overflow-hidden">
+      <div className="flex items-center justify-between mb-6 shrink-0">
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <ListTodo className="h-6 w-6 text-teal-600" /> Action Screen
+        </h2>
+        <input type="date" value={activeDate} onChange={(e) => setActiveDate(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-2 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-300" />
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-4">
+        {slotsForDate.length === 0 ? (
+          <div className="text-center text-slate-400 py-10 bg-white rounded-3xl border border-slate-100">No actions scheduled for this date.</div>
+        ) : (
+          slotsForDate.map(slot => {
+            const isCompleted = slot.type === 'alloc' ? !!slot.completedProject : false;
+            
+            if (editingSlot === slot.id) {
+              return (
+                <div key={slot.id} className="bg-white rounded-3xl p-5 border border-orange-200 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-700 mb-3">{slot.kpiName} - Action Details</h3>
+                  <div className="space-y-3 mb-4">
+                    <input type="text" placeholder="Title (e.g., Onam Poster)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                    <textarea placeholder="Objective / Notes" value={objective} onChange={(e) => setObjective(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" rows={2} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => {
+                      onCompleteAction({ ...slot, title, objective });
+                      setEditingSlot(null);
+                    }} className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors">Mark as Completed</button>
+                    <button onClick={() => setEditingSlot(null)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-xl text-sm transition-colors">Cancel</button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={slot.id} className={`rounded-3xl p-5 border ${isCompleted ? 'bg-teal-50 border-teal-100' : slot.type === 'pending' ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-200 shadow-sm'} flex items-start justify-between`}>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{slot.kpiName}</span>
+                    {slot.type === 'pending' && <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex items-center gap-1"><GitBranch className="h-3 w-3" /> Handoff</span>}
+                  </div>
+                  <h3 className={`text-base font-bold ${isCompleted ? 'text-teal-800' : 'text-slate-800'}`}>
+                    {isCompleted ? slot.completedProject.title : slot.type === 'pending' ? slot.pendingProject.title : `Pending Action ${slot.slotIndex + 1}`}
+                  </h3>
+                  {isCompleted && slot.completedProject.meta.objective && <p className="text-sm text-teal-600 mt-1">{slot.completedProject.meta.objective}</p>}
+                  {slot.type === 'pending' && slot.pendingProject.meta.objective && <p className="text-sm text-amber-600 mt-1">{slot.pendingProject.meta.objective}</p>}
+                </div>
+                {!isCompleted && (
+                  <button onClick={() => {
+                    setEditingSlot(slot.id);
+                    setTitle(slot.type === 'pending' ? slot.pendingProject.title : "");
+                    setObjective(slot.type === 'pending' ? slot.pendingProject.meta.objective : "");
+                  }} className="shrink-0 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold py-1.5 px-4 rounded-xl text-sm transition-colors">
+                    Start Action
+                  </button>
+                )}
+                {isCompleted && <div className="text-teal-600 font-bold text-sm bg-teal-100/50 px-3 py-1.5 rounded-xl">✓ Completed</div>}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 /* ==================== ADMIN APP ==================== */
 
 const ADMIN_NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "action", label: "Action Screen", icon: ListTodo },
   { id: "kpis", label: "KPIs", icon: Target },
   { id: "review", label: "Morning Review", icon: Coffee },
   { id: "okrs", label: "OKRs", icon: TrendingUp },
@@ -4578,6 +4720,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
               </div>
             </>
           )}
+
+          {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={activeMemberFilter ? activeMemberFilter.name : "Krithika"} onCompleteAction={handleCompleteAction} /> )}
 
           {screen === "kpis" && (
             <>
@@ -6010,6 +6154,7 @@ function StatCard({ icon: Icon, iconBg, iconColor, value, label }) {
 
 const EMP_NAV = [
   { id: "home", icon: Home },
+  { id: "action", icon: ListTodo },
   { id: "mykpis", icon: List },
   { id: "team", icon: Trophy },
   { id: "profile", icon: User },
@@ -6017,7 +6162,7 @@ const EMP_NAV = [
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, onLog, teams }) {
+function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -6036,6 +6181,8 @@ function EmployeeApp({ kpis, onLog, teams }) {
         className="w-full h-full sm:h-auto sm:max-w-sm bg-white sm:rounded-[2.5rem] sm:shadow-xl overflow-hidden sm:border sm:border-orange-100 flex flex-col sm:aspect-[9/16]"
       >
         <div className="flex-1 overflow-y-auto flex flex-col">
+
+        {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={CURRENT_EMPLOYEE} onCompleteAction={handleCompleteAction} /> )}
 
         {screen === "home" && (
           <>
@@ -6801,6 +6948,110 @@ export default function App() {
     }
   }
 
+  
+  async function handleCompleteAction(actionData) {
+    const isPending = actionData.type === 'pending';
+    const descriptionJson = JSON.stringify({
+      objective: actionData.objective,
+      targetDate: actionData.date,
+      type: "action_item",
+      status: "completed"
+    });
+
+    let kpi = kpis.find(k => k.id === actionData.kpiId);
+    let assignedTo = isPending ? (actionData.pendingProject?.assignedTo || kpi?.owner) : (kpi?.owner || "Unassigned");
+    let teamName = kpi?.team || "Digital Marketing";
+
+    if (isPending) {
+      await supabase.from('projects').update({
+        name: actionData.title,
+        description: descriptionJson,
+        status: "completed"
+      }).eq('id', actionData.pendingProject.id);
+      
+      setProjects(prev => prev.map(p => p.id === actionData.pendingProject.id ? {
+        ...p,
+        name: actionData.title,
+        description: descriptionJson,
+        status: "completed"
+      } : p));
+    } else {
+      const dbPayload = {
+        name: actionData.title,
+        description: descriptionJson,
+        team: teamName,
+        assigned_to: assignedTo,
+        kpi_id: actionData.kpiId,
+        target_date: actionData.date,
+        status: "completed"
+      };
+      
+      const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
+      if (!error && data) {
+        const formatted = {
+          id: data.id,
+          title: data.name,
+          description: data.description,
+          team: data.team,
+          assignedTo: data.assigned_to,
+          kpiId: data.kpi_id,
+          targetDate: data.target_date,
+          status: data.status,
+          createdAt: data.created_at,
+          memberNames: []
+        };
+        setProjects(prev => [...prev, formatted]);
+      }
+    }
+
+    if (!isPending && kpi) {
+      const nextM = { ...(kpi.monthlyActual || {}) };
+      const mKey = MONTHS_LIST.find(m => m.startsWith(actionData.date.substring(5,7)) || new Date(actionData.date).toLocaleString('default', { month: 'short' }) + " " + actionData.date.substring(0,4) === m) || Object.keys(kpi.monthlyAlloc || {})[0];
+      if (mKey) {
+        nextM[mKey] = (nextM[mKey] || 0) + 1;
+        setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, monthlyActual: nextM } : k));
+        await supabase.from('kpis').update({ monthly_actual: nextM }).eq('id', kpi.id);
+      }
+    }
+
+    if (!isPending && actionData.followUpKpiId) {
+      const followUpKpi = kpis.find(k => k.id === actionData.followUpKpiId);
+      if (followUpKpi) {
+        const followUpDesc = JSON.stringify({
+          objective: "Follow-up for: " + actionData.title,
+          targetDate: actionData.date,
+          type: "action_item",
+          status: "pending"
+        });
+        const followUpPayload = {
+          name: "Pending: " + actionData.title,
+          description: followUpDesc,
+          team: followUpKpi.team || "Digital Marketing",
+          assigned_to: followUpKpi.owner || "Unassigned",
+          kpi_id: followUpKpi.id,
+          target_date: actionData.date,
+          status: "open"
+        };
+        const { data } = await supabase.from('projects').insert(followUpPayload).select().single();
+        if (data) {
+          setProjects(prev => [...prev, {
+            id: data.id,
+            title: data.name,
+            description: data.description,
+            team: data.team,
+            assignedTo: data.assigned_to,
+            kpiId: data.kpi_id,
+            targetDate: data.target_date,
+            status: data.status,
+            createdAt: data.created_at,
+            memberNames: []
+          }]);
+        }
+      }
+    }
+  }
+
+
   async function handleAddProject(newProject) {
     const isNew = typeof newProject.id === "string" && newProject.id.startsWith("temp-");
     
@@ -7021,7 +7272,7 @@ export default function App() {
             onUploadKpis={handleUploadKpis}
           />
         ) : (
-          <EmployeeApp kpis={kpis} onLog={handleLog} teams={teams} />
+          <EmployeeApp kpis={kpis} onLog={handleLog} teams={teams} projects={projects} handleCompleteAction={handleCompleteAction} />
         )}
       </div>
     </div>
