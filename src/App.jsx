@@ -1823,28 +1823,45 @@ function KpiDetail({ kpi, allKpis, onClose, onLog }) {
           </span>
         </div>
         
-        {parentKpi && (
-          <div className="mb-4 bg-amber-50 rounded-xl p-3.5 border border-amber-100 flex items-center justify-between shadow-sm">
-            <div>
-              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <GitBranch className="w-3 h-3" /> Triggered by Parent KPI
-              </p>
-              <p className="text-sm font-semibold text-amber-900 pr-2">{parentKpi.name}</p>
+        {parentKpi && (() => {
+          const parentStatus = getStatus(parentKpi);
+          const isParentPending = parentStatus !== "on-track";
+          return (
+            <div className={`mb-4 rounded-xl p-3.5 border flex flex-col gap-3 shadow-sm ${isParentPending ? "bg-rose-50 border-rose-200" : "bg-teal-50 border-teal-200"}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1 ${isParentPending ? "text-rose-700" : "text-teal-700"}`}>
+                    <GitBranch className="w-3 h-3" /> Triggered by Parent KPI
+                  </p>
+                  <p className={`text-sm font-semibold pr-2 ${isParentPending ? "text-rose-900" : "text-teal-900"}`}>{parentKpi.name}</p>
+                </div>
+                <div className={`text-right shrink-0 px-3 py-1.5 rounded-lg border bg-white/60 ${isParentPending ? "border-rose-100" : "border-teal-100"}`}>
+                  <p className={`text-lg font-bold ${isParentPending ? "text-rose-600" : "text-teal-600"}`}>{parentKpi.target}<span className={`text-[10px] ml-0.5 font-semibold ${isParentPending ? "text-rose-500" : "text-teal-500"}`}>{parentKpi.unit}</span></p>
+                  <p className={`text-[9px] uppercase font-bold tracking-wide ${isParentPending ? "text-rose-500/80" : "text-teal-500/80"}`}>Parent Target</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${isParentPending ? "bg-rose-200 text-rose-800" : "bg-teal-200 text-teal-800"}`}>
+                  Parent Status: {parentStatus === "on-track" ? "Completed" : "Pending"}
+                </span>
+                {isParentPending && (
+                  <span className="text-[11px] font-bold text-rose-600 animate-pulse flex items-center gap-1">
+                     ⚠️ Raise for Followup!
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="text-right shrink-0 bg-white/60 px-3 py-1.5 rounded-lg border border-amber-50/50">
-              <p className="text-lg font-bold text-amber-600">{parentKpi.target}<span className="text-[10px] ml-0.5 text-amber-500 font-semibold">{parentKpi.unit}</span></p>
-              <p className="text-[9px] text-amber-500/80 uppercase font-bold tracking-wide">Parent Target</p>
-            </div>
-          </div>
-        )}
+          );
+        })()}
+
         <div className="flex items-end gap-4 mb-2">
           <div>
             <p className="text-2xl font-semibold text-slate-900">{getLatest(kpi)}{kpi.unit}</p>
-            <p className="text-xs text-slate-400">Current actual (Year)</p>
+            <p className="text-xs text-slate-400">{parentKpi ? 'Child Actual' : 'Current actual (Year)'}</p>
           </div>
           <div>
             <p className="text-2xl font-semibold text-slate-400">{kpi.target}{kpi.unit}</p>
-            <p className="text-xs text-slate-400">Target (Year)</p>
+            <p className="text-xs text-slate-400">{parentKpi ? 'Child Target' : 'Target (Year)'}</p>
           </div>
         </div>
 
