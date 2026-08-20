@@ -6169,11 +6169,11 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
   const [loggingId, setLoggingId] = useState(null);
   const [shift, setShift] = useState("Excellent");
 
-  const myKpis = kpis.filter((k) => k.owner === CURRENT_EMPLOYEE);
+  const myKpis = kpis.filter((k) => k.owner === CURRENT_EMPLOYEE).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const detailKpi = kpis.find((k) => k.id === detailId);
   const loggingKpi = kpis.find((k) => k.id === loggingId);
   const myTeam = teams.find((t) => t.members.some((m) => m.name === CURRENT_EMPLOYEE));
-  const teamKpis = kpis.filter((k) => k.team === myTeam?.name);
+  const teamKpis = kpis.filter((k) => k.team === myTeam?.name).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const onTrackInTeam = teamKpis.filter((k) => getStatus(k) === "on-track").length;
 
   return (
