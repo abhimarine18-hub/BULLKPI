@@ -10216,7 +10216,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
           <div className="grid grid-cols-7 gap-1.5">
             {cells.map((cell, idx) => {
               if (!cell || cell.isEmpty) {
-                return <div key={`empty-${idx}`} className="aspect-square bg-slate-50/20 border border-slate-100/30 rounded-lg" />;
+                return <div key={`empty-${idx}`} className="h-10 sm:h-12 bg-slate-50/20 border border-slate-100/30 rounded-lg" />;
               }
 
               const dStr = cell.dateStr;
@@ -10227,7 +10227,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
               if (tVal === 0) {
                 // Non-target day
                 return (
-                  <div key={dStr} className="aspect-square bg-slate-50/60 border border-slate-100 rounded-lg flex flex-col items-center justify-center p-1 opacity-30">
+                  <div key={dStr} className="h-10 sm:h-12 bg-slate-50/60 border border-slate-100 rounded-lg flex flex-col items-center justify-center p-1 opacity-30">
                     <span className="text-[10px] font-semibold text-slate-400">{cell.dayNum}</span>
                   </div>
                 );
@@ -10242,20 +10242,20 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
                     setSelectedKpiForPlan(kpi);
                     setSelectedDateForPlan(dStr);
                   }}
-                  className={`aspect-square border rounded-xl flex flex-col items-center justify-between p-1.5 cursor-pointer transition-all hover:scale-102 hover:shadow-xs ${
+                  className={`h-10 sm:h-12 border rounded-xl flex flex-col items-center justify-between p-1 cursor-pointer transition-all hover:scale-102 hover:shadow-xs ${
                     isPlanned 
                       ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400" 
                       : "bg-rose-50 border-rose-250 text-rose-800 hover:bg-rose-100 hover:border-rose-350"
                   }`}
                 >
                   <div className="w-full flex items-center justify-between">
-                    <span className="text-[10px] font-bold leading-none">{cell.dayNum}</span>
-                    <span className="text-[8px] font-extrabold px-1 rounded bg-white/60 leading-none">T: {tVal}</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold leading-none">{cell.dayNum}</span>
+                    <span className="text-[7.5px] sm:text-[8px] font-extrabold px-1 rounded bg-white/60 leading-none">T: {tVal}</span>
                   </div>
                   
                   {plannedCount > 0 && (
-                    <div className="w-full text-center">
-                      <span className="text-[8px] font-black tracking-tighter bg-white/70 px-1 py-0.25 rounded border border-current leading-none">
+                    <div className="w-full text-center leading-none">
+                      <span className="text-[7.5px] sm:text-[8px] font-black tracking-tighter bg-white/70 px-1 py-0.2 rounded border border-current leading-none">
                         P: {plannedCount}
                       </span>
                     </div>
