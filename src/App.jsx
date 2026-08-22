@@ -7051,18 +7051,25 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
     );
   };
 
+  const isAuthorizedForBuildProjects = useMemo(() => {
+    if (!loggedInUser) return false;
+    return loggedInUser.role === "admin" ||
+      loggedInUser.name === "M Abhilash 20592" ||
+      String(loggedInUser.loginId) === "20592";
+  }, [loggedInUser]);
+
   const filteredAdminNav = useMemo(() => {
     return ADMIN_NAV.filter(item => {
       if (item.id === "build_projects") {
-        return loggedInUser?.name === "M Abhilash 20592";
+        return isAuthorizedForBuildProjects;
       }
       return true;
     });
-  }, [loggedInUser]);
+  }, [ADMIN_NAV, isAuthorizedForBuildProjects]);
 
   const [screen, setScreenInternal] = useState("dashboard");
   const setScreen = (newScreen) => {
-    if (newScreen === "build_projects" && loggedInUser?.name !== "M Abhilash 20592") {
+    if (newScreen === "build_projects" && !isAuthorizedForBuildProjects) {
       setScreenInternal("dashboard");
     } else {
       setScreenInternal(newScreen);
@@ -8111,8 +8118,8 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
             </div>
           )}
 
-           {screen === "build_projects" && (() => {
-            if (loggedInUser?.name !== "M Abhilash 20592") return null;
+          {screen === "build_projects" && (() => {
+            if (!isAuthorizedForBuildProjects) return null;
             return (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
