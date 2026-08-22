@@ -3520,6 +3520,30 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 <option value="">None</option>
                 {allKpis.filter(k => k.id !== kpi.id).map(k => <option key={k.id} value={k.id}>{k.name} ({k.owner || 'Unassigned'})</option>)}
               </select>
+              {/* Create follow-up child KPI button */}
+              {!reportConfig.followUpKpiId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!kpi.id || String(kpi.id).startsWith('temp-')) {
+                      alert("Please save this KPI first before creating a follow-up child KPI.");
+                      return;
+                    }
+                    onAddFollowUp && onAddFollowUp(kpi);
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 hover:bg-teal-100 transition-colors"
+                >
+                  <GitBranch className="h-3.5 w-3.5" />
+                  + Create Follow-up Child KPI
+                </button>
+              )}
+              {reportConfig.followUpKpiId && (
+                <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-teal-700 font-semibold bg-teal-50 rounded-lg px-2 py-1 border border-teal-100">
+                  <GitBranch className="h-3 w-3" />
+                  Linked to: {allKpis.find(k => String(k.id) === String(reportConfig.followUpKpiId))?.name || 'Unknown KPI'}
+                  <button type="button" onClick={() => setReportConfig(prev => ({ ...prev, followUpKpiId: '' }))} className="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
+                </div>
+              )}
             </div>
 
             {/* Handoff Settings panel */}
@@ -9217,19 +9241,29 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
       {addKpiOpen && (
         <EditKpiModal 
           kpi={{
+            id: `temp-${Date.now()}`,
             name: "",
             description: "",
             unit: "Nos",
             direction: "higher",
             team: teams[0]?.name || "",
             owner: "",
+            kra: "",
             target: 0,
+            kpiType: "activity",
+            reportConfig: { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] },
             monthlyAlloc: {},
             monthlyActual: {},
             weeklyAlloc: {},
             weeklyActual: {},
             dailyAlloc: {},
-            dailyActual: {}
+            dailyActual: {},
+            revisedAlloc: {},
+            customHolidays: {},
+            holidaysEnabled: true,
+            history: [],
+            targetType: "monthly",
+            targetsList: []
           }} 
           allKpis={kpis}
           teams={teams} 
@@ -9256,7 +9290,33 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
         <AddProjectModal teams={teams} kpis={kpis} project={editingProject} onClose={() => setEditingProject(null)} onSubmit={onAddProject} />
       )}
       {editingKpi && (
-        <EditKpiModal kpi={editingKpi} allKpis={kpis} teams={teams} sidebarMinimized={sidebarMinimized} onClose={() => setEditingKpi(null)} onSubmit={onEditKpi} onAddVertical={onAddVertical} onAddMember={onAddMember} />
+        <EditKpiModal kpi={editingKpi} allKpis={kpis} teams={teams} sidebarMinimized={sidebarMinimized}
+          onClose={() => setEditingKpi(null)}
+          onSubmit={(updated) => { onEditKpi(updated); setEditingKpi(null); }}
+          onAddVertical={onAddVertical} onAddMember={onAddMember}
+          onAddFollowUp={(parentKpi) => {
+            // Save parent first then open new child KPI pre-linked
+            setEditingKpi(null);
+            const childTemplate = {
+              id: `temp-${Date.now()}`,
+              name: `Follow-up: ${parentKpi.name}`,
+              description: `Child KPI triggered by ${parentKpi.name}`,
+              unit: parentKpi.unit || "Nos",
+              direction: parentKpi.direction || "higher",
+              team: parentKpi.team || "",
+              owner: parentKpi.owner || "",
+              kra: parentKpi.kra || "",
+              target: 0, kpiType: "activity",
+              reportConfig: { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] },
+              monthlyAlloc: {}, monthlyActual: {}, weeklyAlloc: {}, weeklyActual: {},
+              dailyAlloc: {}, dailyActual: {}, revisedAlloc: {}, customHolidays: {},
+              holidaysEnabled: true, history: [], targetType: "monthly", targetsList: [],
+              _linkedParentId: parentKpi.id  // track parent to auto-link after save
+            };
+            setAddKpiOpen(false);
+            setTimeout(() => setEditingKpi(childTemplate), 100);
+          }}
+        />
       )}
       {selectedActiveProject && (
         <ActiveProjectWorkspaceModal
@@ -10623,22 +10683,22 @@ export default function App() {
   }
 
   async function handleAddKpi(newKpi) {
-    const targetType = newKpi.targetType || "monthly";
-    const targetsList = newKpi.targetsList || [
-      { id: "1", label: "CY Target", targetValue: newKpi.target, targetDate: "2026-08-31" }
-    ];
+    const safeNum = (v) => (v === undefined || v === null || isNaN(Number(v))) ? 0 : Number(v);
+    const safeStr = (v) => (v === undefined || v === null) ? "" : String(v);
+    const targetType = safeStr(newKpi.targetType) || "monthly";
+    const targetsList = newKpi.targetsList || [];
 
-    const { data: kpiRow } = await supabase.from('kpis').insert({
-      name: newKpi.name,
-      unit: newKpi.unit,
-      target: newKpi.target,
-      direction: newKpi.direction,
-      team: newKpi.team,
-      owner: newKpi.owner,
-      drive_by: newKpi.driveBy || "",
-      monitor_by: newKpi.monitorBy || "",
-      description: newKpi.description || "",
-      kra: newKpi.kra,
+    const insertPayload = {
+      name: safeStr(newKpi.name),
+      unit: safeStr(newKpi.unit) || "Nos",
+      target: safeNum(newKpi.target),
+      direction: safeStr(newKpi.direction) || "higher",
+      team: safeStr(newKpi.team),
+      owner: safeStr(newKpi.owner),
+      drive_by: safeStr(newKpi.driveBy),
+      monitor_by: safeStr(newKpi.monitorBy),
+      description: safeStr(newKpi.description),
+      kra: safeStr(newKpi.kra),
       history: newKpi.history || [],
       target_type: targetType,
       targets_list: targetsList,
@@ -10650,39 +10710,69 @@ export default function App() {
       daily_actual: newKpi.dailyActual || {},
       revised_alloc: newKpi.revisedAlloc || {},
       custom_holidays: newKpi.customHolidays || {},
-      kpi_type: newKpi.kpiType || 'activity',
+      holidays_enabled: newKpi.holidaysEnabled ?? true,
+      kpi_type: safeStr(newKpi.kpiType) || 'activity',
       report_config: newKpi.reportConfig || {}
-    }).select().single();
+    };
 
-    if (kpiRow) {
-      const formattedKpi = {
-        id: kpiRow.id,
-        name: kpiRow.name,
-        unit: kpiRow.unit,
-        target: parseFloat(kpiRow.target),
-        direction: kpiRow.direction,
-        team: kpiRow.team,
-        owner: kpiRow.owner,
-        driveBy: kpiRow.drive_by || "",
-        monitorBy: kpiRow.monitor_by || "",
-        description: kpiRow.description || "",
-        kra: kpiRow.kra,
-        history: kpiRow.history || [],
-        dailyActual: kpiRow.daily_actual || {},
-        revisedAlloc: kpiRow.revised_alloc || {},
-        customHolidays: kpiRow.custom_holidays || {},
-        holidaysEnabled: kpiRow.holidays_enabled,
-        targetType: kpiRow.target_type,
-        targetsList: kpiRow.targets_list,
-        monthlyAlloc: kpiRow.monthly_alloc || {},
-        monthlyActual: kpiRow.monthly_actual || {},
-        weeklyAlloc: kpiRow.weekly_alloc || {},
-        weeklyActual: kpiRow.weekly_actual || {},
-        dailyAlloc: kpiRow.daily_alloc || {},
-        kpiType: kpiRow.kpi_type || 'activity',
-        reportConfig: kpiRow.report_config || {}
+    try {
+      const { data: kpiRow, error } = await supabase.from('kpis').insert(insertPayload).select().single();
+      if (error) throw error;
+
+      if (kpiRow) {
+        const formattedKpi = {
+          id: kpiRow.id,
+          name: kpiRow.name, unit: kpiRow.unit,
+          target: parseFloat(kpiRow.target),
+          direction: kpiRow.direction, team: kpiRow.team, owner: kpiRow.owner,
+          driveBy: kpiRow.drive_by || "", monitorBy: kpiRow.monitor_by || "",
+          description: kpiRow.description || "", kra: kpiRow.kra,
+          history: kpiRow.history || [],
+          dailyActual: kpiRow.daily_actual || {}, revisedAlloc: kpiRow.revised_alloc || {},
+          customHolidays: kpiRow.custom_holidays || {}, holidaysEnabled: kpiRow.holidays_enabled,
+          targetType: kpiRow.target_type, targetsList: kpiRow.targets_list,
+          monthlyAlloc: kpiRow.monthly_alloc || {}, monthlyActual: kpiRow.monthly_actual || {},
+          weeklyAlloc: kpiRow.weekly_alloc || {}, weeklyActual: kpiRow.weekly_actual || {},
+          dailyAlloc: kpiRow.daily_alloc || {},
+          kpiType: kpiRow.kpi_type || 'activity', reportConfig: kpiRow.report_config || {}
+        };
+        setKpis((prev) => [...prev, formattedKpi]);
+        // Update localStorage backup
+        const stored = JSON.parse(localStorage.getItem('backup_kpis') || '[]');
+        stored.push({ ...insertPayload, id: kpiRow.id });
+        localStorage.setItem('backup_kpis', JSON.stringify(stored));
+
+        // Auto-link parent KPI if this was created as a follow-up child
+        if (newKpi._linkedParentId) {
+          setKpis(prev => prev.map(k => {
+            if (String(k.id) === String(newKpi._linkedParentId)) {
+              const updatedParent = { ...k, reportConfig: { ...(k.reportConfig || {}), followUpKpiId: kpiRow.id } };
+              // Also persist parent update to Supabase
+              supabase.from('kpis').update({ report_config: updatedParent.reportConfig }).eq('id', k.id).then(() => {});
+              return updatedParent;
+            }
+            return k;
+          }));
+        }
+      }
+    } catch(err) {
+      // Offline — save to localStorage with a stable local id
+      const localId = `local-${Date.now()}`;
+      const localKpi = {
+        ...newKpi,
+        id: localId,
+        driveBy: newKpi.driveBy || "", monitorBy: newKpi.monitorBy || "",
+        kpiType: newKpi.kpiType || 'activity', reportConfig: newKpi.reportConfig || {},
+        history: newKpi.history || [], dailyActual: newKpi.dailyActual || {},
+        revisedAlloc: newKpi.revisedAlloc || {}, customHolidays: newKpi.customHolidays || {},
+        monthlyAlloc: newKpi.monthlyAlloc || {}, monthlyActual: newKpi.monthlyActual || {},
+        weeklyAlloc: newKpi.weeklyAlloc || {}, weeklyActual: newKpi.weeklyActual || {},
+        dailyAlloc: newKpi.dailyAlloc || {}
       };
-      setKpis((prev) => [...prev, formattedKpi]);
+      setKpis((prev) => [...prev, localKpi]);
+      const stored = JSON.parse(localStorage.getItem('backup_kpis') || '[]');
+      stored.push({ ...insertPayload, id: localId });
+      localStorage.setItem('backup_kpis', JSON.stringify(stored));
     }
   }
 
