@@ -9617,7 +9617,33 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
     return `${m} ${yr}`;
   });
 
-  const currentEmployee = loggedInUser?.name || CURRENT_EMPLOYEE;
+  const allEmployees = useMemo(() => {
+    const list = [];
+    (teams || []).forEach(t => {
+      if (t.members) {
+        t.members.forEach(m => {
+          if (m && m.name && !list.some(x => x.name === m.name)) {
+            list.push(m);
+          }
+        });
+      }
+    });
+    return list.sort((a,b) => a.name.localeCompare(b.name));
+  }, [teams]);
+
+  const [adminSelectedEmployee, setAdminSelectedEmployee] = useState(() => {
+    return allEmployees[0]?.name || "Anand Kumar";
+  });
+
+  useEffect(() => {
+    if (loggedInUser?.name === "Admin" && !adminSelectedEmployee && allEmployees.length > 0) {
+      setAdminSelectedEmployee(allEmployees[0].name);
+    }
+  }, [allEmployees, loggedInUser, adminSelectedEmployee]);
+
+  const currentEmployee = loggedInUser?.name === "Admin"
+    ? (adminSelectedEmployee || "Anand Kumar")
+    : (loggedInUser?.name || CURRENT_EMPLOYEE);
 
   const upcomingMonth = useMemo(() => {
     const d = new Date();
@@ -9880,11 +9906,29 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
             <p className="text-xs text-orange-800/60 mt-1">{myTeam?.name} · {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</p>
           </div>
           
-          {/* Month Shift Controls */}
-          <div className="flex items-center gap-1 bg-white/80 backdrop-blur border border-orange-200 rounded-xl p-1 shrink-0 shadow-xs">
-            <button onClick={() => handleShiftMonth(-1)} className="p-1 hover:bg-orange-100 rounded text-orange-900"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="text-xs font-bold text-slate-800 px-1 select-none">{selectedMonth}</span>
-            <button onClick={() => handleShiftMonth(1)} className="p-1 hover:bg-orange-100 rounded text-orange-900"><ChevronRight className="h-4 w-4" /></button>
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
+            {/* Employee Selector for Admin */}
+            {loggedInUser?.name === "Admin" && (
+              <div className="flex flex-col gap-0.5 items-end relative z-20">
+                <span className="text-[9px] font-bold text-orange-900/60 uppercase tracking-wider">Select Employee View</span>
+                <select
+                  value={adminSelectedEmployee}
+                  onChange={(e) => setAdminSelectedEmployee(e.target.value)}
+                  className="border border-orange-200 rounded-xl px-2.5 py-1.5 text-xs bg-white/95 backdrop-blur focus:outline-none focus:ring-2 focus:ring-orange-300 font-bold text-slate-800 shadow-sm"
+                >
+                  {allEmployees.map(emp => (
+                    <option key={emp.name} value={emp.name}>{emp.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            {/* Month Shift Controls */}
+            <div className="flex items-center gap-1 bg-white/80 backdrop-blur border border-orange-200 rounded-xl p-1 shadow-xs">
+              <button onClick={() => handleShiftMonth(-1)} className="p-1 hover:bg-orange-100 rounded text-orange-900"><ChevronLeft className="h-4 w-4" /></button>
+              <span className="text-xs font-bold text-slate-800 px-1 select-none">{selectedMonth}</span>
+              <button onClick={() => handleShiftMonth(1)} className="p-1 hover:bg-orange-100 rounded text-orange-900"><ChevronRight className="h-4 w-4" /></button>
+            </div>
           </div>
         </div>
 
@@ -10500,9 +10544,23 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
             <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0 text-xs font-bold text-orange-700">
               {currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}
             </div>
-            <div className="hidden lg:block min-w-0">
-              <p className="text-xs font-semibold text-slate-800 truncate">{currentEmployee}</p>
-              <p className="text-[10px] text-slate-400 truncate">{myTeam?.name}</p>
+            <div className="hidden lg:block min-w-0 flex-1">
+              {loggedInUser?.name === "Admin" ? (
+                <select
+                  value={adminSelectedEmployee}
+                  onChange={(e) => setAdminSelectedEmployee(e.target.value)}
+                  className="w-full border border-orange-200 rounded-lg px-2 py-1 text-[11px] bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-bold text-slate-700"
+                >
+                  {allEmployees.map(emp => (
+                    <option key={emp.name} value={emp.name}>{emp.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <p className="text-xs font-semibold text-slate-800 truncate">{currentEmployee}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{myTeam?.name}</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -10519,7 +10577,18 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
             <span className="text-sm font-black text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>BULL KPI</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-700">
+            {loggedInUser?.name === "Admin" && (
+              <select
+                value={adminSelectedEmployee}
+                onChange={(e) => setAdminSelectedEmployee(e.target.value)}
+                className="border border-orange-200 rounded-full px-2 py-1 text-[10px] bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-bold text-slate-700"
+              >
+                {allEmployees.map(emp => (
+                  <option key={emp.name} value={emp.name}>{emp.name}</option>
+                ))}
+              </select>
+            )}
+            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-700 shrink-0">
               {currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}
             </div>
           </div>
