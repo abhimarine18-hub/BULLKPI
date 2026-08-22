@@ -9477,105 +9477,143 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
     );
   };
 
-  /* ── KPI card (reusable with 1-31 dots aligned week-wise on the right) ── */
-  const KpiCard = ({ kpi, onClick }) => {
+  /* ── KPI card (reusable matching user mockup + calendar dots) ── */
+  const KpiCard = ({ kpi, onClick, relationType }) => {
     const status = getStatus(kpi);
     const todayTarget = kpi.dailyAlloc?.[todayStr] || 0;
     const todayActual = kpi.dailyActual?.[todayStr] || 0;
 
+    // Retrieve pending targets
+    const targetInfo = getDailyTargetInfo(kpi, todayStr);
+    const pendingSum = targetInfo?.pendingSum || 0;
+
     // Use calendar cells (which are naturally grouped in weeks of 7)
     const cells = useMemo(() => getCalendarCells(selectedMonth), [selectedMonth]);
     const numRows = Math.ceil(cells.length / 7);
+
+    // Styling configuration based on relation
+    const relLabels = {
+      owner: "DO",
+      driveBy: "DRIVE",
+      monitorBy: "MONITOR"
+    };
+    const relBadgeColor = {
+      owner: "border-teal-500 text-teal-700 bg-teal-50/30",
+      driveBy: "border-indigo-500 text-indigo-700 bg-indigo-50/30",
+      monitorBy: "border-blue-500 text-blue-700 bg-blue-50/30"
+    };
     
     return (
-      <button onClick={onClick} className={`w-full text-left rounded-2xl p-4 border border-transparent hover:border-teal-200 transition-all shadow-sm ${statusColor(status).replace("text-", "").split(" ")[0] === "bg-teal-100" ? "bg-teal-50" : status === "at-risk" ? "bg-orange-50" : "bg-rose-50"}`}>
-        {/* Top Row: KPI Name & Status Badge */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">{kpi.name}</p>
-          <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(status)}`}>{status === "on-track" ? "On Track" : status === "at-risk" ? "At Risk" : "Off Track"}</span>
-        </div>
-        
-        {/* Middle Row: Numbers (Left) and Mini-Calendar Dots Grid (Right) */}
-        <div className="flex items-center justify-between gap-4 mb-3">
-          {/* Left Side: Numeric values */}
-          <div className="shrink-0">
-            <p className="text-2xl font-extrabold text-slate-900 leading-none">{getLatest(kpi)}<span className="text-sm font-normal text-slate-400 ml-1">{kpi.unit}</span></p>
-            <p className="text-xs text-slate-500 font-bold mt-1">Target: {kpi.target}{kpi.unit}</p>
-            {todayTarget > 0 && (
-              <p className="text-[10px] text-teal-700 font-semibold mt-1 bg-white/60 px-1.5 py-0.5 rounded-md border border-teal-100 inline-block">
-                Today: {todayActual}/{todayTarget}
-              </p>
-            )}
+      <button 
+        onClick={onClick} 
+        className="w-full text-left bg-white border border-slate-100/90 rounded-2xl p-4 hover:shadow-md hover:border-slate-200 transition-all shadow-sm flex flex-col justify-between min-h-[160px]"
+      >
+        <div className="w-full">
+          {/* Top Row: KPI Name & On Track/Off Track Status Badge */}
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">{kpi.name}</p>
+            <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+              status === "on-track" 
+                ? "bg-teal-50 text-teal-700 border border-teal-200" 
+                : status === "at-risk"
+                  ? "bg-orange-50 text-orange-700 border border-orange-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-250"
+            }`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${
+                status === "on-track" ? "bg-teal-500" : status === "at-risk" ? "bg-orange-500" : "bg-rose-500"
+              }`} />
+              {status === "on-track" ? "On track" : status === "at-risk" ? "At risk" : "Off track"}
+            </span>
           </div>
 
-          {/* Right Side: Week-wise Dot Matrix (7 dots per row, 4-5 rows) */}
-          <div className="flex flex-col gap-[4px] bg-white/50 p-2 rounded-xl border border-slate-100/80 shrink-0">
-            {Array.from({ length: numRows }).map((_, rIdx) => (
-              <div key={rIdx} className="flex gap-[4px]">
-                {cells.slice(rIdx * 7, (rIdx + 1) * 7).map((cell, cIdx) => {
-                  if (!cell || cell.isEmpty) {
-                    // Empty placeholder dot
-                    return <div key={`empty-${rIdx}-${cIdx}`} className="h-[8px] w-[8px] rounded-full opacity-10 bg-slate-350" />;
-                  }
-                  
-                  const dStr = cell.dateStr;
-                  const dayNum = cell.dayNum;
-                  const tVal = kpi.dailyAlloc?.[dStr] || 0;
-                  const aVal = kpi.dailyActual?.[dStr] || 0;
-                  const isToday = dStr === todayStr;
+          {/* Relation Badge (DO / DRIVE / MONITOR) */}
+          <div className="mb-2.5">
+            <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
+              relBadgeColor[relationType] || "border-slate-300 text-slate-600 bg-slate-50"
+            }`}>
+              {relLabels[relationType] || "KPI"}
+            </span>
+          </div>
+          
+          {/* Middle Row: Numbers (Left) and Mini-Calendar Dots Grid (Right) */}
+          <div className="flex items-center justify-between gap-4 mb-3">
+            {/* Left Side: Numeric values */}
+            <div className="shrink-0">
+              <p className="text-xl font-extrabold text-slate-900 leading-none">
+                {getLatest(kpi)} <span className="text-slate-400 font-normal text-sm">/</span> {kpi.target}
+                {pendingSum > 0 && (
+                  <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded px-1 py-0.5 ml-1.5 inline-block whitespace-nowrap animate-pulse">
+                    {pendingSum} pending
+                  </span>
+                )}
+                <span className="text-xs font-semibold text-slate-500 ml-1">{kpi.unit}</span>
+              </p>
+              
+              <p className="text-[10px] text-slate-400 font-medium mt-1">
+                Daily Target · {kpi.team}
+              </p>
+            </div>
 
-                  let titleText = `Day ${dayNum}: No target`;
-                  let content = null;
-                  let containerClass = "h-[8px] w-[8px] rounded-full shrink-0 flex items-center justify-center ";
-                  let extraStyle = {};
-
-                  if (tVal > 0) {
-                    if (aVal >= tVal) {
-                      // Completed: Blue outline + Green smaller dot inside with 1px gap
-                      containerClass += "border-[1px] border-blue-500 bg-white";
-                      content = <div className="h-[3px] w-[3px] rounded-full bg-emerald-500" />;
-                      titleText = `Day ${dayNum}: Met (${aVal}/${tVal})`;
-                    } else if (isToday) {
-                      // Today: Yellow glow (animate pulse)
-                      containerClass += "bg-yellow-400 border border-yellow-500 animate-pulse";
-                      extraStyle = { boxShadow: '0 0 10px #facc15, 0 0 4px #facc15' };
-                      titleText = `Day ${dayNum} (Today): Pending (${aVal}/${tVal})`;
-                    } else {
-                      // Missed past day: Blue outline + Red smaller dot inside with 1px gap
-                      const isPast = new Date(dStr) < new Date(todayStr);
-                      if (isPast) {
-                        containerClass += "border-[1px] border-blue-500 bg-white";
-                        content = <div className="h-[3px] w-[3px] rounded-full bg-rose-500" />;
-                        titleText = `Day ${dayNum} (Missed): Pending (${aVal}/${tVal})`;
-                      } else {
-                        // Future day target (not yet completed): Blue outline round only
-                        containerClass += "border-[1px] border-blue-400 bg-white";
-                        titleText = `Day ${dayNum} (Future): Target (${tVal})`;
-                      }
+            {/* Right Side: Week-wise Dot Matrix (7 dots per row, 4-5 rows) */}
+            <div className="flex flex-col gap-[3px] bg-slate-50/50 p-1.5 rounded-lg border border-slate-100/30 shrink-0">
+              {Array.from({ length: numRows }).map((_, rIdx) => (
+                <div key={rIdx} className="flex gap-[3px]">
+                  {cells.slice(rIdx * 7, (rIdx + 1) * 7).map((cell, cIdx) => {
+                    if (!cell || cell.isEmpty) {
+                      return <div key={`empty-${rIdx}-${cIdx}`} className="h-[9px] w-[9px] rounded-full opacity-10 bg-slate-350" />;
                     }
-                  } else {
-                    // No target: gray outline/dot
-                    containerClass += "bg-slate-200 border border-slate-300/40";
-                  }
+                    
+                    const dStr = cell.dateStr;
+                    const dayNum = cell.dayNum;
+                    const tVal = kpi.dailyAlloc?.[dStr] || 0;
+                    const aVal = kpi.dailyActual?.[dStr] || 0;
+                    const isToday = dStr === todayStr;
 
-                  return (
-                    <div 
-                      key={dStr} 
-                      className={containerClass} 
-                      style={extraStyle}
-                      title={titleText}
-                    >
-                      {content}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                    let titleText = `Day ${dayNum}: No target`;
+                    let content = null;
+                    let containerClass = "h-[9px] w-[9px] rounded-full shrink-0 flex items-center justify-center ";
+
+                    if (tVal > 0) {
+                      if (aVal >= tVal) {
+                        containerClass += "border-[1.5px] border-blue-500 bg-white p-[1px]";
+                        content = <div className="h-full w-full rounded-full bg-emerald-500" />;
+                        titleText = `Day ${dayNum}: Met (${aVal}/${tVal})`;
+                      } else if (isToday) {
+                        containerClass += "bg-amber-400 ring-1 ring-amber-300 shadow-[0_0_6px_rgba(251,191,36,0.8)] animate-pulse border border-amber-500";
+                        titleText = `Day ${dayNum} (Today): Pending (${aVal}/${tVal})`;
+                      } else {
+                        const isPast = new Date(dStr) < new Date(todayStr);
+                        if (isPast) {
+                          containerClass += "border-[1.5px] border-blue-500 bg-white p-[1px]";
+                          content = <div className="h-full w-full rounded-full bg-rose-500" />;
+                          titleText = `Day ${dayNum} (Missed): Pending (${aVal}/${tVal})`;
+                        } else {
+                          containerClass += "border-[1.5px] border-blue-400 bg-white";
+                          titleText = `Day ${dayNum} (Future): Target (${tVal})`;
+                        }
+                      }
+                    } else {
+                      containerClass += "bg-slate-205 border border-slate-300/50";
+                    }
+
+                    return (
+                      <div 
+                        key={dStr} 
+                        className={containerClass} 
+                        title={titleText}
+                      >
+                        {content}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="h-1.5 rounded-full bg-white/80 overflow-hidden">
+        <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
           <div className={`h-full rounded-full ${barColor(status)}`} style={{ width: `${Math.min(progressPct(kpi), 100)}%` }} />
         </div>
       </button>
@@ -9634,48 +9672,39 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
         ))}
       </div>
 
-      <div className="px-5 pb-6 space-y-6">
+      <div className="px-5 pb-6 space-y-8">
         {/* DO Grouping */}
         {doKpis.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-3 flex lg:flex-col justify-between items-center lg:items-start lg:pt-3">
-              <h2 className="text-base font-bold text-slate-950 flex items-center gap-1.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
-                <span className="h-2 w-2 rounded-full bg-teal-500"></span> DO (Owner)
-              </h2>
-              <span className="text-xs text-slate-400 font-medium">{doKpis.length} KPIs</span>
-            </div>
-            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {doKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />)}
+          <div className="space-y-3">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+              DO (OWNER) ({doKpis.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {doKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} relationType="owner" />)}
             </div>
           </div>
         )}
 
         {/* DRIVE Grouping */}
         {driveKpis.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-4 border-t border-slate-100">
-            <div className="lg:col-span-3 flex lg:flex-col justify-between items-center lg:items-start lg:pt-3">
-              <h2 className="text-base font-bold text-slate-950 flex items-center gap-1.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
-                <span className="h-2 w-2 rounded-full bg-amber-500"></span> DRIVE
-              </h2>
-              <span className="text-xs text-slate-400 font-medium">{driveKpis.length} KPIs</span>
-            </div>
-            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {driveKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />)}
+          <div className="space-y-3 pt-2">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+              DRIVE ({currentEmployee.toUpperCase()}) ({driveKpis.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {driveKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} relationType="driveBy" />)}
             </div>
           </div>
         )}
 
         {/* MONITOR Grouping */}
         {monitorKpis.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-4 border-t border-slate-100">
-            <div className="lg:col-span-3 flex lg:flex-col justify-between items-center lg:items-start lg:pt-3">
-              <h2 className="text-base font-bold text-slate-950 flex items-center gap-1.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
-                <span className="h-2 w-2 rounded-full bg-blue-500"></span> MONITOR
-              </h2>
-              <span className="text-xs text-slate-400 font-medium">{monitorKpis.length} KPIs</span>
-            </div>
-            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {monitorKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />)}
+          <div className="space-y-3 pt-2">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+              MONITOR ({currentEmployee.toUpperCase()}) ({monitorKpis.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {monitorKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} relationType="monitorBy" />)}
             </div>
           </div>
         )}
@@ -9721,9 +9750,10 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
         <span className="ml-auto text-xs text-slate-400 bg-slate-100 rounded-full px-2.5 py-0.5 font-semibold">{myKpis.length}</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {myKpis.map(kpi => (
-          <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />
-        ))}
+        {myKpis.map(kpi => {
+          const relationType = kpi.owner === currentEmployee ? "owner" : (kpi.driveBy === currentEmployee ? "driveBy" : (kpi.monitorBy === currentEmployee ? "monitorBy" : "owner"));
+          return <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} relationType={relationType} />;
+        })}
         {myKpis.length === 0 && (
           <div className="col-span-full text-center py-16 text-slate-400">
             <List className="h-10 w-10 mx-auto mb-3 opacity-30" />
