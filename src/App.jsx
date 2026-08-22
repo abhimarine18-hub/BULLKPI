@@ -2776,6 +2776,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const parentKpi = (allKpis && kpi.id != null) ? allKpis.find(k => k.reportConfig?.followUpKpiId != null && String(k.reportConfig?.followUpKpiId) === String(kpi.id)) : null;
   const [kpiType, setKpiType] = useState(kpi.kpiType || 'activity');
   const [reportConfig, setReportConfig] = useState(kpi.reportConfig || { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] });
+  const [planRequired, setPlanRequired] = useState(kpi.reportConfig?.planRequired ?? false);
 
   // Drive, Monitor, DO (owner) and Weightage configurations
   const [driveBy, setDriveBy] = useState(kpi.driveBy || "");
@@ -3262,6 +3263,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       _linkedParentId: linkMode === 'child' ? linkedParentId : "",
       reportConfig: {
         ...reportConfig,
+        planRequired,
         handoffEnabled,
         handoffMode,
         parentLabel: handoffMode === "drive_social" ? "Google Drive Link" : (handoffMode === "link_handoff" ? "Deliverable Link" : parentLabel),
@@ -3520,6 +3522,19 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                   {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                 </select>
               </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Plan Required</span>
+                <span className="text-[9px] text-slate-450">Deliverables need pre-planning (posters, videos, etc.)</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={planRequired}
+                onChange={(e) => setPlanRequired(e.target.checked)}
+                className="w-4 h-4 text-teal-600 border-orange-200 rounded focus:ring-teal-500"
+              />
             </div>
 
             <div className="mt-4 pt-4 border-t border-slate-100">
@@ -4194,9 +4209,13 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
       if (targetVal > 0) {
         // Find completed projects for this KPI on this date
         const completedForKpiDate = parsedProjects.filter(p => p.meta.status === 'completed' && p.kpiId === kpi.id && p.meta.targetDate === dateStr);
+        // Find planned projects for this KPI on this date
+        const plannedForKpiDate = parsedProjects.filter(p => p.meta.status === 'planned' && p.kpiId === kpi.id && p.meta.targetDate === dateStr);
         
         const loopCount = Math.min(Number(targetVal), 10); // Prevent browser freeze for huge targets
         for (let i = 0; i < loopCount; i++) {
+          const completedProject = completedForKpiDate[i] || null;
+          const plannedProject = completedProject ? null : (plannedForKpiDate[i] || null);
           actionSlots.push({
             id: `slot_${kpi.id}_${dateStr}_${i}`,
             kpiId: kpi.id,
@@ -4204,7 +4223,8 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
             date: dateStr,
             slotIndex: i,
             followUpKpiId: kpi.reportConfig?.followUpKpiId,
-            completedProject: completedForKpiDate[i] || null,
+            completedProject,
+            plannedProject,
             type: 'alloc'
           });
         }
@@ -4856,14 +4876,15 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
             }
 
             return (
-              <div key={slot.id} className={`rounded-3xl p-5 border ${isCompleted ? 'bg-teal-50 border-teal-100' : slot.type === 'pending' ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-200 shadow-sm'} flex items-start justify-between`}>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
+              <div key={slot.id} className={`rounded-3xl p-5 border ${isCompleted ? 'bg-teal-50 border-teal-100' : slot.type === 'pending' ? 'bg-amber-50 border-amber-100' : slot.plannedProject ? 'bg-orange-50/30 border-orange-200 shadow-sm' : 'bg-white border-slate-200 shadow-sm'} flex items-start justify-between`}>
+                <div className="flex-1 min-w-0 pr-3">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{slot.kpiName}</span>
                     {slot.type === 'pending' && <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex items-center gap-1"><GitBranch className="h-3 w-3" /> Handoff</span>}
+                    {!isCompleted && slot.plannedProject && <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded flex items-center gap-1">🌿 Planned</span>}
                   </div>
-                  <h3 className={`text-base font-bold ${isCompleted ? 'text-teal-800' : 'text-slate-800'}`}>
-                    {isCompleted ? slot.completedProject.title : slot.type === 'pending' ? slot.pendingProject.title : `Pending Action ${slot.slotIndex + 1}`}
+                  <h3 className={`text-base font-bold truncate ${isCompleted ? 'text-teal-800' : 'text-slate-800'}`}>
+                    {isCompleted ? slot.completedProject.title : slot.type === 'pending' ? slot.pendingProject.title : (slot.plannedProject ? slot.plannedProject.title : `Pending Action ${slot.slotIndex + 1}`)}
                   </h3>
                   {isCompleted && (() => {
                     let meta = {};
@@ -4884,18 +4905,21 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                       </div>
                     );
                   })()}
+                  {!isCompleted && slot.plannedProject && slot.plannedProject.objective && (
+                    <p className="text-xs text-slate-500 font-medium mt-1.5 italic">Plan: {slot.plannedProject.objective}</p>
+                  )}
                   {slot.type === 'pending' && slot.pendingProject.meta.objective && <p className="text-sm text-amber-600 mt-1">{slot.pendingProject.meta.objective}</p>}
                 </div>
                 {!isCompleted && (
                   <button onClick={() => {
                     setEditingSlot(slot.id);
-                    setTitle(slot.type === 'pending' ? slot.pendingProject.title : "");
-                    setObjective(slot.type === 'pending' ? slot.pendingProject.meta.objective : "");
+                    setTitle(slot.type === 'pending' ? slot.pendingProject.title : (slot.plannedProject ? slot.plannedProject.title : ""));
+                    setObjective(slot.type === 'pending' ? slot.pendingProject.meta.objective : (slot.plannedProject ? slot.plannedProject.objective : ""));
                   }} className="shrink-0 bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold py-1.5 px-4 rounded-xl text-sm transition-colors">
                     Start Action
                   </button>
                 )}
-                {isCompleted && <div className="text-teal-600 font-bold text-sm bg-teal-100/50 px-3 py-1.5 rounded-xl">✓ Completed</div>}
+                {isCompleted && <div className="text-teal-600 font-bold text-sm bg-teal-100/50 px-3 py-1.5 rounded-xl shrink-0">✓ Completed</div>}
               </div>
             );
           })
@@ -9549,6 +9573,7 @@ const EMP_NAV = [
   { id: "home", icon: Home },
   { id: "action", icon: ListTodo },
   { id: "mykpis", icon: List },
+  { id: "planning", icon: Calendar },
   { id: "team", icon: Trophy },
   { id: "profile", icon: User },
 ];
@@ -9570,6 +9595,40 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
   });
 
   const currentEmployee = loggedInUser?.name || CURRENT_EMPLOYEE;
+
+  const upcomingMonth = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    const m = d.toLocaleString('en-US', { month: 'short' });
+    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
+    return `${m} ${yr}`;
+  }, []);
+
+  const unplannedKpisCount = useMemo(() => {
+    const req = kpis.filter(k => k.reportConfig?.planRequired === true && k.owner === currentEmployee);
+    let count = 0;
+    
+    const mInfo = FY_MONTHS.find(m => m.name === upcomingMonth);
+    if (!mInfo) return 0;
+    const prefix = `${mInfo.year}-${String(mInfo.monthIdx + 1).padStart(2, '0')}`;
+
+    req.forEach(kpi => {
+      const target = kpi.monthlyAlloc?.[upcomingMonth] || 0;
+      if (target > 0) {
+        const planned = projects.filter(p => {
+          if (p.assignedTo !== currentEmployee || p.status === "bin" || p.kpiId !== kpi.id) return false;
+          try {
+            const meta = JSON.parse(p.description);
+            return meta.type === "action_item" && meta.status === "planned" && meta.targetDate?.startsWith(prefix);
+          } catch(e) { return false; }
+        }).length;
+        if (planned < target) {
+          count += (target - planned);
+        }
+      }
+    });
+    return count;
+  }, [kpis, upcomingMonth, projects, currentEmployee]);
 
   // Filter and sort by relations
   const doKpis = useMemo(() => kpis.filter(k => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || "")), [kpis, currentEmployee]);
@@ -9622,7 +9681,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
         className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors ${active ? "bg-teal-50 text-teal-700" : "text-slate-500 hover:bg-slate-50"}`}
       >
         <Icon className="h-5 w-5 shrink-0" />
-        <span className="hidden lg:block capitalize">{item.id === "mykpis" ? "My KPIs" : item.id === "action" ? "Actions" : item.id.charAt(0).toUpperCase() + item.id.slice(1)}</span>
+        <span className="hidden lg:block capitalize">{item.id === "mykpis" ? "My KPIs" : item.id === "action" ? "Actions" : item.id === "planning" ? "Monthly Plan" : item.id.charAt(0).toUpperCase() + item.id.slice(1)}</span>
       </button>
     );
   };
@@ -9808,6 +9867,29 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
         )}
       </div>
 
+      {unplannedKpisCount > 0 && (
+        <div className="mx-5 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-4 shadow-sm animate-pulse relative z-10">
+          <div className="flex items-start gap-3">
+            <span className="text-lg">⚠️</span>
+            <div>
+              <p className="text-xs font-bold text-amber-900">Planning Action Required</p>
+              <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">
+                You have {unplannedKpisCount} unplanned deliverables for the upcoming month ({upcomingMonth}).
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              setSelectedMonth(upcomingMonth);
+              setScreen("planning");
+            }}
+            className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-xs transition-colors"
+          >
+            Plan Now
+          </button>
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 px-5 -mt-4 mb-6 relative z-10">
         {[
@@ -9978,7 +10060,392 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
     </div>
   );
 
-  const screenMap = { home: <HomeScreen />, mykpis: <MyKpisScreen />, team: <TeamScreen />, action: <ActionScreen kpis={kpis} projects={projects} user={currentEmployee} onCompleteAction={handleCompleteAction} teams={teams} clientProjects={clientProjects} onUpdateClientProjectStage={onUpdateClientProjectStage} />, profile: <ProfileScreen /> };
+  /* ── Monthly Plan screen ── */
+  const PlanningScreen = () => {
+    const [expandedKpiId, setExpandedKpiId] = useState(null);
+    const [editingItem, setEditingItem] = useState(null); // { id: null/string, title: '', objective: '', date: '' }
+    const [formTitle, setFormTitle] = useState("");
+    const [formObjective, setFormObjective] = useState("");
+    const [formDate, setFormDate] = useState("");
+
+    // Helper for date prefix
+    const getYearMonthPrefix = (mStr) => {
+      const mInfo = FY_MONTHS.find(m => m.name === mStr);
+      if (!mInfo) return "";
+      const padMonth = String(mInfo.monthIdx + 1).padStart(2, '0');
+      return `${mInfo.year}-${padMonth}`;
+    };
+
+    // Filter KPIs that require planning and are owned by the user
+    const planningRequiredKpis = useMemo(() => {
+      return doKpis.filter(k => k.reportConfig?.planRequired === true);
+    }, [doKpis]);
+
+    const prefix = getYearMonthPrefix(selectedMonth);
+
+    // Get planned deliverables for a KPI in selectedMonth
+    const getKpiPlannedItems = (kpiId) => {
+      return projects.filter(p => {
+        if (p.assignedTo !== currentEmployee || p.status === "bin" || p.kpiId !== kpiId) return false;
+        try {
+          const meta = JSON.parse(p.description);
+          return meta.type === "action_item" && meta.status === "planned" && meta.targetDate?.startsWith(prefix);
+        } catch(e) { return false; }
+      });
+    };
+
+    // Save handler
+    const handleSaveItem = async (kpi) => {
+      if (!formTitle.trim()) {
+        alert("Please enter a title for the deliverable.");
+        return;
+      }
+      if (!formDate) {
+        alert("Please select a target date.");
+        return;
+      }
+
+      const isNew = !editingItem?.id;
+      const descriptionJson = JSON.stringify({
+        type: "action_item",
+        status: "planned",
+        objective: formObjective,
+        targetDate: formDate,
+        assignedTo: currentEmployee,
+        kpiId: kpi.id
+      });
+
+      const dbPayload = {
+        name: formTitle,
+        description: descriptionJson,
+        team: kpi.team,
+        lead: currentEmployee
+      };
+
+      try {
+        if (isNew) {
+          const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
+          if (error) throw error;
+          if (data) {
+            setProjects(prev => [...prev, {
+              id: data.id,
+              title: data.name,
+              description: data.description,
+              team: data.team,
+              assignedTo: currentEmployee,
+              kpiId: kpi.id,
+              targetDate: formDate,
+              status: "planned",
+              createdAt: data.created_at,
+              memberNames: []
+            }]);
+          }
+        } else {
+          const { data, error } = await supabase.from('projects').update(dbPayload).eq('id', editingItem.id).select().single();
+          if (error) throw error;
+          if (data) {
+            setProjects(prev => prev.map(p => p.id === editingItem.id ? {
+              ...p,
+              title: data.name,
+              description: data.description,
+              targetDate: formDate,
+              objective: formObjective
+            } : p));
+          }
+        }
+        setEditingItem(null);
+        setFormTitle("");
+        setFormObjective("");
+        setFormDate("");
+      } catch (err) {
+        alert("Error saving planned item: " + err.message);
+      }
+    };
+
+    // Delete handler
+    const handleDeleteItem = async (itemId) => {
+      if (window.confirm("Are you sure you want to delete this planned deliverable?")) {
+        try {
+          const { error } = await supabase.from('projects').delete().eq('id', itemId);
+          if (error) throw error;
+          setProjects(prev => prev.filter(p => p.id !== itemId));
+        } catch(err) {
+          alert("Error deleting item: " + err.message);
+        }
+      }
+    };
+
+    // Determine planning completion status
+    const allPlannedCount = planningRequiredKpis.reduce((acc, kpi) => {
+      const target = kpi.monthlyAlloc?.[selectedMonth] || 0;
+      return acc + target;
+    }, 0);
+
+    const allActualPlannedCount = planningRequiredKpis.reduce((acc, kpi) => {
+      return acc + getKpiPlannedItems(kpi.id).length;
+    }, 0);
+
+    const planningCompleted = allActualPlannedCount >= allPlannedCount && allPlannedCount > 0;
+
+    return (
+      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setScreen("home")} className="text-slate-500 hover:text-slate-700 lg:hidden"><ChevronLeft className="h-5 w-5" /></button>
+            <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Monthly Deliverables Planning</h2>
+          </div>
+
+          {/* Month Shift Controls */}
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shrink-0 shadow-xs">
+            <button onClick={() => handleShiftMonth(-1)} className="p-1 hover:bg-slate-150 rounded text-slate-800"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="text-xs font-bold text-slate-800 px-1 select-none">{selectedMonth}</span>
+            <button onClick={() => handleShiftMonth(1)} className="p-1 hover:bg-slate-150 rounded text-slate-800"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+        </div>
+
+        {/* Global Planning Alert / Status Indicator */}
+        {allPlannedCount > 0 ? (
+          <div className={`p-4 rounded-2xl border ${planningCompleted ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-amber-50 border-amber-200 text-amber-800'} flex items-start gap-3`}>
+            <span className="text-lg">{planningCompleted ? "✅" : "⚠️"}</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold">{planningCompleted ? "Planning Complete!" : "Planning Required"}</p>
+              <p className="text-xs font-medium mt-0.5">
+                {planningCompleted 
+                  ? `All ${allPlannedCount} deliverables for ${selectedMonth} have been planned successfully.`
+                  : `You have planned ${allActualPlannedCount} of ${allPlannedCount} deliverables required for ${selectedMonth}.`
+                }
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center text-xs text-slate-500 italic">
+            No planning-required KPIs have active targets allocated for {selectedMonth}.
+          </div>
+        )}
+
+        {/* List of KPIs */}
+        <div className="space-y-4">
+          {planningRequiredKpis.map(kpi => {
+            const targetVal = kpi.monthlyAlloc?.[selectedMonth] || 0;
+            const kpiPlanned = getKpiPlannedItems(kpi.id);
+            const isExpanded = expandedKpiId === kpi.id;
+
+            if (targetVal === 0) return null;
+
+            return (
+              <div key={kpi.id} className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
+                {/* KPI Header Row */}
+                <div 
+                  onClick={() => setExpandedKpiId(isExpanded ? null : kpi.id)}
+                  className="p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-slate-800 truncate">{kpi.name}</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{kpi.team}</p>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-slate-800">{kpiPlanned.length} / {targetVal} Planned</p>
+                      <div className="w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
+                        <div className="h-full rounded-full bg-teal-500" style={{ width: `${Math.min((kpiPlanned.length / targetVal) * 100, 100)}%` }} />
+                      </div>
+                    </div>
+                    {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  </div>
+                </div>
+
+                {/* KPI Expanded Content */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 p-4 bg-slate-50/20 space-y-4">
+                    {/* Deliverables List */}
+                    <div className="space-y-2">
+                      {kpiPlanned.map((item, idx) => {
+                        let objText = "";
+                        let dateText = "";
+                        try {
+                          const meta = JSON.parse(item.description);
+                          objText = meta.objective || "";
+                          dateText = meta.targetDate || "";
+                        } catch(e) {}
+
+                        const showEditForm = editingItem?.id === item.id;
+
+                        if (showEditForm) {
+                          return (
+                            <div key={item.id} className="bg-white border border-orange-200 rounded-2xl p-4 shadow-sm space-y-3">
+                              <h4 className="text-xs font-bold text-slate-700">Edit Deliverable</h4>
+                              <div className="space-y-2">
+                                <input 
+                                  type="text" 
+                                  placeholder="Deliverable Title (e.g. Independence Day poster)" 
+                                  value={formTitle}
+                                  onChange={(e) => setFormTitle(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
+                                />
+                                <textarea 
+                                  placeholder="Objective / Brief notes" 
+                                  value={formObjective}
+                                  onChange={(e) => setFormObjective(e.target.value)}
+                                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
+                                  rows={2}
+                                />
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Target Date</label>
+                                  <select 
+                                    value={formDate}
+                                    onChange={(e) => setFormDate(e.target.value)}
+                                    className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none"
+                                  >
+                                    <option value="">Select Target Date...</option>
+                                    {getCalendarCells(selectedMonth)
+                                      .filter(c => c && !c.isEmpty && (kpi.dailyAlloc?.[c.dateStr] || 0) > 0)
+                                      .map(c => <option key={c.dateStr} value={c.dateStr}>{new Date(c.dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", weekday: "short" })} (Target: {kpi.dailyAlloc[c.dateStr]})</option>)
+                                    }
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 pt-1">
+                                <button onClick={() => handleSaveItem(kpi)} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs">Save</button>
+                                <button onClick={() => { setEditingItem(null); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs">Cancel</button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={item.id} className="bg-white border border-slate-100 rounded-xl p-3 flex items-start justify-between gap-3 shadow-2xs">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-extrabold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100 uppercase">
+                                  {new Date(dateText).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                                </span>
+                                <h4 className="text-xs font-bold text-slate-850 truncate">{item.title}</h4>
+                              </div>
+                              {objText && <p className="text-[11px] text-slate-500 mt-1">{objText}</p>}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button 
+                                onClick={() => {
+                                  setEditingItem({ id: item.id, title: item.title, objective: objText, date: dateText });
+                                  setFormTitle(item.title);
+                                  setFormObjective(objText);
+                                  setFormDate(dateText);
+                                }}
+                                className="text-slate-400 hover:text-teal-600 p-1 hover:bg-slate-50 rounded"
+                                title="Edit"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="text-slate-400 hover:text-rose-600 p-1 hover:bg-slate-50 rounded"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {kpiPlanned.length === 0 && !editingItem && (
+                        <p className="text-center text-xs text-slate-400 italic py-4">No deliverables planned for this KPI yet.</p>
+                      )}
+                    </div>
+
+                    {/* Inline Add Form */}
+                    {editingItem?.id === 'new' ? (
+                      <div className="bg-white border border-teal-200 rounded-2xl p-4 shadow-sm space-y-3">
+                        <h4 className="text-xs font-bold text-slate-700">Add Planned Deliverable</h4>
+                        <div className="space-y-2">
+                          <input 
+                            type="text" 
+                            placeholder="Deliverable Title (e.g. Independence Day poster)" 
+                            value={formTitle}
+                            onChange={(e) => setFormTitle(e.target.value)}
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
+                          />
+                          <textarea 
+                            placeholder="Objective / Brief notes" 
+                            value={formObjective}
+                            onChange={(e) => setFormObjective(e.target.value)}
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
+                            rows={2}
+                          />
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Target Date</label>
+                            <select 
+                              value={formDate}
+                              onChange={(e) => setFormDate(e.target.value)}
+                              className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none"
+                            >
+                              <option value="">Select Target Date...</option>
+                              {getCalendarCells(selectedMonth)
+                                .filter(c => c && !c.isEmpty && (kpi.dailyAlloc?.[c.dateStr] || 0) > 0)
+                                .map(c => {
+                                  const plannedOnThisDate = kpiPlanned.filter(p => {
+                                    try { return JSON.parse(p.description).targetDate === c.dateStr; } catch(e) { return false; }
+                                  }).length;
+                                  const remainingSlots = (kpi.dailyAlloc[c.dateStr] || 0) - plannedOnThisDate;
+                                  return (
+                                    <option key={c.dateStr} value={c.dateStr} disabled={remainingSlots <= 0}>
+                                      {new Date(c.dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", weekday: "short" })} 
+                                      {` (Allocated: ${kpi.dailyAlloc[c.dateStr]} · Remaining Slots: ${remainingSlots})`}
+                                    </option>
+                                  );
+                                })
+                              }
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button onClick={() => handleSaveItem(kpi)} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs">Add Deliverable</button>
+                          <button onClick={() => { setEditingItem(null); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      kpiPlanned.length < targetVal && !editingItem && (
+                        <button 
+                          onClick={() => {
+                            setEditingItem({ id: 'new' });
+                            setFormTitle("");
+                            setFormObjective("");
+                            const validCells = getCalendarCells(selectedMonth)
+                              .filter(c => c && !c.isEmpty && (kpi.dailyAlloc?.[c.dateStr] || 0) > 0);
+                            const firstAvailable = validCells.find(c => {
+                              const plannedOnThisDate = kpiPlanned.filter(p => {
+                                try { return JSON.parse(p.description).targetDate === c.dateStr; } catch(e) { return false; }
+                              }).length;
+                              return (kpi.dailyAlloc[c.dateStr] || 0) > plannedOnThisDate;
+                            });
+                            setFormDate(firstAvailable?.dateStr || "");
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 bg-white border border-dashed border-teal-200 text-teal-700 font-bold text-xs p-3.5 rounded-xl hover:bg-teal-50 transition-colors"
+                        >
+                          <Plus className="h-4 w-4" /> Add Planned Deliverable
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const screenMap = { 
+    home: <HomeScreen />, 
+    mykpis: <MyKpisScreen />, 
+    planning: <PlanningScreen />,
+    team: <TeamScreen />, 
+    action: <ActionScreen kpis={kpis} projects={projects} user={currentEmployee} onCompleteAction={handleCompleteAction} teams={teams} clientProjects={clientProjects} onUpdateClientProjectStage={onUpdateClientProjectStage} />, 
+    profile: <ProfileScreen /> 
+  };
 
   return (
     <div className="flex h-full w-full bg-slate-50">
@@ -10039,7 +10506,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
                 className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors ${active ? "text-teal-600" : "text-slate-400"}`}>
                 <Icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : ""}`} />
                 <span className={`text-[9px] font-semibold ${active ? "text-teal-600" : "text-slate-400"}`}>
-                  {item.id === "mykpis" ? "KPIs" : item.id === "action" ? "Actions" : item.id.charAt(0).toUpperCase() + item.id.slice(1)}
+                  {item.id === "mykpis" ? "KPIs" : item.id === "action" ? "Actions" : item.id === "planning" ? "Planning" : item.id.charAt(0).toUpperCase() + item.id.slice(1)}
                 </span>
               </button>
             );
@@ -11129,11 +11596,11 @@ export default function App() {
       return;
     }
 
-    const isPending = actionData.type === 'pending' || actionData.type === 'delegated_active';
+    const isPending = actionData.type === 'pending' || actionData.type === 'delegated_active' || !!actionData.plannedProject;
     const isDelayed = actionData.isDelayed || false;
     
     let kpi = kpis.find(k => k.id === actionData.kpiId);
-    let assignedTo = isPending ? (actionData.pendingProject?.assignedTo || kpi?.owner) : (kpi?.owner || "Unassigned");
+    let assignedTo = isPending ? (actionData.pendingProject?.assignedTo || actionData.plannedProject?.assignedTo || kpi?.owner) : (kpi?.owner || "Unassigned");
     let teamName = kpi?.team || "Digital Marketing";
 
     const descriptionJson = JSON.stringify({
@@ -11151,16 +11618,17 @@ export default function App() {
     let completedProjectData = null;
 
     if (isPending) {
+      const projectId = actionData.plannedProject ? actionData.plannedProject.id : actionData.pendingProject.id;
       const { data, error } = await supabase.from('projects').update({
         name: actionData.title,
         description: descriptionJson
-      }).eq('id', actionData.pendingProject.id).select().single();
+      }).eq('id', projectId).select().single();
       
       if (error) {
-        console.error("Error updating pending task:", error);
+        console.error("Error updating pending/planned task:", error);
       }
       completedProjectData = data;
-      setProjects(prev => prev.map(p => p.id === actionData.pendingProject.id ? {
+      setProjects(prev => prev.map(p => p.id === projectId ? {
         ...p,
         name: actionData.title,
         description: descriptionJson,
@@ -11196,7 +11664,7 @@ export default function App() {
       }
     }
 
-    if (!isPending && kpi && !isDelayed) {
+    if ((!isPending || !!actionData.plannedProject) && kpi && !isDelayed) {
       const nextM = { ...(kpi.monthlyActual || {}) };
       const mKey = MONTHS_LIST.find(m => m.startsWith(actionData.date.substring(5,7)) || new Date(actionData.date).toLocaleString('default', { month: 'short' }) + " " + actionData.date.substring(0,4) === m) || Object.keys(kpi.monthlyAlloc || {})[0];
       if (mKey) {
