@@ -11,6 +11,21 @@ import {
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
 
+// Module-level flag: once Supabase fails once, skip all future network calls silently
+let _supabaseOffline = false;
+
+async function safeFetch(table, select = '*') {
+  if (_supabaseOffline) return { data: null, offline: true };
+  try {
+    const res = await supabase.from(table).select(select);
+    if (res.error) throw res.error;
+    return { data: res.data, offline: false };
+  } catch (e) {
+    _supabaseOffline = true;
+    return { data: null, offline: true };
+  }
+}
+
 /* ---------------- Shared data (single source of truth) ---------------- */
 
 const initialKpis = []; /*
@@ -10047,35 +10062,34 @@ export default function App() {
 
       // 1. Fetch Teams
       let dbTeams = null, dbMembers = null;
-      try {
-        const resTeams = await supabase.from('teams').select('*');
-        dbTeams = resTeams.data;
-        if (resTeams.error) throw resTeams.error;
-        const resMembers = await supabase.from('team_members').select('*');
-        dbMembers = resMembers.data;
-        if (resMembers.error) throw resMembers.error;
-      } catch (netErr) {
-        console.warn("Teams offline, reading from localStorage backup:", netErr);
-        let cachedTeams = localStorage.getItem("backup_teams");
-        if (!cachedTeams) {
-          // Initialize mock teams config
-          const mockTeams = [
-            {
-              id: 1,
-              name: "Digital Marketing",
-              description: "Digital presence & conversion leads",
-              lead: "Anand Kumar",
-              leadEmployeeId: "EMP001",
-              members: [
-                { id: 101, name: "Anand Kumar", employeeId: "EMP001", designation: "Team Lead", experience: "5 Yrs", reportingManager: "Ravi", description: "Lead", loginId: "anand", password: "123" },
-                { id: 102, name: "Aditi Rao", employeeId: "EMP002", designation: "Social Specialist", experience: "2 Yrs", reportingManager: "Anand Kumar", description: "Design", loginId: "aditi", password: "123" }
-              ]
-            }
-          ];
-          localStorage.setItem("backup_teams", JSON.stringify(mockTeams));
-          cachedTeams = JSON.stringify(mockTeams);
+      {
+        const resTeams = await safeFetch('teams');
+        const resMembers = await safeFetch('team_members');
+        if (!resTeams.offline) {
+          dbTeams = resTeams.data;
+          dbMembers = resMembers.data;
+        } else {
+          let cachedTeams = localStorage.getItem("backup_teams");
+          if (!cachedTeams) {
+            // Initialize mock teams config
+            const mockTeams = [
+              {
+                id: 1,
+                name: "Digital Marketing",
+                description: "Digital presence & conversion leads",
+                lead: "Anand Kumar",
+                leadEmployeeId: "EMP001",
+                members: [
+                  { id: 101, name: "Anand Kumar", employeeId: "EMP001", designation: "Team Lead", experience: "5 Yrs", reportingManager: "Ravi", description: "Lead", loginId: "anand", password: "123" },
+                  { id: 102, name: "Aditi Rao", employeeId: "EMP002", designation: "Social Specialist", experience: "2 Yrs", reportingManager: "Anand Kumar", description: "Design", loginId: "aditi", password: "123" }
+                ]
+              }
+            ];
+            localStorage.setItem("backup_teams", JSON.stringify(mockTeams));
+            cachedTeams = JSON.stringify(mockTeams);
+          }
+          setTeams(JSON.parse(cachedTeams));
         }
-        setTeams(JSON.parse(cachedTeams));
       }
 
       if (dbTeams && dbMembers) {
@@ -10119,49 +10133,49 @@ export default function App() {
 
       // 2. Fetch KPIs
       let dbKpis = null;
-      try {
-        const resKpis = await supabase.from('kpis').select('*');
-        dbKpis = resKpis.data;
-        if (resKpis.error) throw resKpis.error;
-      } catch (netErr) {
-        console.warn("KPIs offline, reading from localStorage backup:", netErr);
-        let cachedKpis = localStorage.getItem("backup_kpis");
-        if (!cachedKpis) {
-          const mockKpis = [
-            {
-              id: 1,
-              name: "No of digital enquiry resulted in sales - Domestic",
-              unit: " Nos",
-              target: 400.0,
-              direction: "higher",
-              team: "Digital Marketing",
-              owner: "Anand Kumar",
-              driveBy: "Aditi Rao",
-              monitorBy: "Ravi",
-              description: "Domestic Enquiry conversion",
-              kra: "Marketing",
-              history: [{ d: "W1", v: 10 }, { d: "W2", v: 25 }],
-              dailyActual: { "2026-08-22": 5, "2026-08-23": 8 },
-              revisedAlloc: {},
-              customHolidays: {},
-              holidaysEnabled: true,
-              targetType: "monthly",
-              targetsList: [
-                { id: "Aug 2026", label: "Aug 2026", targetValue: 35, targetDate: "2026-08-31" }
-              ],
-              monthlyAlloc: { "Aug 2026": 35 },
-              monthlyActual: { "Aug 2026": 13 },
-              weeklyAlloc: {},
-              weeklyActual: {},
-              dailyAlloc: {},
-              kpiType: "activity",
-              reportConfig: {}
-            }
-          ];
-          localStorage.setItem("backup_kpis", JSON.stringify(mockKpis));
-          cachedKpis = JSON.stringify(mockKpis);
+      {
+        const resKpis = await safeFetch('kpis');
+        if (!resKpis.offline) {
+          dbKpis = resKpis.data;
+        } else {
+          let cachedKpis = localStorage.getItem("backup_kpis");
+          if (!cachedKpis) {
+            const mockKpis = [
+              {
+                id: 1,
+                name: "No of digital enquiry resulted in sales - Domestic",
+                unit: " Nos",
+                target: 400.0,
+                direction: "higher",
+                team: "Digital Marketing",
+                owner: "Anand Kumar",
+                driveBy: "Aditi Rao",
+                monitorBy: "Ravi",
+                description: "Domestic Enquiry conversion",
+                kra: "Marketing",
+                history: [{ d: "W1", v: 10 }, { d: "W2", v: 25 }],
+                dailyActual: { "2026-08-22": 5, "2026-08-23": 8 },
+                revisedAlloc: {},
+                customHolidays: {},
+                holidaysEnabled: true,
+                targetType: "monthly",
+                targetsList: [
+                  { id: "Aug 2026", label: "Aug 2026", targetValue: 35, targetDate: "2026-08-31" }
+                ],
+                monthlyAlloc: { "Aug 2026": 35 },
+                monthlyActual: { "Aug 2026": 13 },
+                weeklyAlloc: {},
+                weeklyActual: {},
+                dailyAlloc: {},
+                kpiType: "activity",
+                reportConfig: {}
+              }
+            ];
+            localStorage.setItem("backup_kpis", JSON.stringify(mockKpis));
+            cachedKpis = JSON.stringify(mockKpis);
+          }
+          setKpis(JSON.parse(cachedKpis));
         }
-        setKpis(JSON.parse(cachedKpis));
       }
 
       if (dbKpis) {
@@ -10198,15 +10212,13 @@ export default function App() {
 
       // 3. Fetch Projects
       let dbProjects = null;
-      try {
-        const resProjects = await supabase.from('projects').select('*');
-        dbProjects = resProjects.data;
-        if (resProjects.error) throw resProjects.error;
-      } catch (netErr) {
-        console.warn("Projects offline, reading from localStorage backup:", netErr);
-        const cachedProjects = localStorage.getItem("backup_projects");
-        if (cachedProjects) {
-          setProjects(JSON.parse(cachedProjects));
+      {
+        const resProjects = await safeFetch('projects');
+        if (!resProjects.offline) {
+          dbProjects = resProjects.data;
+        } else {
+          const cachedProjects = localStorage.getItem("backup_projects");
+          if (cachedProjects) setProjects(JSON.parse(cachedProjects));
         }
       }
 
@@ -10279,23 +10291,17 @@ export default function App() {
       // 4. Fetch Client Projects
       let dbClientProjects = null;
       let dbClientProjectLogs = null;
-      try {
-        const resCP = await supabase.from('client_projects').select('*');
-        dbClientProjects = resCP.data;
-        if (resCP.error) throw resCP.error;
-
-        const resCPLogs = await supabase.from('client_project_logs').select('*');
-        dbClientProjectLogs = resCPLogs.data;
-        if (resCPLogs.error) throw resCPLogs.error;
-      } catch (netErr) {
-        console.warn("Client projects offline, reading backup:", netErr);
-        const cachedCP = localStorage.getItem("backup_client_projects");
-        if (cachedCP) {
-          setClientProjects(JSON.parse(cachedCP));
-        }
-        const cachedCPLogs = localStorage.getItem("backup_client_project_logs");
-        if (cachedCPLogs) {
-          setClientProjectLogs(JSON.parse(cachedCPLogs));
+      {
+        const resCP = await safeFetch('client_projects');
+        const resCPLogs = await safeFetch('client_project_logs');
+        if (!resCP.offline) {
+          dbClientProjects = resCP.data;
+          dbClientProjectLogs = resCPLogs.data;
+        } else {
+          const cachedCP = localStorage.getItem("backup_client_projects");
+          if (cachedCP) setClientProjects(JSON.parse(cachedCP));
+          const cachedCPLogs = localStorage.getItem("backup_client_project_logs");
+          if (cachedCPLogs) setClientProjectLogs(JSON.parse(cachedCPLogs));
         }
       }
 
