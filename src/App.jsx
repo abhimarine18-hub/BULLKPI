@@ -9640,7 +9640,7 @@ const EMP_NAV = [
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage }) {
+function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -10405,22 +10405,14 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
 
   /* ── Plan details popup modal ── */
   const PlanModal = ({ kpi, dateStr, onClose }) => {
-    const prefix = `${new Date(dateStr).getFullYear()}-${String(new Date(dateStr).getMonth() + 1).padStart(2, '0')}`;
-    
-    const kpiPlanned = projects.filter(p => {
-      if (p.assignedTo !== currentEmployee || p.status === "bin" || p.kpiId !== kpi.id) return false;
-      try {
-        const meta = JSON.parse(p.description);
-        return meta.type === "action_item" && meta.status === "planned" && meta.targetDate === dateStr;
-      } catch(e) { return false; }
-    });
+    const kpiPlanned = (kpi.reportConfig?.plans || []).filter(p => p.targetDate === dateStr && p.status === "planned");
 
     const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi, selectedMonth);
     const tVal = dailyAllocFallback[dateStr] || 0;
 
     const [modalTitle, setModalTitle] = useState("");
     const [modalObjective, setModalObjective] = useState("");
-    const [editingItemInModal, setEditingItemInModal] = useState(null); // project item
+    const [editingItemInModal, setEditingItemInModal] = useState(null); // plan item object
 
     const handleSave = async () => {
       if (!modalTitle.trim()) {
@@ -10429,67 +10421,68 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
       }
 
       const isNew = !editingItemInModal?.id;
-      const descriptionJson = JSON.stringify({
-        type: "action_item",
-        status: "planned",
-        objective: modalObjective,
-        targetDate: dateStr,
-        assignedTo: currentEmployee,
-        kpiId: kpi.id
-      });
+      let updatedPlans = [];
 
-      const dbPayload = {
-        name: modalTitle,
-        description: descriptionJson,
-        team: kpi.team,
-        lead: currentEmployee
+      if (isNew) {
+        const newPlan = {
+          id: `plan-${Date.now()}`,
+          title: modalTitle,
+          objective: modalObjective,
+          targetDate: dateStr,
+          status: "planned",
+          submissionLink: ""
+        };
+        updatedPlans = [...(kpi.reportConfig?.plans || []), newPlan];
+      } else {
+        updatedPlans = (kpi.reportConfig?.plans || []).map(p => 
+          p.id === editingItemInModal.id 
+            ? { ...p, title: modalTitle, objective: modalObjective } 
+            : p
+        );
+      }
+
+      const updatedReportConfig = {
+        ...(kpi.reportConfig || {}),
+        plans: updatedPlans
       };
 
       try {
-        if (isNew) {
-          const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
-          if (error) throw error;
-          if (data) {
-            setProjects(prev => [...prev, {
-              id: data.id,
-              title: data.name,
-              description: data.description,
-              team: data.team,
-              assignedTo: currentEmployee,
-              kpiId: kpi.id,
-              targetDate: dateStr,
-              status: "planned",
-              createdAt: data.created_at,
-              memberNames: []
-            }]);
-          }
-        } else {
-          const { data, error } = await supabase.from('projects').update(dbPayload).eq('id', editingItemInModal.id).select().single();
-          if (error) throw error;
-          if (data) {
-            setProjects(prev => prev.map(p => p.id === editingItemInModal.id ? {
-              ...p,
-              title: data.name,
-              description: data.description,
-              targetDate: dateStr,
-              objective: modalObjective
-            } : p));
-          }
-        }
+        const { error } = await supabase
+          .from('kpis')
+          .update({ report_config: updatedReportConfig })
+          .eq('id', kpi.id);
+
+        if (error) throw error;
+
+        // Update React state in parent
+        setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, reportConfig: updatedReportConfig } : k));
+
         setEditingItemInModal(null);
         setModalTitle("");
         setModalObjective("");
       } catch (err) {
-        alert("Error saving: " + err.message);
+        alert("Error saving planned item: " + err.message);
       }
     };
 
     const handleDelete = async (itemId) => {
       if (window.confirm("Delete this planned deliverable?")) {
+        const updatedPlans = (kpi.reportConfig?.plans || []).filter(p => p.id !== itemId);
+        const updatedReportConfig = {
+          ...(kpi.reportConfig || {}),
+          plans: updatedPlans
+        };
+
         try {
-          const { error } = await supabase.from('projects').delete().eq('id', itemId);
+          const { error } = await supabase
+            .from('kpis')
+            .update({ report_config: updatedReportConfig })
+            .eq('id', kpi.id);
+
           if (error) throw error;
-          setProjects(prev => prev.filter(p => p.id !== itemId));
+
+          // Update React state in parent
+          setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, reportConfig: updatedReportConfig } : k));
         } catch(err) {
           alert("Error deleting: " + err.message);
         }
@@ -10523,8 +10516,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Current Deliverables Plan ({kpiPlanned.length})</p>
               {kpiPlanned.map((item, idx) => {
-                let obj = "";
-                try { obj = JSON.parse(item.description).objective || ""; } catch(e) {}
+                const obj = item.objective || "";
                 
                 return (
                   <div key={item.id} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex items-start justify-between gap-3">
@@ -11792,6 +11784,118 @@ export default function App() {
       return;
     }
 
+    const isPlanItem = actionData.plannedProject?.isPlanItem || actionData.completedProject?.isPlanItem;
+
+    if (isPlanItem) {
+      let kpi = kpis.find(k => k.id === actionData.kpiId);
+      const isDelayed = actionData.isDelayed || false;
+      if (kpi) {
+      const planId = actionData.plannedProject?.id || actionData.completedProject?.id;
+      const updatedPlans = (kpi.reportConfig?.plans || []).map(p => 
+        p.id === planId 
+          ? { 
+              ...p, 
+              status: isDelayed ? "delayed" : "completed", 
+              submissionLink: actionData.submissionLink || "", 
+              title: actionData.title, 
+              objective: actionData.objective 
+            }
+          : p
+      );
+      const nextReportConfig = {
+        ...(kpi.reportConfig || {}),
+        plans: updatedPlans
+      };
+
+      let nextActual = { ...(kpi.dailyActual || {}) };
+      if (!isDelayed) {
+        nextActual[actionData.date] = (nextActual[actionData.date] || 0) + 1;
+      }
+
+      const { error } = await supabase.from('kpis').update({
+        report_config: nextReportConfig,
+        daily_actual: nextActual
+      }).eq('id', kpi.id);
+
+      if (error) {
+        console.error("Error updating KPI plans & actuals in Supabase:", error);
+      }
+
+      setKpis(prev => prev.map(k => k.id === kpi.id ? { 
+        ...k, 
+        reportConfig: nextReportConfig,
+        dailyActual: nextActual
+      } : k));
+
+      if (!isDelayed) {
+        const nextM = { ...(kpi.monthlyActual || {}) };
+        const mKey = MONTHS_LIST.find(m => m.startsWith(actionData.date.substring(5,7)) || new Date(actionData.date).toLocaleString('default', { month: 'short' }) + " " + actionData.date.substring(0,4) === m) || Object.keys(kpi.monthlyAlloc || {})[0];
+        if (mKey) {
+          nextM[mKey] = (nextM[mKey] || 0) + 1;
+          setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, monthlyActual: nextM } : k));
+          await supabase.from('kpis').update({ monthly_actual: nextM }).eq('id', kpi.id);
+        }
+      }
+
+      if (actionData.followUpKpiId) {
+        const followUpKpi = kpis.find(k => k.id === actionData.followUpKpiId);
+        if (followUpKpi) {
+          let targetDateForChild = actionData.date;
+          if (kpi && kpi.reportConfig?.handoffEnabled) {
+            const now = new Date();
+            const cutoffStr = kpi.reportConfig.cutoffTime || "17:30";
+            const bufferMin = kpi.reportConfig.bufferMinutes || 30;
+            const [cHour, cMin] = cutoffStr.split(":").map(Number);
+            const cutoffToday = new Date();
+            cutoffToday.setHours(cHour, cMin, 0, 0);
+            
+            const cutoffWithBuffer = new Date(cutoffToday.getTime() + bufferMin * 60 * 1000);
+            if (now > cutoffWithBuffer) {
+              const d = new Date(actionData.date);
+              d.setDate(d.getDate() + 1);
+              let shiftedDateStr = d.toISOString().split('T')[0];
+              while (new Date(shiftedDateStr).getDay() === 0) {
+                d.setDate(d.getDate() + 1);
+                shiftedDateStr = d.toISOString().split('T')[0];
+              }
+              targetDateForChild = shiftedDateStr;
+            }
+          }
+
+          const descriptionJson = JSON.stringify({
+            objective: `Triggers from parent KPI completion: ${kpi.name}`,
+            targetDate: targetDateForChild,
+            type: "action_item",
+            status: "pending",
+            kpiId: followUpKpi.id
+          });
+          const followUpPayload = {
+            name: `Action Slot: ${followUpKpi.name}`,
+            description: descriptionJson,
+            team: followUpKpi.team || "Digital Marketing",
+            lead: followUpKpi.owner || "Unassigned"
+          };
+          const { data, error } = await supabase.from('projects').insert(followUpPayload).select().single();
+          if (!error && data) {
+            setProjects(prev => [...prev, {
+              id: data.id,
+              title: data.name,
+              description: data.description,
+              team: data.team,
+              assignedTo: followUpKpi.owner || "Unassigned",
+              kpiId: followUpKpi.id,
+              targetDate: targetDateForChild,
+              status: "pending",
+              createdAt: data.created_at,
+              memberNames: []
+            }]);
+          }
+        }
+      }
+      }
+      return;
+    }
+
     const isPending = actionData.type === 'pending' || actionData.type === 'delegated_active' || !!actionData.plannedProject;
     const isDelayed = actionData.isDelayed || false;
     
@@ -12436,6 +12540,7 @@ export default function App() {
         ) : (
           <EmployeeApp 
             kpis={kpis} 
+            setKpis={setKpis}
             onLog={handleLog} 
             teams={teams} 
             projects={projects} 
