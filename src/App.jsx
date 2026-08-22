@@ -4179,7 +4179,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
 
       <div className="flex-1 overflow-y-auto space-y-4">
         {/* CLIENT BUILD PROJECTS STAGES TRACKING PANEL */}
-        {clientProjects && clientProjects.length > 0 && (
+        {clientProjects && clientProjects.length > 0 && (user === "M Abhilash 20592" || user === "Admin" || user === "admin") && (
           <div className="bg-teal-500/5 border border-teal-100/80 rounded-3xl p-5 space-y-3 shadow-sm">
             <h3 className="text-sm font-bold text-teal-800 flex items-center gap-1.5 uppercase tracking-wider">
               <FolderGit2 className="h-4 w-4 text-teal-600" /> Build Projects Milestone Checklist
