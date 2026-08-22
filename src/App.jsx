@@ -6674,7 +6674,7 @@ function MorningReviewScreen({ teams, kpis }) {
 }
 
 
-function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog }) {
+function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog }) {
   const okrsData = [
     { id: 1, objective: "Grow digital presence this quarter", level: "Company", owner: "Digital Marketing", keyResults: [
       { id: 1, name: "Grow website traffic to 50,000 sessions/month", linkedKpiId: 1 },
@@ -7051,7 +7051,23 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
     );
   };
 
-  const [screen, setScreen] = useState("dashboard");
+  const filteredAdminNav = useMemo(() => {
+    return ADMIN_NAV.filter(item => {
+      if (item.id === "build_projects") {
+        return loggedInUser?.name === "M Abhilash 20592";
+      }
+      return true;
+    });
+  }, [loggedInUser]);
+
+  const [screen, setScreenInternal] = useState("dashboard");
+  const setScreen = (newScreen) => {
+    if (newScreen === "build_projects" && loggedInUser?.name !== "M Abhilash 20592") {
+      setScreenInternal("dashboard");
+    } else {
+      setScreenInternal(newScreen);
+    }
+  };
   const [settingsTab, setSettingsTab] = useState("spreadsheet");
   const [isEditingHierarchy, setIsEditingHierarchy] = useState(false);
   const [detailId, setDetailId] = useState(null);
@@ -7125,7 +7141,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
           )}
         </div>
         <nav className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto">
-          {ADMIN_NAV.map((item) => {
+          {filteredAdminNav.map((item) => {
             const Icon = item.icon;
             const isActive = screen === item.id;
             return (
@@ -8095,7 +8111,8 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             </div>
           )}
 
-          {screen === "build_projects" && (() => {
+           {screen === "build_projects" && (() => {
+            if (loggedInUser?.name !== "M Abhilash 20592") return null;
             return (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -11237,6 +11254,7 @@ export default function App() {
       <div className="flex-1 w-full h-full flex flex-col min-h-0">
         {(role === "admin" && loggedInUser.role === "admin") ? (
           <AdminApp 
+            loggedInUser={loggedInUser}
             kpis={computedKpis} 
             setKpis={setKpis}
             onLog={handleLog} 
