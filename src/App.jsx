@@ -10208,6 +10208,35 @@ export default function App() {
         }));
         setKpis(loadedKpis);
         localStorage.setItem("backup_kpis", JSON.stringify(loadedKpis));
+
+        // Flush pending sync queue — push any offline edits to Supabase now that we're online
+        try {
+          const queue = JSON.parse(localStorage.getItem('pending_sync_kpis') || '[]');
+          if (queue.length > 0) {
+            const backupKpis = JSON.parse(localStorage.getItem('backup_kpis') || '[]');
+            for (const pendingId of queue) {
+              const kpiData = backupKpis.find(k => String(k.id) === String(pendingId));
+              if (kpiData) {
+                const syncPayload = {
+                  name: kpiData.name, unit: kpiData.unit, target: kpiData.target,
+                  direction: kpiData.direction, team: kpiData.team, owner: kpiData.owner,
+                  drive_by: kpiData.drive_by || "", monitor_by: kpiData.monitor_by || "",
+                  description: kpiData.description || "", kra: kpiData.kra,
+                  history: kpiData.history || [], target_type: kpiData.target_type,
+                  targets_list: kpiData.targets_list,
+                  monthly_alloc: kpiData.monthly_alloc || {}, monthly_actual: kpiData.monthly_actual || {},
+                  weekly_alloc: kpiData.weekly_alloc || {}, weekly_actual: kpiData.weekly_actual || {},
+                  daily_alloc: kpiData.daily_alloc || {}, daily_actual: kpiData.daily_actual || {},
+                  revised_alloc: kpiData.revised_alloc || {}, custom_holidays: kpiData.custom_holidays || {},
+                  holidays_enabled: kpiData.holidays_enabled ?? true,
+                  kpi_type: kpiData.kpi_type || 'activity', report_config: kpiData.report_config || {}
+                };
+                await supabase.from('kpis').update(syncPayload).eq('id', pendingId);
+              }
+            }
+            localStorage.removeItem('pending_sync_kpis');
+          }
+        } catch(syncErr) { /* silent */ }
       }
 
       // 3. Fetch Projects
@@ -10732,27 +10761,39 @@ export default function App() {
         kpi_type: updatedKpi.kpiType || 'activity',
         report_config: updatedKpi.reportConfig || {}
       };
-      console.log('[KPI Save] Attempting Supabase update for KPI', updatedKpi.id, '| daily_alloc:', payload.daily_alloc);
       const { error } = await supabase.from('kpis').update(payload).eq('id', updatedKpi.id);
       if (error) {
-        // Check if it's an SSL/network error (common with corporate proxies)
         const isNetworkError = !error.message || error.message.includes('Failed to fetch') ||
           error.message.includes('NetworkError') ||
           error.message.includes('ERR_CERT') ||
           error.message.includes('ERR_CONNECTION') ||
           error.message.includes('fetch');
         if (isNetworkError) {
-          console.warn('[KPI Save] Network/SSL error — data saved to localStorage, will sync when online. Error:', error.message);
+          // Queue for later sync when Supabase is reachable
+          try {
+            const queue = JSON.parse(localStorage.getItem('pending_sync_kpis') || '[]');
+            if (!queue.includes(String(updatedKpi.id))) queue.push(String(updatedKpi.id));
+            localStorage.setItem('pending_sync_kpis', JSON.stringify(queue));
+          } catch(e) {}
         } else {
           console.error('[KPI Save] Supabase error in handleEditKpi:', error);
           alert("Failed to save KPI to database: " + error.message);
         }
       } else {
-        console.log('[KPI Save] ✅ Supabase save successful for KPI', updatedKpi.id);
+        // Successful — remove from pending queue if it was there
+        try {
+          const queue = JSON.parse(localStorage.getItem('pending_sync_kpis') || '[]');
+          const filtered = queue.filter(id => String(id) !== String(updatedKpi.id));
+          localStorage.setItem('pending_sync_kpis', JSON.stringify(filtered));
+        } catch(e) {}
       }
     } catch (err) {
-      // TypeError: Failed to fetch — network completely down
-      console.warn('[KPI Save] Network exception — data saved to localStorage. Error:', err.message);
+      // Network completely down — queue for later sync
+      try {
+        const queue = JSON.parse(localStorage.getItem('pending_sync_kpis') || '[]');
+        if (!queue.includes(String(updatedKpi.id))) queue.push(String(updatedKpi.id));
+        localStorage.setItem('pending_sync_kpis', JSON.stringify(queue));
+      } catch(e) {}
     }
   }
 
