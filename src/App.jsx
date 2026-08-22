@@ -9736,13 +9736,22 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
             </span>
           </div>
 
-          {/* Relation Badge (DO / DRIVE / MONITOR) */}
-          <div className="mb-2.5">
+          {/* Relation Badge (DO / DRIVE / MONITOR) & Plan Status */}
+          <div className="flex items-center gap-1.5 mb-2.5">
             <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
               relBadgeColor[relationType] || "border-slate-300 text-slate-600 bg-slate-50"
             }`}>
               {relLabels[relationType] || "KPI"}
             </span>
+            {kpi.reportConfig?.planRequired ? (
+              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-teal-200 text-teal-700 bg-teal-50/50 uppercase tracking-wider">
+                Plan Required
+              </span>
+            ) : (
+              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-slate-200 text-slate-400 bg-slate-55 uppercase tracking-wider">
+                Plan Not Required
+              </span>
+            )}
           </div>
           
           {/* Middle Row: Numbers (Left) and Mini-Calendar Dots Grid (Right) */}
