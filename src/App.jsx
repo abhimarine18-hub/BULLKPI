@@ -2568,6 +2568,42 @@ const getCalendarCells = (monthName) => {
   return cells;
 };
 
+const getKpiDailyAllocWithFallback = (kpi, monthName) => {
+  if (!kpi) return {};
+  const dailyAlloc = kpi.dailyAlloc || {};
+  
+  if (monthName) {
+    const cells = getCalendarCells(monthName).filter(c => c && !c.isEmpty);
+    const hasDaily = cells.some(c => (dailyAlloc[c.dateStr] || 0) > 0);
+    if (hasDaily) return dailyAlloc;
+
+    const monthlyTarget = kpi.monthlyAlloc?.[monthName] || 0;
+    if (monthlyTarget > 0 && cells.length > 0) {
+      const lastDayStr = cells[cells.length - 1].dateStr;
+      return {
+        ...dailyAlloc,
+        [lastDayStr]: (dailyAlloc[lastDayStr] || 0) + monthlyTarget
+      };
+    }
+    return dailyAlloc;
+  }
+
+  let result = { ...dailyAlloc };
+  FY_MONTHS.forEach(mInfo => {
+    const mName = mInfo.name;
+    const cells = getCalendarCells(mName).filter(c => c && !c.isEmpty);
+    const hasDaily = cells.some(c => (dailyAlloc[c.dateStr] || 0) > 0);
+    if (!hasDaily) {
+      const monthlyTarget = kpi.monthlyAlloc?.[mName] || 0;
+      if (monthlyTarget > 0 && cells.length > 0) {
+        const lastDayStr = cells[cells.length - 1].dateStr;
+        result[lastDayStr] = (result[lastDayStr] || 0) + monthlyTarget;
+      }
+    }
+  });
+  return result;
+};
+
 const getDaysInWeekRow = (monthName, rowIdx) => {
   const cells = getCalendarCells(monthName);
   const rowCells = cells.slice(rowIdx * 7, (rowIdx + 1) * 7);
@@ -4206,7 +4242,8 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
   // Calculate action slots from KPI dailyAlloc
   const actionSlots = [];
   myKpis.forEach(kpi => {
-    Object.entries(kpi.dailyAlloc || {}).forEach(([dateStr, targetVal]) => {
+    const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi);
+    Object.entries(dailyAllocFallback).forEach(([dateStr, targetVal]) => {
       if (targetVal > 0) {
         // Find completed projects for this KPI on this date
         const completedForKpiDate = parsedProjects.filter(p => p.meta.status === 'completed' && p.kpiId === kpi.id && p.meta.targetDate === dateStr);
@@ -9738,7 +9775,8 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
   /* ── KPI card (reusable matching user mockup + calendar dots) ── */
   const KpiCard = ({ kpi, onClick, relationType }) => {
     const status = getStatus(kpi);
-    const todayTarget = kpi.dailyAlloc?.[todayStr] || 0;
+    const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi);
+    const todayTarget = dailyAllocFallback[todayStr] || 0;
     const todayActual = kpi.dailyActual?.[todayStr] || 0;
 
     // Retrieve pending targets
@@ -9834,7 +9872,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
                     
                     const dStr = cell.dateStr;
                     const dayNum = cell.dayNum;
-                    const tVal = kpi.dailyAlloc?.[dStr] || 0;
+                    const tVal = dailyAllocFallback[dStr] || 0;
                     const aVal = kpi.dailyActual?.[dStr] || 0;
                     const isToday = dStr === todayStr;
 
@@ -10197,6 +10235,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
     const renderKpiCalendar = (kpi) => {
       const cells = getCalendarCells(selectedMonth);
       const kpiPlanned = getKpiPlannedItems(kpi.id);
+      const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi, selectedMonth);
 
       // Group planned items by date for quick lookup
       const plannedByDate = {};
@@ -10220,7 +10259,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
               }
 
               const dStr = cell.dateStr;
-              const tVal = kpi.dailyAlloc?.[dStr] || 0;
+              const tVal = dailyAllocFallback[dStr] || 0;
               const cellPlanned = plannedByDate[dStr] || [];
               const plannedCount = cellPlanned.length;
 
@@ -10376,7 +10415,8 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
       } catch(e) { return false; }
     });
 
-    const tVal = kpi.dailyAlloc?.[dateStr] || 0;
+    const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi, selectedMonth);
+    const tVal = dailyAllocFallback[dateStr] || 0;
 
     const [modalTitle, setModalTitle] = useState("");
     const [modalObjective, setModalObjective] = useState("");
