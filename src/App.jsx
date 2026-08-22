@@ -9411,15 +9411,52 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
   const [loggingId, setLoggingId] = useState(null);
   const [shift, setShift] = useState("Excellent");
 
+  // Selected Month State (defaults to current month)
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    const m = d.toLocaleString('en-US', { month: 'short' });
+    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
+    return `${m} ${yr}`;
+  });
+
   const currentEmployee = loggedInUser?.name || CURRENT_EMPLOYEE;
 
-  const myKpis = kpis.filter((k) => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  // Filter and sort by relations
+  const doKpis = useMemo(() => kpis.filter(k => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || "")), [kpis, currentEmployee]);
+  const driveKpis = useMemo(() => kpis.filter(k => k.driveBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || "")), [kpis, currentEmployee]);
+  const monitorKpis = useMemo(() => kpis.filter(k => k.monitorBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || "")), [kpis, currentEmployee]);
+
+  const myKpis = useMemo(() => {
+    // Union of all kpis where the employee is DO, DRIVE or MONITOR
+    const combined = [...doKpis, ...driveKpis, ...monitorKpis];
+    const unique = [];
+    const seen = new Set();
+    combined.forEach(k => {
+      if (!seen.has(k.id)) {
+        seen.add(k.id);
+        unique.push(k);
+      }
+    });
+    return unique.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [doKpis, driveKpis, monitorKpis]);
+
   const detailKpi = kpis.find((k) => k.id === detailId);
   const loggingKpi = kpis.find((k) => k.id === loggingId);
   const myTeam = teams.find((t) => t.members.some((m) => m.name === currentEmployee));
   const teamKpis = kpis.filter((k) => k.team === myTeam?.name).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const onTrackInTeam = teamKpis.filter((k) => getStatus(k) === "on-track").length;
   const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Month Shifter Helper
+  const handleShiftMonth = (direction) => {
+    const list = MONTHS_LIST;
+    const idx = list.indexOf(selectedMonth);
+    if (idx === -1) return;
+    let nextIdx = idx + direction;
+    if (nextIdx < 0) nextIdx = list.length - 1;
+    if (nextIdx >= list.length) nextIdx = 0;
+    setSelectedMonth(list[nextIdx]);
+  };
 
   /* ── KPI status helpers ── */
   const statusColor = (s) => s === "on-track" ? "bg-teal-100 text-teal-800" : s === "at-risk" ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700";
@@ -9440,17 +9477,22 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
     );
   };
 
-  /* ── KPI card (reusable) ── */
+  /* ── KPI card (reusable with 1-31 dots) ── */
   const KpiCard = ({ kpi, onClick }) => {
     const status = getStatus(kpi);
     const todayTarget = kpi.dailyAlloc?.[todayStr] || 0;
     const todayActual = kpi.dailyActual?.[todayStr] || 0;
+
+    // Generate 31 dots logic for the selectedMonth
+    const monthDays = useMemo(() => getDaysInMonth(selectedMonth), [selectedMonth]);
+    
     return (
       <button onClick={onClick} className={`w-full text-left rounded-2xl p-4 border border-transparent hover:border-teal-200 transition-all shadow-sm ${statusColor(status).replace("text-", "").split(" ")[0] === "bg-teal-100" ? "bg-teal-50" : status === "at-risk" ? "bg-orange-50" : "bg-rose-50"}`}>
         <div className="flex items-start justify-between gap-2 mb-2">
           <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">{kpi.name}</p>
           <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(status)}`}>{status === "on-track" ? "On Track" : status === "at-risk" ? "At Risk" : "Off Track"}</span>
         </div>
+        
         <div className="flex items-end justify-between gap-2 mb-2">
           <div>
             <p className="text-2xl font-bold text-slate-900 leading-none">{getLatest(kpi)}<span className="text-sm font-normal text-slate-400 ml-1">{kpi.unit}</span></p>
@@ -9463,8 +9505,45 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
             </div>
           )}
         </div>
-        <div className="h-1.5 rounded-full bg-white/80 overflow-hidden">
+
+        <div className="h-1.5 rounded-full bg-white/80 overflow-hidden mb-3">
           <div className={`h-full rounded-full ${barColor(status)}`} style={{ width: `${Math.min(progressPct(kpi), 100)}%` }} />
+        </div>
+
+        {/* 1-31 Progress Dots Grid */}
+        <div className="space-y-1">
+          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Daily Target Status ({selectedMonth})</span>
+          <div className="flex flex-wrap gap-[3px]">
+            {monthDays.map(dStr => {
+              const dayNum = parseInt(dStr.slice(-2));
+              const tVal = kpi.dailyAlloc?.[dStr] || 0;
+              const aVal = kpi.dailyActual?.[dStr] || 0;
+
+              let dotClass = "bg-slate-200 border border-slate-300"; // default: no target
+              let titleText = `Day ${dayNum}: No target`;
+
+              if (tVal > 0) {
+                if (aVal >= tVal) {
+                  dotClass = "bg-emerald-500 ring-1 ring-emerald-250"; // target met
+                  titleText = `Day ${dayNum}: Met (${aVal}/${tVal})`;
+                } else if (dStr === todayStr) {
+                  dotClass = "bg-amber-400 ring-1 ring-amber-300 animate-pulse"; // pending today
+                  titleText = `Day ${dayNum} (Today): Pending (${aVal}/${tVal})`;
+                } else {
+                  dotClass = "bg-rose-500 ring-1 ring-rose-300"; // target missed
+                  titleText = `Day ${dayNum}: Missed (${aVal}/${tVal})`;
+                }
+              }
+
+              return (
+                <div 
+                  key={dStr} 
+                  className={`h-[7px] w-[7px] rounded-full shrink-0 ${dotClass}`} 
+                  title={titleText} 
+                />
+              );
+            })}
+          </div>
         </div>
       </button>
     );
@@ -9480,22 +9559,32 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
           <path d="M0 160 Q200 120 400 155 T600 150 V220 H0 Z" className="fill-orange-200" opacity="0.5" />
           <path d="M0 185 Q180 165 360 180 T600 175 V220 H0 Z" className="fill-teal-100" opacity="0.7" />
         </svg>
-        <div className="relative">
-          <p className="text-sm font-medium text-orange-900/70" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Hello {currentEmployee.split(" ")[0]}!</p>
-          <h1 className="text-2xl md:text-3xl font-bold text-orange-950 mt-0.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Have a great shift! 👋</h1>
-          <p className="text-xs text-orange-800/60 mt-1">{myTeam?.name} · {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</p>
-          {myKpis[0] && (
-            <button onClick={() => setLoggingId(myKpis[0].id)} className="mt-5 bg-white/90 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 shadow-sm w-full sm:max-w-md text-left hover:shadow-md transition-shadow">
-              <div className="h-11 w-11 rounded-xl bg-teal-400 flex items-center justify-center shrink-0">
-                <Play className="h-4 w-4 text-white fill-white" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Quick log</p>
-                <p className="text-sm font-semibold text-slate-900">{myKpis[0].name}</p>
-              </div>
-            </button>
-          )}
+        <div className="relative flex justify-between items-start gap-4">
+          <div>
+            <p className="text-sm font-medium text-orange-900/70" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Hello {currentEmployee.split(" ")[0]}!</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-orange-950 mt-0.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Have a great shift! 👋</h1>
+            <p className="text-xs text-orange-800/60 mt-1">{myTeam?.name} · {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</p>
+          </div>
+          
+          {/* Month Shift Controls */}
+          <div className="flex items-center gap-1 bg-white/80 backdrop-blur border border-orange-200 rounded-xl p-1 shrink-0 shadow-xs">
+            <button onClick={() => handleShiftMonth(-1)} className="p-1 hover:bg-orange-100 rounded text-orange-900"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="text-xs font-bold text-slate-800 px-1 select-none">{selectedMonth}</span>
+            <button onClick={() => handleShiftMonth(1)} className="p-1 hover:bg-orange-100 rounded text-orange-900"><ChevronRight className="h-4 w-4" /></button>
+          </div>
         </div>
+
+        {myKpis[0] && (
+          <button onClick={() => setLoggingId(myKpis[0].id)} className="mt-5 relative z-10 bg-white/90 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 shadow-sm w-full sm:max-w-md text-left hover:shadow-md transition-shadow">
+            <div className="h-11 w-11 rounded-xl bg-teal-400 flex items-center justify-center shrink-0">
+              <Play className="h-4 w-4 text-white fill-white" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Quick log</p>
+              <p className="text-sm font-semibold text-slate-900">{myKpis[0].name}</p>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Stats row */}
@@ -9513,18 +9602,50 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
       </div>
 
       <div className="px-5 pb-6 space-y-6">
-        {/* My KPIs preview */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My KPIs</h2>
-            <button onClick={() => setScreen("mykpis")} className="text-xs font-semibold text-teal-600 flex items-center gap-0.5 hover:text-teal-800">View all <ChevronRight className="h-3.5 w-3.5" /></button>
+        {/* DO Grouping */}
+        {doKpis.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-3 flex lg:flex-col justify-between items-center lg:items-start lg:pt-3">
+              <h2 className="text-base font-bold text-slate-950 flex items-center gap-1.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                <span className="h-2 w-2 rounded-full bg-teal-500"></span> DO (Owner)
+              </h2>
+              <span className="text-xs text-slate-400 font-medium">{doKpis.length} KPIs</span>
+            </div>
+            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {doKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />)}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {myKpis.slice(0, 6).map(kpi => (
-              <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />
-            ))}
+        )}
+
+        {/* DRIVE Grouping */}
+        {driveKpis.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-4 border-t border-slate-100">
+            <div className="lg:col-span-3 flex lg:flex-col justify-between items-center lg:items-start lg:pt-3">
+              <h2 className="text-base font-bold text-slate-950 flex items-center gap-1.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                <span className="h-2 w-2 rounded-full bg-amber-500"></span> DRIVE
+              </h2>
+              <span className="text-xs text-slate-400 font-medium">{driveKpis.length} KPIs</span>
+            </div>
+            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {driveKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />)}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* MONITOR Grouping */}
+        {monitorKpis.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-4 border-t border-slate-100">
+            <div className="lg:col-span-3 flex lg:flex-col justify-between items-center lg:items-start lg:pt-3">
+              <h2 className="text-base font-bold text-slate-950 flex items-center gap-1.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                <span className="h-2 w-2 rounded-full bg-blue-500"></span> MONITOR
+              </h2>
+              <span className="text-xs text-slate-400 font-medium">{monitorKpis.length} KPIs</span>
+            </div>
+            <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {monitorKpis.map(kpi => <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />)}
+            </div>
+          </div>
+        )}
 
         {/* Team card */}
         <button onClick={() => setScreen("team")} className="w-full flex items-center gap-4 bg-orange-50 hover:bg-orange-100 rounded-2xl p-4 transition-colors border border-orange-100">
