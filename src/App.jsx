@@ -9387,7 +9387,6 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
   const [loggingId, setLoggingId] = useState(null);
   const [shift, setShift] = useState("Excellent");
 
-  // Use logged-in user name if available, otherwise fall back to CURRENT_EMPLOYEE
   const currentEmployee = loggedInUser?.name || CURRENT_EMPLOYEE;
 
   const myKpis = kpis.filter((k) => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
@@ -9396,201 +9395,301 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
   const myTeam = teams.find((t) => t.members.some((m) => m.name === currentEmployee));
   const teamKpis = kpis.filter((k) => k.team === myTeam?.name).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const onTrackInTeam = teamKpis.filter((k) => getStatus(k) === "on-track").length;
+  const todayStr = new Date().toISOString().slice(0, 10);
 
-  return (
-    <div className="flex items-center justify-center sm:py-4 h-full w-full">
-      <div
-        className="w-full h-full sm:h-auto sm:max-w-sm bg-white sm:rounded-[2.5rem] sm:shadow-xl overflow-hidden sm:border sm:border-orange-100 flex flex-col sm:aspect-[9/16]"
+  /* ── KPI status helpers ── */
+  const statusColor = (s) => s === "on-track" ? "bg-teal-100 text-teal-800" : s === "at-risk" ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700";
+  const barColor   = (s) => s === "on-track" ? "bg-teal-400" : s === "at-risk" ? "bg-orange-400" : "bg-rose-400";
+
+  /* ── Sidebar nav item ── */
+  const NavItem = ({ item }) => {
+    const Icon = item.icon;
+    const active = screen === item.id;
+    return (
+      <button
+        onClick={() => setScreen(item.id)}
+        className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors ${active ? "bg-teal-50 text-teal-700" : "text-slate-500 hover:bg-slate-50"}`}
       >
-        <div className="flex-1 overflow-y-auto flex flex-col">
+        <Icon className="h-5 w-5 shrink-0" />
+        <span className="hidden lg:block capitalize">{item.id === "mykpis" ? "My KPIs" : item.id === "action" ? "Actions" : item.id.charAt(0).toUpperCase() + item.id.slice(1)}</span>
+      </button>
+    );
+  };
 
-        {screen === "action" && ( 
-          <ActionScreen 
-            kpis={kpis} 
-            projects={projects} 
-            user={currentEmployee} 
-            onCompleteAction={handleCompleteAction} 
-            teams={teams} 
-            clientProjects={clientProjects}
-            onUpdateClientProjectStage={onUpdateClientProjectStage}
-          /> 
-        )}
-
-        {screen === "home" && (
-          <>
-            <div className="relative bg-gradient-to-b from-orange-100 to-orange-50 px-6 pt-10 sm:pt-8 pb-6 overflow-hidden">
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 220" preserveAspectRatio="none">
-                <circle cx="330" cy="40" r="34" className="fill-orange-200" opacity="0.7" />
-                <path d="M0 160 Q100 120 200 155 T400 150 V220 H0 Z" className="fill-orange-200" opacity="0.6" />
-                <path d="M0 190 Q120 165 220 185 T400 180 V220 H0 Z" className="fill-teal-100" opacity="0.8" />
-              </svg>
-              <div className="relative">
-                <p className="text-sm font-medium text-orange-900/70" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Hello {currentEmployee.split(" ")[0]}!</p>
-                <h1 className="text-2xl font-semibold text-orange-950 mt-0.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Have a good shift!</h1>
-                {myKpis[0] && (
-                  <button onClick={() => setLoggingId(myKpis[0].id)} className="mt-6 bg-white/90 backdrop-blur rounded-2xl p-3 flex items-center gap-3 shadow-sm w-full text-left">
-                    <div className="h-11 w-11 rounded-xl bg-teal-400 flex items-center justify-center shrink-0">
-                      <Play className="h-4 w-4 text-white fill-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Today's update needed</p>
-                      <p className="text-sm font-semibold text-slate-900">Log {myKpis[0].name}</p>
-                    </div>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-t-[2rem] -mt-4 relative px-5 pt-6 pb-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My KPIs</h2>
-                <button onClick={() => setScreen("mykpis")} className="text-xs font-medium text-teal-600 flex items-center">
-                  View all <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 mb-6 -mx-5 px-5">
-                {myKpis.map((kpi) => {
-                  const status = getStatus(kpi);
-                  const tint = status === "on-track" ? "bg-teal-100" : status === "at-risk" ? "bg-orange-100" : "bg-rose-100";
-                  const bar = status === "on-track" ? "bg-teal-400" : status === "at-risk" ? "bg-orange-400" : "bg-rose-400";
-                  return (
-                    <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className={`shrink-0 w-36 rounded-2xl p-4 text-left ${tint}`}>
-                      <p className="text-[10px] font-bold text-slate-600 mb-1 leading-tight flex items-start justify-between gap-1">
-                        <span className="truncate">{kpi.name}</span>
-                        <span className={`shrink-0 inline-block px-1 py-[1px] rounded-[3px] text-[8px] uppercase tracking-wider ${kpi.kpiType === 'report' ? 'bg-purple-200 text-purple-700' : 'bg-blue-200 text-blue-700'}`}>
-                          {kpi.kpiType === 'report' ? 'Rep' : 'Act'}
-                        </span>
-                      </p>
-                      <p className="text-lg font-semibold text-slate-900 mb-2">{getLatest(kpi)}{kpi.unit}</p>
-                      <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mb-1">
-                        <div className={`h-full rounded-full ${bar}`} style={{ width: `${progressPct(kpi)}%` }} />
-                      </div>
-                      <p className="text-[10px] text-slate-500">Target {kpi.target}{kpi.unit}</p>
-                    </button>
-                );
-            })}
-              </div>
-
-              <button onClick={() => setScreen("team")} className="w-full flex items-center gap-3 bg-orange-50 rounded-2xl p-3.5 mb-6">
-                <div className="h-10 w-10 rounded-xl bg-orange-300 flex items-center justify-center shrink-0">
-                  <Trophy className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold text-slate-900">{myTeam?.name}</p>
-                  <p className="text-xs text-slate-500">{onTrackInTeam}/{teamKpis.length} KPIs on track</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-400" />
-              </button>
-
-              <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-4">
-                <p className="text-sm font-semibold text-slate-900 text-center mb-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>How did the shift go?</p>
-                <p className="text-xs text-slate-400 text-center mb-4">Quick pulse check</p>
-                <div className="flex justify-center mb-3">
-                  <span className="px-4 py-1.5 rounded-full bg-orange-100 text-orange-700 text-sm font-medium">{shift}</span>
-                </div>
-                <div className="flex justify-between gap-1.5">
-                  {["Poor", "Fair", "Good", "Great", "Excellent"].map((opt) => (
-                    <button key={opt} onClick={() => setShift(opt)} className={`flex-1 h-10 rounded-xl flex items-center justify-center text-xs font-medium border transition-colors ${shift === opt ? "bg-orange-400 border-orange-400 text-white" : "bg-orange-50 border-transparent text-orange-400"}`}>
-                      {opt[0]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {screen === "mykpis" && (
-          <div className="bg-white min-h-full flex-1 px-5 pt-6 pb-4">
-            <div className="flex items-center gap-3 mb-5">
-              <button onClick={() => setScreen("home")} className="text-slate-500"><ChevronLeft className="h-5 w-5" /></button>
-              <h2 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My KPIs</h2>
-            </div>
-            <div className="space-y-3">
-              {myKpis.map((kpi) => (
-                <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="w-full bg-orange-50 rounded-2xl p-4 text-left">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-slate-900">{kpi.name}</p>
-                    <StatusBadge status={getStatus(kpi)} />
-                  </div>
-                  <p className="text-xl font-semibold text-slate-900">{getLatest(kpi)}<span className="text-sm text-slate-400 ml-1">{kpi.unit}</span></p>
-                  <p className="text-xs text-slate-400 mt-1">Target {kpi.target}{kpi.unit}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {screen === "team" && (
-          <div className="bg-white min-h-full flex-1 px-5 pt-6 pb-4">
-            <div className="flex items-center gap-3 mb-5">
-              <button onClick={() => setScreen("home")} className="text-slate-500"><ChevronLeft className="h-5 w-5" /></button>
-              <h2 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{myTeam?.name}</h2>
-            </div>
-            <p className="text-xs text-slate-400 mb-4">{myTeam?.members.map((m) => m.name).join(", ")}</p>
-            <div className="space-y-3">
-              {teamKpis.map((kpi) => (
-                <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="w-full bg-orange-50 rounded-2xl p-4 text-left flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{kpi.name}</p>
-                    <p className="text-xs text-slate-400">
-                      {kpi.owner}
-                      {(() => {
-                        const allMembers = teams.flatMap(t => t.members);
-                        const member = allMembers.find(m => m.name === kpi.owner);
-                        return member && member.reportingManager ? ` (Reporting to: ${member.reportingManager})` : "";
-                      })()}
-                    </p>
-                  </div>
-                  <StatusBadge status={getStatus(kpi)} />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {screen === "profile" && (
-          <div className="bg-white min-h-full flex-1 px-5 pt-6 pb-4">
-            <div className="flex flex-col items-center pt-4 pb-6">
-              <div className="h-16 w-16 rounded-full bg-orange-200 flex items-center justify-center text-lg font-medium text-orange-800 mb-3">{currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}</div>
-              <p className="font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{currentEmployee}</p>
-              <p className="text-xs text-slate-400">{myTeam?.name} · BULL Machines</p>
-            </div>
-            <div className="space-y-2">
-              {myKpis.map((kpi) => (
-                <div key={kpi.id} className="flex items-center justify-between bg-orange-50 rounded-xl px-4 py-3">
-                  <span className="text-sm text-slate-700">{kpi.name}</span>
-                  <StatusBadge status={getStatus(kpi)} />
-                </div>
-              ))}
-            </div>
-            {onLogout && (
-              <button
-                onClick={onLogout}
-                className="mt-6 w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-500 font-bold py-3 rounded-2xl transition-colors text-sm border border-rose-100"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </button>
-            )}
-          </div>
-        )}
-
+  /* ── KPI card (reusable) ── */
+  const KpiCard = ({ kpi, onClick }) => {
+    const status = getStatus(kpi);
+    const todayTarget = kpi.dailyAlloc?.[todayStr] || 0;
+    const todayActual = kpi.dailyActual?.[todayStr] || 0;
+    return (
+      <button onClick={onClick} className={`w-full text-left rounded-2xl p-4 border border-transparent hover:border-teal-200 transition-all shadow-sm ${statusColor(status).replace("text-", "").split(" ")[0] === "bg-teal-100" ? "bg-teal-50" : status === "at-risk" ? "bg-orange-50" : "bg-rose-50"}`}>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">{kpi.name}</p>
+          <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(status)}`}>{status === "on-track" ? "On Track" : status === "at-risk" ? "At Risk" : "Off Track"}</span>
         </div>
+        <div className="flex items-end justify-between gap-2 mb-2">
+          <div>
+            <p className="text-2xl font-bold text-slate-900 leading-none">{getLatest(kpi)}<span className="text-sm font-normal text-slate-400 ml-1">{kpi.unit}</span></p>
+            <p className="text-xs text-slate-400 mt-0.5">Target: {kpi.target}{kpi.unit}</p>
+          </div>
+          {todayTarget > 0 && (
+            <div className="text-right shrink-0">
+              <p className="text-[10px] text-slate-400">Today</p>
+              <p className={`text-xs font-bold ${todayActual >= todayTarget ? "text-teal-600" : "text-orange-600"}`}>{todayActual}/{todayTarget}</p>
+            </div>
+          )}
+        </div>
+        <div className="h-1.5 rounded-full bg-white/80 overflow-hidden">
+          <div className={`h-full rounded-full ${barColor(status)}`} style={{ width: `${Math.min(progressPct(kpi), 100)}%` }} />
+        </div>
+      </button>
+    );
+  };
 
-        <div className="bg-white border-t border-slate-100 px-8 py-3 flex items-center justify-between shrink-0">
-          {EMP_NAV.map((item) => {
-            const Icon = item.icon;
-            const isActive = screen === item.id;
-            return (
-              <button key={item.id} onClick={() => setScreen(item.id)} className={isActive ? "text-teal-600" : "text-slate-300"}>
-                <Icon className="h-5 w-5" />
-              </button>
-          );
-      })}
+  /* ── Home screen ── */
+  const HomeScreen = () => (
+    <div className="flex-1 overflow-y-auto">
+      {/* Hero header */}
+      <div className="relative bg-gradient-to-br from-orange-100 via-orange-50 to-teal-50 px-6 pt-10 pb-8 overflow-hidden">
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 220" preserveAspectRatio="none">
+          <circle cx="520" cy="40" r="60" className="fill-orange-200" opacity="0.5" />
+          <path d="M0 160 Q200 120 400 155 T600 150 V220 H0 Z" className="fill-orange-200" opacity="0.5" />
+          <path d="M0 185 Q180 165 360 180 T600 175 V220 H0 Z" className="fill-teal-100" opacity="0.7" />
+        </svg>
+        <div className="relative">
+          <p className="text-sm font-medium text-orange-900/70" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Hello {currentEmployee.split(" ")[0]}!</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-orange-950 mt-0.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Have a great shift! 👋</h1>
+          <p className="text-xs text-orange-800/60 mt-1">{myTeam?.name} · {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</p>
+          {myKpis[0] && (
+            <button onClick={() => setLoggingId(myKpis[0].id)} className="mt-5 bg-white/90 backdrop-blur rounded-2xl p-3.5 flex items-center gap-3 shadow-sm w-full sm:max-w-md text-left hover:shadow-md transition-shadow">
+              <div className="h-11 w-11 rounded-xl bg-teal-400 flex items-center justify-center shrink-0">
+                <Play className="h-4 w-4 text-white fill-white" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Quick log</p>
+                <p className="text-sm font-semibold text-slate-900">{myKpis[0].name}</p>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3 px-5 -mt-4 mb-6 relative z-10">
+        {[
+          { label: "My KPIs", value: myKpis.length, color: "text-teal-700", bg: "bg-white" },
+          { label: "On Track", value: myKpis.filter(k => getStatus(k) === "on-track").length, color: "text-emerald-700", bg: "bg-white" },
+          { label: "Team KPIs", value: teamKpis.length, color: "text-orange-700", bg: "bg-white" },
+        ].map(s => (
+          <div key={s.label} className={`${s.bg} rounded-2xl shadow-sm p-3 text-center border border-slate-100`}>
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-5 pb-6 space-y-6">
+        {/* My KPIs preview */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My KPIs</h2>
+            <button onClick={() => setScreen("mykpis")} className="text-xs font-semibold text-teal-600 flex items-center gap-0.5 hover:text-teal-800">View all <ChevronRight className="h-3.5 w-3.5" /></button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {myKpis.slice(0, 6).map(kpi => (
+              <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />
+            ))}
+          </div>
+        </div>
+
+        {/* Team card */}
+        <button onClick={() => setScreen("team")} className="w-full flex items-center gap-4 bg-orange-50 hover:bg-orange-100 rounded-2xl p-4 transition-colors border border-orange-100">
+          <div className="h-12 w-12 rounded-xl bg-orange-300 flex items-center justify-center shrink-0">
+            <Trophy className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-bold text-slate-900">{myTeam?.name || "My Team"}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{onTrackInTeam}/{teamKpis.length} KPIs on track</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-slate-400 shrink-0" />
+        </button>
+
+        {/* Shift pulse */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+          <p className="text-sm font-bold text-slate-900 text-center mb-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>How did the shift go?</p>
+          <p className="text-xs text-slate-400 text-center mb-4">Quick pulse check</p>
+          <div className="flex justify-center mb-4">
+            <span className="px-5 py-1.5 rounded-full bg-orange-100 text-orange-700 text-sm font-semibold">{shift}</span>
+          </div>
+          <div className="flex gap-2">
+            {["Poor", "Fair", "Good", "Great", "Excellent"].map((opt) => (
+              <button key={opt} onClick={() => setShift(opt)}
+                className={`flex-1 h-10 rounded-xl flex items-center justify-center text-xs font-semibold border-2 transition-colors ${shift === opt ? "bg-orange-400 border-orange-400 text-white" : "bg-orange-50 border-transparent text-orange-400 hover:border-orange-200"}`}>
+                {opt[0]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── My KPIs screen ── */
+  const MyKpisScreen = () => (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
+      <div className="flex items-center gap-3 mb-5">
+        <button onClick={() => setScreen("home")} className="text-slate-500 hover:text-slate-700 lg:hidden"><ChevronLeft className="h-5 w-5" /></button>
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My KPIs</h2>
+        <span className="ml-auto text-xs text-slate-400 bg-slate-100 rounded-full px-2.5 py-0.5 font-semibold">{myKpis.length}</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {myKpis.map(kpi => (
+          <KpiCard key={kpi.id} kpi={kpi} onClick={() => setDetailId(kpi.id)} />
+        ))}
+        {myKpis.length === 0 && (
+          <div className="col-span-full text-center py-16 text-slate-400">
+            <List className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">No KPIs assigned to you yet</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  /* ── Team screen ── */
+  const TeamScreen = () => (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
+      <div className="flex items-center gap-3 mb-2">
+        <button onClick={() => setScreen("home")} className="text-slate-500 hover:text-slate-700 lg:hidden"><ChevronLeft className="h-5 w-5" /></button>
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{myTeam?.name}</h2>
+      </div>
+      <p className="text-xs text-slate-400 mb-5 ml-8 lg:ml-0">{myTeam?.members.map(m => m.name).join(", ")}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {teamKpis.map(kpi => {
+          const allMembers = teams.flatMap(t => t.members);
+          const member = allMembers.find(m => m.name === kpi.owner);
+          return (
+            <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="w-full bg-orange-50 hover:bg-orange-100 rounded-2xl p-4 text-left border border-transparent hover:border-orange-200 transition-all">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="text-sm font-semibold text-slate-900 line-clamp-2">{kpi.name}</p>
+                <StatusBadge status={getStatus(kpi)} />
+              </div>
+              <p className="text-xs text-slate-400">{kpi.owner}{member?.reportingManager ? ` · ${member.reportingManager}` : ""}</p>
+            </button>
+          );
+        })}
+        {teamKpis.length === 0 && (
+          <div className="col-span-full text-center py-16 text-slate-400">
+            <Trophy className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">No team KPIs found</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  /* ── Profile screen ── */
+  const ProfileScreen = () => (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
+      <div className="flex items-center gap-3 mb-6 lg:hidden">
+        <button onClick={() => setScreen("home")} className="text-slate-500 hover:text-slate-700"><ChevronLeft className="h-5 w-5" /></button>
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Profile</h2>
+      </div>
+      <div className="flex flex-col items-center pt-2 pb-8">
+        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-orange-200 to-teal-200 flex items-center justify-center text-2xl font-bold text-slate-700 mb-3 shadow-sm">
+          {currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}
+        </div>
+        <p className="font-bold text-lg text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{currentEmployee}</p>
+        <p className="text-xs text-slate-400 mt-0.5">{myTeam?.name} · BULL Machines</p>
+      </div>
+      <div className="space-y-2 mb-6">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Assigned KPIs</p>
+        {myKpis.map(kpi => (
+          <div key={kpi.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 hover:bg-orange-50 transition-colors">
+            <span className="text-sm text-slate-700 font-medium">{kpi.name}</span>
+            <StatusBadge status={getStatus(kpi)} />
+          </div>
+        ))}
+      </div>
+      {onLogout && (
+        <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-500 font-bold py-3.5 rounded-2xl transition-colors text-sm border border-rose-100">
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </button>
+      )}
+    </div>
+  );
+
+  const screenMap = { home: <HomeScreen />, mykpis: <MyKpisScreen />, team: <TeamScreen />, action: <ActionScreen kpis={kpis} projects={projects} user={currentEmployee} onCompleteAction={handleCompleteAction} teams={teams} clientProjects={clientProjects} onUpdateClientProjectStage={onUpdateClientProjectStage} />, profile: <ProfileScreen /> };
+
+  return (
+    <div className="flex h-full w-full bg-slate-50">
+
+      {/* ── Sidebar nav (md+) ── */}
+      <aside className="hidden md:flex flex-col shrink-0 w-14 lg:w-52 bg-white border-r border-slate-100 py-5 px-2 lg:px-3 gap-1">
+        {/* Logo / brand */}
+        <div className="flex items-center gap-2 px-2 mb-6">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-teal-400 flex items-center justify-center shrink-0">
+            <span className="text-white font-black text-xs">B</span>
+          </div>
+          <span className="hidden lg:block text-sm font-black text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>BULL KPI</span>
+        </div>
+        {EMP_NAV.map(item => <NavItem key={item.id} item={item} />)}
+        {/* User at bottom */}
+        <div className="mt-auto px-2 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0 text-xs font-bold text-orange-700">
+              {currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}
+            </div>
+            <div className="hidden lg:block min-w-0">
+              <p className="text-xs font-semibold text-slate-800 truncate">{currentEmployee}</p>
+              <p className="text-[10px] text-slate-400 truncate">{myTeam?.name}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-orange-400 to-teal-400 flex items-center justify-center">
+              <span className="text-white font-black text-[10px]">B</span>
+            </div>
+            <span className="text-sm font-black text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>BULL KPI</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-700">
+              {currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}
+            </div>
+          </div>
+        </div>
+
+        {/* Screen content */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {screenMap[screen] || <HomeScreen />}
+        </div>
+
+        {/* ── Bottom nav (mobile only) ── */}
+        <nav className="md:hidden bg-white border-t border-slate-100 px-2 py-2 flex items-center justify-around shrink-0 safe-area-inset-bottom">
+          {EMP_NAV.map(item => {
+            const Icon = item.icon;
+            const active = screen === item.id;
+            return (
+              <button key={item.id} onClick={() => setScreen(item.id)}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-colors ${active ? "text-teal-600" : "text-slate-400"}`}>
+                <Icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : ""}`} />
+                <span className={`text-[9px] font-semibold ${active ? "text-teal-600" : "text-slate-400"}`}>
+                  {item.id === "mykpis" ? "KPIs" : item.id === "action" ? "Actions" : item.id.charAt(0).toUpperCase() + item.id.slice(1)}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Modals */}
       {detailKpi && (
         <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => setLoggingId(detailKpi.id)} />
       )}
