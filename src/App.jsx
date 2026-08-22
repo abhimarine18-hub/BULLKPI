@@ -2792,6 +2792,15 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const [childLabel, setChildLabel] = useState(kpi.reportConfig?.childLabel || "Social Media Link");
   const [cutoffTime, setCutoffTime] = useState(kpi.reportConfig?.cutoffTime || "17:30");
   const [bufferMinutes, setBufferMinutes] = useState(kpi.reportConfig?.bufferMinutes || 30);
+  // KPI link direction toggle: 'parent' = this triggers a child, 'child' = triggered by a parent
+  const [linkMode, setLinkMode] = useState(() => {
+    const isChild = allKpis && allKpis.some(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
+    return isChild ? 'child' : 'parent';
+  });
+  const [linkedParentId, setLinkedParentId] = useState(() => {
+    const parentKpi = allKpis && allKpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
+    return parentKpi ? String(parentKpi.id) : (kpi._linkedParentId ? String(kpi._linkedParentId) : "");
+  });
   
   // Inline creation states for team/member
   const [showAddTeam, setShowAddTeam] = useState(false);
@@ -3250,6 +3259,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       targetType: distributeEnabled ? "daily" : "monthly",
       targetsList: Object.entries(dailyAlloc).filter(([_, val]) => val > 0).map(([dStr, val]) => ({ id: dStr, label: dStr, targetValue: val, targetDate: dStr })),
       kpiType,
+      _linkedParentId: linkMode === 'child' ? linkedParentId : "",
       reportConfig: {
         ...reportConfig,
         handoffEnabled,
@@ -3513,37 +3523,87 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
             </div>
 
             <div className="mt-4 pt-4 border-t border-slate-100">
-              <label className="text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1 uppercase tracking-wider">
-                <GitBranch className="h-3 w-3" /> Triggers Follow-up KPI (Optional)
-              </label>
-              <select value={reportConfig.followUpKpiId || ''} onChange={(e) => setReportConfig(prev => ({ ...prev, followUpKpiId: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
-                <option value="">None</option>
-                {allKpis.filter(k => k.id !== kpi.id).map(k => <option key={k.id} value={k.id}>{k.name} ({k.owner || 'Unassigned'})</option>)}
-              </select>
-              {/* Create follow-up child KPI button */}
-              {!reportConfig.followUpKpiId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!kpi.id || String(kpi.id).startsWith('temp-')) {
-                      alert("Please save this KPI first before creating a follow-up child KPI.");
-                      return;
-                    }
-                    onAddFollowUp && onAddFollowUp(kpi);
-                  }}
-                  className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 hover:bg-teal-100 transition-colors"
-                >
-                  <GitBranch className="h-3.5 w-3.5" />
-                  + Create Follow-up Child KPI
-                </button>
-              )}
-              {reportConfig.followUpKpiId && (
-                <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-teal-700 font-semibold bg-teal-50 rounded-lg px-2 py-1 border border-teal-100">
-                  <GitBranch className="h-3 w-3" />
-                  Linked to: {allKpis.find(k => String(k.id) === String(reportConfig.followUpKpiId))?.name || 'Unknown KPI'}
-                  <button type="button" onClick={() => setReportConfig(prev => ({ ...prev, followUpKpiId: '' }))} className="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[10px] font-bold text-slate-500 flex items-center gap-1 uppercase tracking-wider">
+                  <GitBranch className="h-3 w-3" /> KPI Link
+                </label>
+                {/* Toggle: PARENT ↔ CHILD */}
+                <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[10px] font-bold">
+                  <button type="button"
+                    onClick={() => setLinkMode('parent')}
+                    className={`px-2.5 py-1 transition-colors ${linkMode === 'parent' ? 'bg-teal-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                  >↓ PARENT</button>
+                  <button type="button"
+                    onClick={() => setLinkMode('child')}
+                    className={`px-2.5 py-1 transition-colors ${linkMode === 'child' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                  >↑ CHILD</button>
+                </div>
+              </div>
+
+              {/* PARENT MODE: this KPI triggers a child */}
+              {linkMode === 'parent' && (
+                <div>
+                  <p className="text-[9px] text-slate-400 mb-1.5">This KPI triggers a follow-up child KPI when completed.</p>
+                  <select value={reportConfig.followUpKpiId || ''} onChange={(e) => setReportConfig(prev => ({ ...prev, followUpKpiId: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                    <option value="">None</option>
+                    {allKpis.filter(k => k.id !== kpi.id).map(k => <option key={k.id} value={k.id}>{k.name} ({k.owner || 'Unassigned'})</option>)}
+                  </select>
+                  {!reportConfig.followUpKpiId && (
+                    <button type="button"
+                      onClick={() => {
+                        if (!kpi.id || String(kpi.id).startsWith('temp-')) { alert("Please save this KPI first before creating a follow-up child KPI."); return; }
+                        onAddFollowUp && onAddFollowUp(kpi);
+                      }}
+                      className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded-xl px-3 py-2 hover:bg-teal-100 transition-colors"
+                    >
+                      <GitBranch className="h-3.5 w-3.5" /> + Create Follow-up Child KPI
+                    </button>
+                  )}
+                  {reportConfig.followUpKpiId && (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-teal-700 font-semibold bg-teal-50 rounded-lg px-2 py-1 border border-teal-100">
+                      <GitBranch className="h-3 w-3" />
+                      Child: {allKpis.find(k => String(k.id) === String(reportConfig.followUpKpiId))?.name || 'Unknown KPI'}
+                      <button type="button" onClick={() => setReportConfig(prev => ({ ...prev, followUpKpiId: '' }))} className="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* CHILD MODE: this KPI is triggered by a parent */}
+              {linkMode === 'child' && (() => {
+                const currentParent = allKpis.find(k => String(k.id) === String(linkedParentId));
+                return (
+                  <div>
+                    <p className="text-[9px] text-slate-400 mb-1.5">Set which parent KPI triggers this one.</p>
+                    <select
+                      value={linkedParentId}
+                      onChange={(e) => {
+                        const newParentId = e.target.value;
+                        setLinkedParentId(newParentId);
+                        if (!String(kpi.id).startsWith('temp-')) {
+                          onSetParent && onSetParent(kpi.id, newParentId, currentParent?.id);
+                        }
+                      }}
+                      className="w-full border border-amber-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-300 font-semibold"
+                    >
+                      <option value="">None (No parent)</option>
+                      {allKpis.filter(k => k.id !== kpi.id).map(k => <option key={k.id} value={k.id}>{k.name} ({k.owner || 'Unassigned'})</option>)}
+                    </select>
+                    {currentParent && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-amber-700 font-semibold bg-amber-50 rounded-lg px-2 py-1 border border-amber-100">
+                        <GitBranch className="h-3 w-3" />
+                        Parent: {currentParent.name}
+                        <button type="button" onClick={() => {
+                          setLinkedParentId('');
+                          if (!String(kpi.id).startsWith('temp-')) {
+                            onSetParent && onSetParent(kpi.id, '', currentParent.id);
+                          }
+                        }} className="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Handoff Settings panel */}
@@ -7787,7 +7847,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                 <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex justify-end gap-1.5">
                                     <button 
-                                      onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, name: kpi.name + ' (Copy)' }); }}
+                                      onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, id: `temp-${Date.now()}`, name: kpi.name + ' (Copy)' }); }}
                                       className="text-indigo-600 hover:text-indigo-800 p-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-all"
                                       title="Duplicate KPI"
                                     >
@@ -7879,7 +7939,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
         </span>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-0 bg-white/80 p-0.5 rounded-md backdrop-blur-sm">
-        <button onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, name: kpi.name + " (Copy)" }); }} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50 transition-colors" title="Duplicate KPI">
+        <button onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, id: `temp-${Date.now()}`, name: kpi.name + " (Copy)" }); }} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50 transition-colors" title="Duplicate KPI">
           <Copy className="w-3.5 h-3.5"/>
         </button>
         <button onClick={(e) => { e.stopPropagation(); setEditingKpi(kpi); }} className="text-teal-600 hover:text-teal-800 p-1 rounded hover:bg-teal-50 transition-colors" title="Edit KPI">
@@ -9295,7 +9355,6 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
           onSubmit={(updated) => { onEditKpi(updated); setEditingKpi(null); }}
           onAddVertical={onAddVertical} onAddMember={onAddMember}
           onAddFollowUp={(parentKpi) => {
-            // Save parent first then open new child KPI pre-linked
             setEditingKpi(null);
             const childTemplate = {
               id: `temp-${Date.now()}`,
@@ -9311,10 +9370,27 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
               monthlyAlloc: {}, monthlyActual: {}, weeklyAlloc: {}, weeklyActual: {},
               dailyAlloc: {}, dailyActual: {}, revisedAlloc: {}, customHolidays: {},
               holidaysEnabled: true, history: [], targetType: "monthly", targetsList: [],
-              _linkedParentId: parentKpi.id  // track parent to auto-link after save
+              _linkedParentId: parentKpi.id
             };
-            setAddKpiOpen(false);
             setTimeout(() => setEditingKpi(childTemplate), 100);
+          }}
+          onSetParent={(childId, newParentId, oldParentId) => {
+            // Remove old parent link
+            if (oldParentId) {
+              const oldParent = kpis.find(k => String(k.id) === String(oldParentId));
+              if (oldParent) {
+                const updated = { ...oldParent, reportConfig: { ...(oldParent.reportConfig || {}), followUpKpiId: '' } };
+                handleEditKpi(updated);
+              }
+            }
+            // Set new parent link
+            if (newParentId) {
+              const newParent = kpis.find(k => String(k.id) === String(newParentId));
+              if (newParent) {
+                const updated = { ...newParent, reportConfig: { ...(newParent.reportConfig || {}), followUpKpiId: childId } };
+                handleEditKpi(updated);
+              }
+            }
           }}
         />
       )}
@@ -10265,6 +10341,83 @@ export default function App() {
           kpiType: k.kpi_type || 'activity',
           reportConfig: k.report_config || {}
         }));
+
+        // Flush offline-created KPIs to Supabase if any exist in cached backup
+        try {
+          const prevBackupStr = localStorage.getItem('backup_kpis');
+          if (prevBackupStr) {
+            const prevBackup = JSON.parse(prevBackupStr);
+            const offlineCreated = prevBackup.filter(k => k && typeof k.id === 'string' && k.id.startsWith('local-'));
+            if (offlineCreated.length > 0) {
+              for (const localKpi of offlineCreated) {
+                const dbPayload = {
+                  name: localKpi.name || "",
+                  unit: localKpi.unit || "Nos",
+                  target: localKpi.target || 0,
+                  direction: localKpi.direction || "higher",
+                  team: localKpi.team || "",
+                  owner: localKpi.owner || "",
+                  drive_by: localKpi.driveBy || localKpi.drive_by || "",
+                  monitor_by: localKpi.monitorBy || localKpi.monitor_by || "",
+                  description: localKpi.description || "",
+                  kra: localKpi.kra || "",
+                  history: localKpi.history || [],
+                  target_type: localKpi.targetType || localKpi.target_type || "monthly",
+                  targets_list: localKpi.targetsList || localKpi.targets_list || [],
+                  monthly_alloc: localKpi.monthlyAlloc || localKpi.monthly_alloc || {},
+                  monthly_actual: localKpi.monthlyActual || localKpi.monthly_actual || {},
+                  weekly_alloc: localKpi.weeklyAlloc || localKpi.weekly_alloc || {},
+                  weekly_actual: localKpi.weeklyActual || localKpi.weekly_actual || {},
+                  daily_alloc: localKpi.dailyAlloc || localKpi.daily_alloc || {},
+                  daily_actual: localKpi.dailyActual || localKpi.daily_actual || {},
+                  revised_alloc: localKpi.revisedAlloc || localKpi.revised_alloc || {},
+                  custom_holidays: localKpi.customHolidays || localKpi.custom_holidays || {},
+                  holidays_enabled: localKpi.holidaysEnabled ?? localKpi.holidays_enabled ?? true,
+                  kpi_type: localKpi.kpiType || localKpi.kpi_type || "activity",
+                  report_config: localKpi.reportConfig || localKpi.report_config || {}
+                };
+
+                const { data: newRow, error } = await supabase.from('kpis').insert(dbPayload).select().single();
+                if (!error && newRow) {
+                  const formattedKpi = {
+                    id: newRow.id,
+                    name: newRow.name, unit: newRow.unit,
+                    target: parseFloat(newRow.target),
+                    direction: newRow.direction, team: newRow.team, owner: newRow.owner,
+                    driveBy: newRow.drive_by || "", monitorBy: newRow.monitor_by || "",
+                    description: newRow.description || "", kra: newRow.kra,
+                    history: newRow.history || [],
+                    dailyActual: newRow.daily_actual || {}, revisedAlloc: newRow.revised_alloc || {},
+                    customHolidays: newRow.custom_holidays || {}, holidaysEnabled: newRow.holidays_enabled,
+                    targetType: newRow.target_type, targetsList: newRow.targets_list,
+                    monthlyAlloc: newRow.monthly_alloc || {}, monthlyActual: newRow.monthly_actual || {},
+                    weeklyAlloc: newRow.weekly_alloc || {}, weeklyActual: newRow.weekly_actual || {},
+                    dailyAlloc: newRow.daily_alloc || {},
+                    kpiType: newRow.kpi_type || 'activity', reportConfig: newRow.report_config || {}
+                  };
+                  loadedKpis.push(formattedKpi);
+
+                  // Update parent connections in local state and Supabase
+                  loadedKpis.forEach(k => {
+                    if (k.reportConfig && String(k.reportConfig.followUpKpiId) === String(localKpi.id)) {
+                      k.reportConfig.followUpKpiId = newRow.id;
+                      supabase.from('kpis').update({ report_config: k.reportConfig }).eq('id', k.id).then(() => {});
+                    }
+                  });
+
+                  if (localKpi._linkedParentId) {
+                    const parentKpi = loadedKpis.find(k => String(k.id) === String(localKpi._linkedParentId));
+                    if (parentKpi) {
+                      parentKpi.reportConfig = { ...(parentKpi.reportConfig || {}), followUpKpiId: newRow.id };
+                      supabase.from('kpis').update({ report_config: parentKpi.reportConfig }).eq('id', parentKpi.id).then(() => {});
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch(e) { console.warn("Offline created sync error:", e); }
+
         setKpis(loadedKpis);
         localStorage.setItem("backup_kpis", JSON.stringify(loadedKpis));
 
@@ -10744,15 +10897,11 @@ export default function App() {
 
         // Auto-link parent KPI if this was created as a follow-up child
         if (newKpi._linkedParentId) {
-          setKpis(prev => prev.map(k => {
-            if (String(k.id) === String(newKpi._linkedParentId)) {
-              const updatedParent = { ...k, reportConfig: { ...(k.reportConfig || {}), followUpKpiId: kpiRow.id } };
-              // Also persist parent update to Supabase
-              supabase.from('kpis').update({ report_config: updatedParent.reportConfig }).eq('id', k.id).then(() => {});
-              return updatedParent;
-            }
-            return k;
-          }));
+          const parentKpi = kpis.find(k => String(k.id) === String(newKpi._linkedParentId));
+          if (parentKpi) {
+            const updatedParent = { ...parentKpi, reportConfig: { ...(parentKpi.reportConfig || {}), followUpKpiId: kpiRow.id } };
+            handleEditKpi(updatedParent);
+          }
         }
       }
     } catch(err) {
@@ -10773,6 +10922,15 @@ export default function App() {
       const stored = JSON.parse(localStorage.getItem('backup_kpis') || '[]');
       stored.push({ ...insertPayload, id: localId });
       localStorage.setItem('backup_kpis', JSON.stringify(stored));
+
+      // Auto-link parent KPI if this was created as a follow-up child (offline path)
+      if (newKpi._linkedParentId) {
+        const parentKpi = kpis.find(k => String(k.id) === String(newKpi._linkedParentId));
+        if (parentKpi) {
+          const updatedParent = { ...parentKpi, reportConfig: { ...(parentKpi.reportConfig || {}), followUpKpiId: localId } };
+          handleEditKpi(updatedParent);
+        }
+      }
     }
   }
 
