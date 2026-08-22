@@ -9515,7 +9515,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
                 {cells.slice(rIdx * 7, (rIdx + 1) * 7).map((cell, cIdx) => {
                   if (!cell || cell.isEmpty) {
                     // Empty placeholder dot
-                    return <div key={`empty-${rIdx}-${cIdx}`} className="h-[10px] w-[10px] rounded-full opacity-10 bg-slate-350" />;
+                    return <div key={`empty-${rIdx}-${cIdx}`} className="h-[8px] w-[8px] rounded-full opacity-10 bg-slate-350" />;
                   }
                   
                   const dStr = cell.dateStr;
@@ -9526,41 +9526,43 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
 
                   let titleText = `Day ${dayNum}: No target`;
                   let content = null;
-                  let containerClass = "h-[10px] w-[10px] rounded-full shrink-0 flex items-center justify-center ";
+                  let containerClass = "h-[8px] w-[8px] rounded-full shrink-0 flex items-center justify-center ";
+                  let extraStyle = {};
 
                   if (tVal > 0) {
                     if (aVal >= tVal) {
                       // Completed: Blue outline + Green smaller dot inside with 1px gap
-                      containerClass += "border-[1.5px] border-blue-500 bg-white p-[1px]";
-                      content = <div className="h-full w-full rounded-full bg-emerald-500" />;
+                      containerClass += "border-[1px] border-blue-500 bg-white";
+                      content = <div className="h-[3px] w-[3px] rounded-full bg-emerald-500" />;
                       titleText = `Day ${dayNum}: Met (${aVal}/${tVal})`;
                     } else if (isToday) {
                       // Today: Yellow glow (animate pulse)
-                      containerClass += "bg-amber-400 ring-2 ring-amber-300 shadow-[0_0_6px_rgba(251,191,36,0.8)] animate-pulse border border-amber-500";
+                      containerClass += "bg-yellow-400 border border-yellow-500 animate-pulse";
+                      extraStyle = { boxShadow: '0 0 10px #facc15, 0 0 4px #facc15' };
                       titleText = `Day ${dayNum} (Today): Pending (${aVal}/${tVal})`;
                     } else {
                       // Missed past day: Blue outline + Red smaller dot inside with 1px gap
-                      // Since target is missed on a past day
                       const isPast = new Date(dStr) < new Date(todayStr);
                       if (isPast) {
-                        containerClass += "border-[1.5px] border-blue-500 bg-white p-[1px]";
-                        content = <div className="h-full w-full rounded-full bg-rose-500" />;
+                        containerClass += "border-[1px] border-blue-500 bg-white";
+                        content = <div className="h-[3px] w-[3px] rounded-full bg-rose-500" />;
                         titleText = `Day ${dayNum} (Missed): Pending (${aVal}/${tVal})`;
                       } else {
                         // Future day target (not yet completed): Blue outline round only
-                        containerClass += "border-[1.5px] border-blue-400 bg-white";
+                        containerClass += "border-[1px] border-blue-400 bg-white";
                         titleText = `Day ${dayNum} (Future): Target (${tVal})`;
                       }
                     }
                   } else {
                     // No target: gray outline/dot
-                    containerClass += "bg-slate-200 border border-slate-300/60";
+                    containerClass += "bg-slate-200 border border-slate-300/40";
                   }
 
                   return (
                     <div 
                       key={dStr} 
                       className={containerClass} 
+                      style={extraStyle}
                       title={titleText}
                     >
                       {content}
