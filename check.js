@@ -1,0 +1,1 @@
+import { supabase } from './src/supabaseClient.js'; async function check() { const {data, error} = await supabase.from('kpis').select('id, daily_alloc').limit(5); console.log(JSON.stringify(data, null, 2)); } check();

@@ -1,0 +1,51 @@
+<div className="flex flex-col gap-0.5 mt-0.5">
+                                  {isTimeKpi ? (
+                                    <div className="flex flex-col items-center justify-center gap-0.5">
+                                      <span className={`text-[10px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>
+                                        {dayTarget > 0 ? "🎯 Target Set" : "—"}
+                                      </span>
+                                      <span className={`text-[10px] font-bold ${dayActual > 0 ? "text-emerald-700" : "text-slate-300"}`}>
+                                        {dayActual > 0 ? "✓ Completed" : "—"}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center justify-center gap-1 leading-none">
+                                        <input
+                                          type="text"
+                                          value={formatIndianNumber(dayTarget)}
+                                          onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
+                                          className={`w-12 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
+                                          placeholder="T:0"
+                                          title="Original Target"
+                                        />
+                                        {dayRevised !== dayTarget && dayActual !== dayTarget && (
+                                          <span className="text-[9px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-0.5 rounded" title="Revised Target">
+                                            R:{formatIndianNumber(dayRevised)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className={`w-full text-center text-xs font-bold leading-none h-4 ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
+                                        {dayActual > 0 ? `A:${formatIndianNumber(dayActual)}` : "A:0"}
+                                      </div>
+                                      {parentKpi && (
+                                        <div className="text-[8.5px] font-bold text-center block mt-0.5 leading-tight bg-amber-50 text-amber-700 rounded py-0.5">
+                                          P.T: {formatIndianNumber(parentTarget)}
+                                          {parentTarget > 0 && (
+                                            <>
+                                              <br/>
+                                              {parentActual >= parentTarget ? <span className="text-emerald-600">P.St: Done</span> : <span className="text-rose-600 animate-pulse">P.St: Pend</span>}
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* 8th Column: Weekly Total */}
+                          <div className={`border rounded-xl p-1 text-center flex flex-col justify-between h-auto min-h-[65px] pb-1 shadow-sm transition-all ${weekVal > 0 ? 'bg-teal-50/60 border-teal-200 hover:border-teal-300' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'}`}>
+         

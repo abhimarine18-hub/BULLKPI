@@ -1,0 +1,25 @@
+                    </div>
+                                </div>
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                  {isTimeKpi ? (
+                                    <div className="flex flex-col items-center justify-center gap-0.5">
+                                      <span className={`text-[10px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>
+                                        {dayTarget > 0 ? "🎯 Target Set" : "—"}
+                                      </span>
+                                      <span className={`text-[10px] font-bold ${dayActual > 0 ? "text-emerald-700" : "text-slate-300"}`}>
+                                        {dayActual > 0 ? "✓ Completed" : "—"}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center justify-center gap-1 leading-none">
+                                        <input
+                                          type="text"
+                                          value={formatIndianNumber(dayTarget)}
+                                          onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
+                                          className={`w-12 text-center text-xs focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
+                                          placeholder="T:0"
+                                          title="Original Target"
+                                        />
+                                        {dayRevised !== dayTarget && dayActual !== dayTarget && (
+                                          <span className="text-[9px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-0.5 rounded" title="Revised Target

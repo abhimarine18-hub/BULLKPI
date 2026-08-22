@@ -2601,17 +2601,36 @@ const distributeMonthToSubperiods = (monthName, monthVal, currentDaily, currentW
 
   const totalWorkingDays = allWorkingDays.length || 1;
   const baseDay = Math.floor(monthVal / totalWorkingDays);
-  let remDay = monthVal - (baseDay * totalWorkingDays);
+  const remDay = monthVal - (baseDay * totalWorkingDays);
+
+  // Evenly space the remainder days across the month:
+  // Pick indices at regular intervals so no day is more than 1 apart from others.
+  // e.g. remDay=10 out of 26 working days → every ~2.6th day gets +1
+  const extraSet = new Set();
+  if (remDay > 0) {
+    const step = totalWorkingDays / remDay;
+    for (let i = 0; i < remDay; i++) {
+      const idx = Math.round(i * step + step / 2); // center-offset for better spread
+      extraSet.add(Math.min(idx, totalWorkingDays - 1));
+    }
+    // If rounding caused collisions, fill remaining from the end
+    let filled = extraSet.size;
+    let probe = totalWorkingDays - 1;
+    while (filled < remDay && probe >= 0) {
+      if (!extraSet.has(probe)) { extraSet.add(probe); filled++; }
+      probe--;
+    }
+  }
 
   const nextD = { ...currentDaily };
-  
+
   cells.forEach(cell => {
     if (cell && !cell.isEmpty) {
       if (checkIsHolidayPure(cell.dateStr, holidaysEnabled, customHolidays, excludeSundays).isHoliday) {
         nextD[cell.dateStr] = 0;
       } else {
-        nextD[cell.dateStr] = baseDay + (remDay > 0 ? 1 : 0);
-        if (remDay > 0) remDay--;
+        const wdIdx = allWorkingDays.indexOf(cell.dateStr);
+        nextD[cell.dateStr] = baseDay + (extraSet.has(wdIdx) ? 1 : 0);
       }
     }
   });
@@ -2625,6 +2644,7 @@ const distributeMonthToSubperiods = (monthName, monthVal, currentDaily, currentW
 
   return { nextW, nextD };
 };
+
 
 const distributeMonthActualToSubperiods = (monthName, monthVal, currentDailyAct, currentWeeklyAct, holidaysEnabled, customHolidays, excludeSundays = true) => {
   const cells = getCalendarCells(monthName);
@@ -2738,7 +2758,7 @@ const KpiCheckboxList = ({ kpis, selectedIds, onChange }) => {
 };
 
 function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, onAddMember, sidebarMinimized }) {
-  const parentKpi = allKpis ? allKpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id)) : null;
+  const parentKpi = (allKpis && kpi.id != null) ? allKpis.find(k => k.reportConfig?.followUpKpiId != null && String(k.reportConfig?.followUpKpiId) === String(kpi.id)) : null;
   const [kpiType, setKpiType] = useState(kpi.kpiType || 'activity');
   const [reportConfig, setReportConfig] = useState(kpi.reportConfig || { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] });
 
@@ -2794,11 +2814,37 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
 
   const handleClearTargets = () => {
-    if (window.confirm("Are you sure you want to clear all daily and weekly targets for all dates?")) {
-      setDailyAlloc({});
-      setWeeklyAlloc({});
+    if (window.confirm(`Clear all daily targets for ${selectedMonth} only?`)) {
+      // Get all days in the selected month
+      const monthDays = getDaysInMonth(selectedMonth);
+      const numRows = Math.ceil(getCalendarCells(selectedMonth).length / 7);
+
+      // Zero out only this month's daily entries, keep all other months intact
+      setDailyAlloc(prev => {
+        const next = { ...prev };
+        monthDays.forEach(d => { next[d] = 0; });
+        return next;
+      });
+
+      // Zero out only this month's weekly entries
+      setWeeklyAlloc(prev => {
+        const next = { ...prev };
+        for (let r = 0; r < numRows; r++) {
+          next[`${selectedMonth}-Week${r + 1}`] = 0;
+        }
+        return next;
+      });
+
+      // Zero out this month's allocation and recalculate total
+      setMonthlyAlloc(prev => {
+        const next = { ...prev, [selectedMonth]: 0 };
+        const totalSum = Object.values(next).reduce((a, b) => a + b, 0);
+        setTotalTargetInput(totalSum);
+        return next;
+      });
     }
   };
+
 
   const handleAutoDistribute = (overrides = {}) => {
     const effHolidays = overrides.customHolidays !== undefined ? overrides.customHolidays : customHolidays;
@@ -3876,70 +3922,74 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-0.5 mt-0.5 w-full">
-                                  {/* TOP ROW: PT (Left) and T (Right) */}
-                                  <div className="flex items-center justify-between w-full min-h-[16px]">
-                                    {/* Left: PT */}
-                                    <div className="flex-1 text-left flex items-center">
-                                      {parentKpi && (
-                                        <div className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 py-0.5 rounded leading-none border border-amber-100 whitespace-nowrap">
-                                          PT: {formatIndianNumber(parentTarget)}
-                                        </div>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Right: T */}
-                                    <div className="flex items-center justify-end shrink-0 pl-1">
-                                      {isTimeKpi ? (
-                                        <span className={`text-[10px] font-bold ${dayTarget > 0 ? "text-teal-700" : "text-slate-300"}`}>
-                                          {dayTarget > 0 ? "T: Set" : "T: 0"}
-                                        </span>
-                                      ) : (
-                                        <div className="flex items-center justify-end gap-0.5 leading-none">
-                                          <span className="text-[10px] font-bold text-slate-400">T:</span>
-                                          <input
-                                            type="text"
-                                            value={formatIndianNumber(dayTarget)}
-                                            onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
-                                            className={`w-6 text-center text-[10.5px] focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
-                                            placeholder="0"
-                                            title="Original Target"
-                                          />
-                                          {dayRevised !== dayTarget && dayActual !== dayTarget && (
-                                            <span className="text-[8.5px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-0.5 rounded ml-0.5" title="Revised Target">
-                                              R:{formatIndianNumber(dayRevised)}
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
+                                <div className="flex flex-col gap-[2px] mt-0.5 w-full px-0.5">
+
+                                  {/* Line 1: T (Target) — always shown */}
+                                  <div className="flex items-center justify-between w-full leading-none">
+                                    <span className="text-[9px] font-bold text-slate-400">T:</span>
+                                    {isTimeKpi ? (
+                                      <span className={`text-[9px] font-bold ${dayTarget > 0 ? 'text-teal-700' : 'text-slate-300'}`}>
+                                        {dayTarget > 0 ? 'Set' : '0'}
+                                      </span>
+                                    ) : (
+                                      <div className="flex items-center gap-0.5">
+                                        <input
+                                          type="text"
+                                          value={formatIndianNumber(dayTarget)}
+                                          onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
+                                          className={`w-full max-w-[52px] text-right text-[9px] focus:outline-none bg-transparent font-bold border-b border-dashed placeholder:text-slate-300 ${dayTarget > 0 ? 'text-teal-700 border-teal-200' : 'text-slate-300 border-slate-100'}`}
+                                          placeholder="0"
+                                          title="Original Target"
+                                        />
+                                        {dayRevised !== dayTarget && dayActual !== dayTarget && (
+                                          <span className="text-[7.5px] text-teal-700 font-extrabold bg-teal-50 border border-teal-100 px-0.5 rounded" title="Revised">
+                                            R:{formatIndianNumber(dayRevised)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
 
-                                  {/* BOTTOM ROW: PS (Left) and A (Right) */}
-                                  <div className="flex items-center justify-between w-full min-h-[14px]">
-                                    {/* Left: PS */}
-                                    <div className="flex-1 text-left flex items-center">
-                                      {parentKpi && parentTarget > 0 && (
-                                        <div className="text-[9px] font-bold leading-none whitespace-nowrap">
-                                          PS: {parentActual >= parentTarget ? <span className="text-emerald-600">Done</span> : <span className="text-rose-600 animate-pulse">Pend</span>}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Right: A */}
-                                    <div className="flex items-center justify-end shrink-0 pl-1">
-                                      {isTimeKpi ? (
-                                        <span className={`text-[10px] font-bold ${dayActual > 0 ? "text-emerald-700" : "text-slate-300"}`}>
-                                          {dayActual > 0 ? "A: Done" : "A: 0"}
-                                        </span>
-                                      ) : (
-                                        <span className={`text-[10px] font-bold ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement (Read-only)">
-                                          {dayActual > 0 ? `A: ${formatIndianNumber(dayActual)}` : "A: 0"}
-                                        </span>
-                                      )}
-                                    </div>
+                                  {/* Line 2: A (Actual) — always shown */}
+                                  <div className="flex items-center justify-between w-full leading-none">
+                                    <span className="text-[9px] font-bold text-slate-400">A:</span>
+                                    {isTimeKpi ? (
+                                      <span className={`text-[9px] font-bold ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`}>
+                                        {dayActual > 0 ? 'Done' : '0'}
+                                      </span>
+                                    ) : (
+                                      <span className={`text-[9px] font-bold text-right ${dayActual > 0 ? 'text-emerald-700' : 'text-slate-300'}`} title="Achievement">
+                                        {formatIndianNumber(dayActual) || '0'}
+                                      </span>
+                                    )}
                                   </div>
+
+                                  {/* Line 3: PT (Parent Target) — only if parentKpi exists */}
+                                  {parentKpi && (
+                                    <div className="flex items-center justify-between w-full leading-none">
+                                      <span className="text-[9px] font-bold text-amber-600">PT:</span>
+                                      <span className="text-[9px] font-bold text-amber-700 text-right">
+                                        {formatIndianNumber(parentTarget) || '0'}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Line 4: PS (Parent Status) — only if parentKpi exists */}
+                                  {parentKpi && (
+                                    <div className="flex items-center justify-between w-full leading-none">
+                                      <span className="text-[9px] font-bold text-slate-400">PS:</span>
+                                      {parentTarget > 0
+                                        ? (parentActual >= parentTarget
+                                            ? <span className="text-[9px] font-bold text-emerald-600">Done</span>
+                                            : <span className="text-[9px] font-bold text-rose-500 animate-pulse">Pend</span>
+                                          )
+                                        : <span className="text-[9px] text-slate-300">—</span>
+                                      }
+                                    </div>
+                                  )}
+
                                 </div>
+
                               </div>
                             );
                           })}
@@ -10299,36 +10349,97 @@ export default function App() {
     if (typeof updatedKpi.id === 'string' && updatedKpi.id.startsWith('temp-')) {
       return handleAddKpi(updatedKpi);
     }
+
+    // 1. Update local React state immediately
     setKpis((prev) => prev.map((k) => k.id === updatedKpi.id ? updatedKpi : k));
-    const { error } = await supabase.from('kpis').update({
-      name: updatedKpi.name,
-      unit: updatedKpi.unit,
-      target: updatedKpi.target,
-      direction: updatedKpi.direction,
-      team: updatedKpi.team,
-      owner: updatedKpi.owner,
-      drive_by: updatedKpi.driveBy || "",
-      monitor_by: updatedKpi.monitorBy || "",
-      description: updatedKpi.description || "",
-      kra: updatedKpi.kra,
-      history: updatedKpi.history || [],
-      target_type: updatedKpi.targetType,
-      targets_list: updatedKpi.targetsList,
-      monthly_alloc: updatedKpi.monthlyAlloc || {},
-      monthly_actual: updatedKpi.monthlyActual || {},
-      weekly_alloc: updatedKpi.weeklyAlloc || {},
-      weekly_actual: updatedKpi.weeklyActual || {},
-      daily_alloc: updatedKpi.dailyAlloc || {},
-      daily_actual: updatedKpi.dailyActual || {},
-      revised_alloc: updatedKpi.revisedAlloc || {},
-      custom_holidays: updatedKpi.customHolidays || {},
-      holidays_enabled: updatedKpi.holidaysEnabled ?? true,
-      kpi_type: updatedKpi.kpiType || 'activity',
-      report_config: updatedKpi.reportConfig || {}
-    }).eq('id', updatedKpi.id);
-    if (error) {
-      console.error("Supabase update error in handleEditKpi:", error);
-      alert("Failed to save KPI to database. See console for details.");
+
+    // 2. Always save to localStorage backup (so daily_alloc is never lost)
+    try {
+      const stored = JSON.parse(localStorage.getItem('backup_kpis') || '[]');
+      const idx = stored.findIndex(k => String(k.id) === String(updatedKpi.id));
+      const backupRow = {
+        id: updatedKpi.id,
+        name: updatedKpi.name,
+        unit: updatedKpi.unit,
+        target: updatedKpi.target,
+        direction: updatedKpi.direction,
+        team: updatedKpi.team,
+        owner: updatedKpi.owner,
+        drive_by: updatedKpi.driveBy || "",
+        monitor_by: updatedKpi.monitorBy || "",
+        description: updatedKpi.description || "",
+        kra: updatedKpi.kra,
+        history: updatedKpi.history || [],
+        target_type: updatedKpi.targetType,
+        targets_list: updatedKpi.targetsList,
+        monthly_alloc: updatedKpi.monthlyAlloc || {},
+        monthly_actual: updatedKpi.monthlyActual || {},
+        weekly_alloc: updatedKpi.weeklyAlloc || {},
+        weekly_actual: updatedKpi.weeklyActual || {},
+        daily_alloc: updatedKpi.dailyAlloc || {},
+        daily_actual: updatedKpi.dailyActual || {},
+        revised_alloc: updatedKpi.revisedAlloc || {},
+        custom_holidays: updatedKpi.customHolidays || {},
+        holidays_enabled: updatedKpi.holidaysEnabled ?? true,
+        kpi_type: updatedKpi.kpiType || 'activity',
+        report_config: updatedKpi.reportConfig || {}
+      };
+      if (idx >= 0) stored[idx] = backupRow; else stored.push(backupRow);
+      localStorage.setItem('backup_kpis', JSON.stringify(stored));
+      console.log('[KPI Save] localStorage backup updated for KPI', updatedKpi.id, '| daily_alloc keys:', Object.keys(updatedKpi.dailyAlloc || {}).length);
+    } catch (localErr) {
+      console.warn('[KPI Save] localStorage backup failed:', localErr);
+    }
+
+    // 3. Attempt Supabase save
+    try {
+      const payload = {
+        name: updatedKpi.name,
+        unit: updatedKpi.unit,
+        target: updatedKpi.target,
+        direction: updatedKpi.direction,
+        team: updatedKpi.team,
+        owner: updatedKpi.owner,
+        drive_by: updatedKpi.driveBy || "",
+        monitor_by: updatedKpi.monitorBy || "",
+        description: updatedKpi.description || "",
+        kra: updatedKpi.kra,
+        history: updatedKpi.history || [],
+        target_type: updatedKpi.targetType,
+        targets_list: updatedKpi.targetsList,
+        monthly_alloc: updatedKpi.monthlyAlloc || {},
+        monthly_actual: updatedKpi.monthlyActual || {},
+        weekly_alloc: updatedKpi.weeklyAlloc || {},
+        weekly_actual: updatedKpi.weeklyActual || {},
+        daily_alloc: updatedKpi.dailyAlloc || {},
+        daily_actual: updatedKpi.dailyActual || {},
+        revised_alloc: updatedKpi.revisedAlloc || {},
+        custom_holidays: updatedKpi.customHolidays || {},
+        holidays_enabled: updatedKpi.holidaysEnabled ?? true,
+        kpi_type: updatedKpi.kpiType || 'activity',
+        report_config: updatedKpi.reportConfig || {}
+      };
+      console.log('[KPI Save] Attempting Supabase update for KPI', updatedKpi.id, '| daily_alloc:', payload.daily_alloc);
+      const { error } = await supabase.from('kpis').update(payload).eq('id', updatedKpi.id);
+      if (error) {
+        // Check if it's an SSL/network error (common with corporate proxies)
+        const isNetworkError = !error.message || error.message.includes('Failed to fetch') ||
+          error.message.includes('NetworkError') ||
+          error.message.includes('ERR_CERT') ||
+          error.message.includes('ERR_CONNECTION') ||
+          error.message.includes('fetch');
+        if (isNetworkError) {
+          console.warn('[KPI Save] Network/SSL error — data saved to localStorage, will sync when online. Error:', error.message);
+        } else {
+          console.error('[KPI Save] Supabase error in handleEditKpi:', error);
+          alert("Failed to save KPI to database: " + error.message);
+        }
+      } else {
+        console.log('[KPI Save] ✅ Supabase save successful for KPI', updatedKpi.id);
+      }
+    } catch (err) {
+      // TypeError: Failed to fetch — network completely down
+      console.warn('[KPI Save] Network exception — data saved to localStorage. Error:', err.message);
     }
   }
 
