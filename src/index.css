@@ -3,5 +3,5 @@
 @import "tailwindcss";
 
 body, button, input, select, textarea {
-  font-family: 'Outfit', 'Google Sans', 'Product Sans', sans-serif !important;
+  font-family: 'Plus Jakarta Sans', 'Google Sans', 'Product Sans', system-ui, sans-serif !important;
 }

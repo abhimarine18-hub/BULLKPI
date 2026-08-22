@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -1760,7 +1760,7 @@ function LogValueModal({ kpi, onClose, onSubmit }) {
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Log {kpi.name}</h3>
+          <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Log {kpi.name}</h3>
           <button onClick={onClose} className="text-slate-400"><X className="h-4 w-4" /></button>
         </div>
         <p className="text-xs text-slate-400 mb-1">Target: {kpi.target}{kpi.unit}</p>
@@ -1813,7 +1813,7 @@ function KpiDetail({ kpi, allKpis, onClose, onLog }) {
     <div className="fixed inset-0 bg-slate-900/40 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
       <div className="bg-white rounded-t-2xl md:rounded-2xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{kpi.name}</h3>
+          <h3 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{kpi.name}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X className="h-5 w-5" /></button>
         </div>
         <div className="flex items-center gap-2 mb-4">
@@ -2015,7 +2015,7 @@ function ExcelColumnMapModal({ modal, onClose, onConfirm }) {
         <div className="px-5 pt-5 pb-3 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-slate-800 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Match Excel Columns</h2>
+              <h2 className="font-bold text-slate-800 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Match Excel Columns</h2>
               <p className="text-xs text-slate-400 mt-0.5">Map your sheet's columns to the correct fields before importing.</p>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X className="h-4 w-4" /></button>
@@ -2082,14 +2082,14 @@ function ExcelColumnMapModal({ modal, onClose, onConfirm }) {
 
 function AddPlayerModal({ teams, defaultTeamId, onClose, onSubmit }) {
   const [teamId, setTeamId] = useState(defaultTeamId || teams[0]?.id);
-  const [form, setForm] = useState({ name: "", designation: "", experience: "", description: "" });
+  const [form, setForm] = useState({ name: "", designation: "", experience: "", description: "", loginId: "", password: "" });
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-5 w-full max-w-md max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Add Player</h3>
+          <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Add Player</h3>
           <button onClick={onClose} className="text-slate-400"><X className="h-4 w-4" /></button>
         </div>
         <div className="space-y-3">
@@ -2107,13 +2107,35 @@ function AddPlayerModal({ teams, defaultTeamId, onClose, onSubmit }) {
               <input type="number" value={form.experience} onChange={set("experience")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="3" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">User ID (Login)</label>
+              <input value={form.loginId} onChange={set("loginId")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="e.g. neha_k" />
+            </div>
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Password</label>
+              <input type="password" value={form.password} onChange={set("password")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="e.g. 123" />
+            </div>
+          </div>
           <div>
             <label className="text-xs text-slate-500 mb-1 block">Description</label>
             <textarea value={form.description} onChange={set("description")} rows={2} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="What does this person own?" />
           </div>
         </div>
         <button
-          onClick={() => { if (!form.name) return; onSubmit(teamId, { ...form, id: Date.now(), employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`, experience: parseFloat(form.experience) || 0 }); onClose(); }}
+          onClick={() => { 
+            if (!form.name) return; 
+            const generatedEmpId = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+            onSubmit(teamId, { 
+              ...form, 
+              id: Date.now(), 
+              employeeId: generatedEmpId, 
+              experience: parseFloat(form.experience) || 0,
+              loginId: form.loginId || generatedEmpId,
+              password: form.password || "123"
+            }); 
+            onClose(); 
+          }}
           className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-xl transition-colors mt-4"
         >
           Add Player
@@ -2134,7 +2156,7 @@ function AddTeamModal({ teams, onClose, onSubmit }) {
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-5 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Add Team</h3>
+          <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Add Team</h3>
           <button onClick={onClose} className="text-slate-400"><X className="h-4 w-4" /></button>
         </div>
         <div className="space-y-3">
@@ -2267,7 +2289,7 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-5 w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>{project ? "Edit Project" : "Add Project"}</h3>
+          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{project ? "Edit Project" : "Add Project"}</h3>
           <button onClick={onClose} className="text-slate-400"><X className="h-4 w-4" /></button>
         </div>
         
@@ -3188,7 +3210,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
         {/* Header */}
         <div className="flex items-center justify-between border-b border-orange-100 pb-3 mb-4 shrink-0">
           <div>
-            <h3 className="font-bold text-slate-950 text-lg" style={{ fontFamily: "Poppins, sans-serif" }}>{kpi.id ? "Edit KPI & Target Distribution" : "Add KPI & Target Distribution"}</h3>
+            <h3 className="font-bold text-slate-950 text-lg" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{kpi.id ? "Edit KPI & Target Distribution" : "Add KPI & Target Distribution"}</h3>
             <p className="text-xs text-slate-600 truncate max-w-xl">{kpi.name}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-6 w-6" /></button>
@@ -3966,7 +3988,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
 
 
 
-function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
+function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientProjects, onUpdateClientProjectStage }) {
   const [activeDate, setActiveDate] = useState(new Date().toISOString().split('T')[0]);
   const [editingSlot, setEditingSlot] = useState(null);
   const [title, setTitle] = useState("");
@@ -3989,6 +4011,15 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleReason, setRescheduleReason] = useState("");
 
+  // Repetitive Task Configuration states
+  const [isRepetitive, setIsRepetitive] = useState(false);
+  const [repetitiveFrequency, setRepetitiveFrequency] = useState("daily");
+  const [weeklyDay, setWeeklyDay] = useState("Monday");
+  const [monthlyDate, setMonthlyDate] = useState(1);
+
+  // Month-wise past pending filter state (April to March fiscal layout)
+  const [selectedPendingMonth, setSelectedPendingMonth] = useState(new Date().toISOString().split('-')[1]);
+
   // KPI Search dropdown states
   const [kpiSearchQuery, setKpiSearchQuery] = useState("");
   const [showKpiDropdown, setShowKpiDropdown] = useState(false);
@@ -3998,7 +4029,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
     if (p.assignedTo !== user) return false;
     try {
       const meta = JSON.parse(p.description);
-      return meta.type === "action_item";
+      return meta.type === "action_item" || meta.type === "delegated_task";
     } catch(e) { return false; }
   });
 
@@ -4097,6 +4128,137 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-4">
+        {/* CLIENT BUILD PROJECTS STAGES TRACKING PANEL */}
+        {clientProjects && clientProjects.length > 0 && (
+          <div className="bg-teal-500/5 border border-teal-100/80 rounded-3xl p-5 space-y-3 shadow-sm">
+            <h3 className="text-sm font-bold text-teal-800 flex items-center gap-1.5 uppercase tracking-wider">
+              <FolderGit2 className="h-4 w-4 text-teal-600" /> Build Projects Milestone Checklist
+            </h3>
+            
+            {/* Masonry Layout grid matching Build projects screen */}
+            <div className="columns-1 md:columns-2 gap-4 space-y-4 [column-fill:_balance] break-inside-avoid">
+              {clientProjects.map(proj => {
+                const pendingStages = proj.stages.filter(s => s.status !== "completed");
+                if (pendingStages.length === 0) return null;
+                return (
+                  <div key={proj.id} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs space-y-2 break-inside-avoid inline-block w-full mb-4">
+                    <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
+                      <h4 className="font-bold text-slate-800 text-xs truncate max-w-[150px]">{proj.title}</h4>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                        {Math.round((proj.stages.filter(s => s.status === "completed").length / proj.stages.length) * 100)}% Done
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {proj.stages.map((stg, sIdx) => {
+                        const isCurrent = sIdx === proj.currentStageIdx;
+                        const isCompleted = stg.status === "completed";
+                        
+                        return (
+                          <div key={stg.id || sIdx} className="space-y-2 bg-slate-50/70 rounded-xl p-3 border border-slate-100 hover:bg-slate-50 transition-colors">
+                            {/* Main Stage Row */}
+                            <div className="flex items-center justify-between text-sm gap-4">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <input 
+                                  type="checkbox" 
+                                  checked={isCompleted}
+                                  onChange={() => {
+                                    const nextStatus = isCompleted ? "current" : "completed";
+                                    onUpdateClientProjectStage(proj.id, sIdx, nextStatus);
+                                  }}
+                                  className="rounded text-teal-600 focus:ring-teal-500 h-4.5 w-4.5 shrink-0 cursor-pointer" 
+                                />
+                                <span className={`font-bold text-slate-800 truncate ${isCompleted ? "line-through text-slate-400" : isCurrent ? "text-orange-600 font-extrabold" : ""}`}>
+                                  {stg.name}
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 shrink-0 text-xs">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isCompleted ? "bg-teal-50 text-teal-700 border border-teal-100" : isCurrent ? "bg-orange-50 text-orange-700 border border-orange-100" : "bg-slate-100 text-slate-650"}`}>
+                                  {isCompleted ? "Completed" : isCurrent ? "Current" : "Pending"}
+                                </span>
+                                {stg.responsible && <span className="bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded text-[10px] font-semibold" title={stg.responsible}>Resp: {stg.responsible}</span>}
+                                {stg.targetDate && <span className="text-slate-500 font-semibold font-mono bg-slate-100/50 px-1.5 py-0.5 rounded text-[10px]">Due: {stg.targetDate.split("-")[1]}/{stg.targetDate.split("-")[2]}</span>}
+                              </div>
+                            </div>
+
+                            {/* Sub-stages list with checkboxes */}
+                            {stg.subStages && stg.subStages.length > 0 && (
+                              <div className="pl-6 border-l-2 border-slate-200/80 space-y-2 mt-2">
+                                {stg.subStages.map((sub, subIdx) => {
+                                  const isSubCompleted = sub.status === "completed";
+                                  const isSubCurrent = sub.status === "current";
+                                  return (
+                                    <div key={sub.id || subIdx} className="space-y-1.5 bg-white/60 p-2 rounded-lg border border-slate-100/40">
+                                      <div className="flex justify-between items-center text-xs gap-4">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                          <input 
+                                            type="checkbox" 
+                                            checked={isSubCompleted}
+                                            onChange={() => {
+                                              const nextStatus = isSubCompleted ? "pending" : "completed";
+                                              onUpdateClientProjectStage(proj.id, sIdx, nextStatus, subIdx);
+                                            }}
+                                            className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4 shrink-0 cursor-pointer" 
+                                          />
+                                          <span className={`font-semibold text-slate-700 truncate ${isSubCompleted ? "line-through text-slate-400" : ""}`}>↳ {sub.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0 text-[10px]">
+                                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${isSubCompleted ? "bg-teal-50 text-teal-600" : isSubCurrent ? "bg-orange-50 text-orange-650" : "bg-slate-100 text-slate-500"}`}>
+                                            {isSubCompleted ? "Done" : isSubCurrent ? "Current" : "Pending"}
+                                          </span>
+                                          {sub.responsible && <span className="bg-slate-100 text-slate-650 px-1.5 py-0.5 rounded font-medium">Resp: {sub.responsible}</span>}
+                                          {sub.targetDate && <span className="text-slate-500 font-semibold font-mono">Due: {sub.targetDate.split("-")[1]}/{sub.targetDate.split("-")[2]}</span>}
+                                        </div>
+                                      </div>
+
+                                      {/* Sub-sub stages list with checkboxes */}
+                                      {sub.subSubStages && sub.subSubStages.length > 0 && (
+                                        <div className="pl-5 border-l-2 border-dashed border-slate-200 space-y-1 mt-1 text-[11px]">
+                                          {sub.subSubStages.map((ss, ssIdx) => {
+                                            const isSubSubCompleted = ss.status === "completed";
+                                            const isSubSubCurrent = ss.status === "current";
+                                            return (
+                                              <div key={ss.id || ssIdx} className="flex justify-between items-center text-slate-600 gap-3 py-0.5">
+                                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                  <input 
+                                                    type="checkbox" 
+                                                    checked={isSubSubCompleted}
+                                                    onChange={() => {
+                                                      const nextStatus = isSubSubCompleted ? "pending" : "completed";
+                                                      onUpdateClientProjectStage(proj.id, sIdx, nextStatus, subIdx, ssIdx);
+                                                    }}
+                                                    className="rounded text-teal-500 focus:ring-teal-500 h-3.5 w-3.5 shrink-0 cursor-pointer" 
+                                                  />
+                                                  <span className={`truncate ${isSubSubCompleted ? "line-through text-slate-400" : ""}`}>↳ {ss.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[9px] shrink-0">
+                                                  <span className={`px-1 py-0.2 rounded text-[8px] uppercase tracking-wider font-bold ${isSubSubCompleted ? "bg-teal-50 text-teal-500" : isSubSubCurrent ? "bg-orange-50 text-orange-600" : "bg-slate-100 text-slate-400"}`}>
+                                                    {isSubSubCompleted ? "Done" : isSubSubCurrent ? "Active" : "Pending"}
+                                                  </span>
+                                                  {ss.responsible && <span className="truncate max-w-[50px] text-slate-500">Resp: {ss.responsible}</span>}
+                                                  {ss.targetDate && <span className="text-slate-400 font-mono font-semibold">Due: {ss.targetDate.split("-")[1]}/{ss.targetDate.split("-")[2]}</span>}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {/* Incoming Task Requests Panel */}
         {incomingTaskRequests.length > 0 && (
           <div className="bg-amber-50/40 border border-amber-100 rounded-3xl p-5 space-y-3 mb-4 shadow-sm">
@@ -4200,13 +4362,80 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
         )}
 
         {/* SECTION: Past Pending Work */}
-        {pastPendingSlots.length > 0 && (
-          <div className="bg-rose-50/20 border border-rose-100/50 rounded-3xl p-5 space-y-3 mb-4 shadow-sm">
-            <h3 className="text-sm font-bold text-rose-800 flex items-center gap-1.5 uppercase tracking-wider">
-              ⚠️ Past Pending Work (Needs Attention)
-            </h3>
-            <div className="space-y-3">
-              {pastPendingSlots.map(slot => {
+        {(() => {
+          // Fiscal Month mapping definitions (April to March)
+          const fiscalMonths = [
+            { name: "Apr", val: "04" },
+            { name: "May", val: "05" },
+            { name: "Jun", val: "06" },
+            { name: "Jul", val: "07" },
+            { name: "Aug", val: "08" },
+            { name: "Sep", val: "09" },
+            { name: "Oct", val: "10" },
+            { name: "Nov", val: "11" },
+            { name: "Dec", val: "12" },
+            { name: "Jan", val: "01" },
+            { name: "Feb", val: "02" },
+            { name: "Mar", val: "03" }
+          ];
+
+          // Set default active month to current system month if not yet set
+          const currentMonthCode = new Date().toISOString().split('-')[1]; // e.g. "08"
+          const hasSelectedMonth = fiscalMonths.some(m => m.val === selectedPendingMonth);
+          const activePendingMonth = hasSelectedMonth ? selectedPendingMonth : currentMonthCode;
+
+          // Filter past pending items for selected month
+          const filteredPastPending = pastPendingSlots.filter(slot => {
+            if (!slot.date) return false;
+            const itemMonth = slot.date.split("-")[1]; // YYYY-MM-DD
+            return itemMonth === activePendingMonth;
+          });
+
+          // Compute targets vs actuals counts
+          const totalMonthlyTarget = filteredPastPending.length;
+          // Completed ones are either slot.completedProject or slot status is completed
+          const totalMonthlyActual = pastPendingSlots.filter(slot => {
+            if (!slot.date) return false;
+            const itemMonth = slot.date.split("-")[1];
+            if (itemMonth !== activePendingMonth) return false;
+            const isCompleted = slot.type === 'alloc' ? !!slot.completedProject : (slot.pendingProject?.status === 'completed' || slot.pendingProject?.meta?.status === 'completed');
+            return isCompleted;
+          }).length;
+
+          return (
+            <div className="space-y-4">
+              {/* Horizontal Fiscal Month Navigation Bar */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xs flex items-center justify-between gap-3 overflow-x-auto shrink-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {fiscalMonths.map(m => (
+                    <button
+                      key={m.val}
+                      onClick={() => setSelectedPendingMonth(m.val)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                        activePendingMonth === m.val
+                          ? "bg-teal-600 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-teal-50 border border-teal-100 rounded-xl px-3.5 py-1.5 text-right shrink-0">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-teal-800 block">Pending Month Stats</span>
+                  <span className="text-xs font-bold text-teal-900 font-mono">
+                    Target vs Actual: {totalMonthlyTarget} / {totalMonthlyActual}
+                  </span>
+                </div>
+              </div>
+
+              {filteredPastPending.length > 0 && (
+                <div className="bg-rose-50/20 border border-rose-100/50 rounded-3xl p-5 space-y-3 mb-4 shadow-sm">
+                  <h3 className="text-sm font-bold text-rose-800 flex items-center gap-1.5 uppercase tracking-wider">
+                    ⚠️ Past Pending Work (Needs Attention)
+                  </h3>
+                  <div className="space-y-3">
+                    {filteredPastPending.map(slot => {
                 const isCompleted = slot.type === 'alloc' ? !!slot.completedProject : false;
                 if (editingSlot === slot.id) {
                   const kpiObj = kpis.find(k => k.id === slot.kpiId);
@@ -4347,6 +4576,15 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
             </div>
           </div>
         )}
+
+              {filteredPastPending.length === 0 && (
+                <div className="text-center text-slate-400 py-6 bg-white rounded-3xl border border-slate-100/80 shadow-xs">
+                  No past pending work items found for the selected month.
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* SECTION: Today's Scheduled Tasks */}
         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1 pt-2">Today's Schedule</h3>
@@ -4652,12 +4890,88 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                   rows={2}
                 />
+                {/* Repetitive Task Configuration */}
+              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 space-y-3 mt-3">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="isRepetitive" 
+                    checked={isRepetitive}
+                    onChange={(e) => {
+                      setIsRepetitive(e.target.checked);
+                      if (e.target.checked && !repetitiveFrequency) {
+                        setRepetitiveFrequency("daily");
+                      }
+                    }}
+                    className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4"
+                  />
+                  <label htmlFor="isRepetitive" className="text-xs font-bold text-slate-700 cursor-pointer">
+                    Is this a repetitive/recurring task?
+                  </label>
+                </div>
+
+                {isRepetitive && (
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-200/60">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Frequency</label>
+                      <select 
+                        value={repetitiveFrequency} 
+                        onChange={(e) => setRepetitiveFrequency(e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                    </div>
+
+                    {repetitiveFrequency === "weekly" && (
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Select Day of Week</label>
+                        <select 
+                          value={weeklyDay} 
+                          onChange={(e) => setWeeklyDay(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        >
+                          <option value="Monday">Monday</option>
+                          <option value="Tuesday">Tuesday</option>
+                          <option value="Wednesday">Wednesday</option>
+                          <option value="Thursday">Thursday</option>
+                          <option value="Friday">Friday</option>
+                          <option value="Saturday">Saturday</option>
+                          <option value="Sunday">Sunday</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {repetitiveFrequency === "monthly" && (
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Select Day of Month</label>
+                        <input 
+                          type="number" 
+                          min="1" 
+                          max="31" 
+                          value={monthlyDate} 
+                          onChange={(e) => setMonthlyDate(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
               <button 
-                onClick={() => setShowDelegateModal(false)}
+                onClick={() => {
+                  setShowDelegateModal(false);
+                  setIsRepetitive(false);
+                  setRepetitiveFrequency("");
+                  setWeeklyDay("Monday");
+                  setMonthlyDate(1);
+                }}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
               >
                 Cancel
@@ -4677,7 +4991,13 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
                       kpiId: taskKpiId ? Number(taskKpiId) : null,
                       objective: taskObjective,
                       outcome: taskOutcome,
-                      creator: user
+                      creator: user,
+                      isRepetitive,
+                      repetitiveConfig: isRepetitive ? {
+                        frequency: repetitiveFrequency,
+                        weeklyDay: repetitiveFrequency === "weekly" ? weeklyDay : null,
+                        monthlyDate: repetitiveFrequency === "monthly" ? monthlyDate : null
+                      } : null
                     }
                   });
                   setShowDelegateModal(false);
@@ -4686,6 +5006,10 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
                   setTaskOutcome("");
                   setKpiSearchQuery("");
                   setTaskKpiId("");
+                  setIsRepetitive(false);
+                  setRepetitiveFrequency("");
+                  setWeeklyDay("Monday");
+                  setMonthlyDate(1);
                 }}
                 className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm"
               >
@@ -4700,6 +5024,1365 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams }) {
 }
 
 
+/* ==================== ADD CLIENT PROJECT MODAL ==================== */
+
+function AddClientProjectModal({ teams, project, onClose, onSubmit }) {
+  const [title, setTitle] = useState(project?.title || "");
+  const [description, setDescription] = useState(project?.description || "");
+  const [objective, setObjective] = useState(project?.objective || "");
+  const [companyDetails, setCompanyDetails] = useState(project?.companyDetails || "");
+  
+  // Default tree setup
+  const [stages, setStages] = useState(project?.stages || [
+    { 
+      id: "s1",
+      name: "Planning", 
+      status: "current", 
+      type: "sequential", 
+      targetDate: "", 
+      responsible: "", 
+      subStages: [] 
+    }
+  ]);
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      alert("Please enter a project title.");
+      return;
+    }
+    onSubmit({
+      id: project?.id || `temp-${Date.now()}`,
+      title,
+      description,
+      objective,
+      companyDetails,
+      stages,
+      currentStageIdx: project?.currentStageIdx || 0,
+      aiChats: project?.aiChats || []
+    });
+  };
+
+  const addStage = () => {
+    setStages(prev => [...prev, {
+      id: `s-${Date.now()}`,
+      name: "",
+      status: "pending",
+      type: "sequential",
+      targetDate: "",
+      responsible: "",
+      subStages: []
+    }]);
+  };
+
+  const removeStage = (sId) => {
+    setStages(prev => prev.filter(s => s.id !== sId));
+  };
+
+  const updateStage = (sId, fields) => {
+    setStages(prev => prev.map(s => s.id === sId ? { ...s, ...fields } : s));
+  };
+
+  const addSubStage = (sId) => {
+    setStages(prev => prev.map(s => {
+      if (s.id !== sId) return s;
+      return {
+        ...s,
+        subStages: [...(s.subStages || []), {
+          id: `sub-${Date.now()}`,
+          name: "",
+          status: "pending",
+          targetDate: "",
+          responsible: "",
+          subSubStages: []
+        }]
+      };
+    }));
+  };
+
+  const removeSubStage = (sId, subId) => {
+    setStages(prev => prev.map(s => {
+      if (s.id !== sId) return s;
+      return {
+        ...s,
+        subStages: s.subStages.filter(sub => sub.id !== subId)
+      };
+    }));
+  };
+
+  const updateSubStage = (sId, subId, fields) => {
+    setStages(prev => prev.map(s => {
+      if (s.id !== sId) return s;
+      return {
+        ...s,
+        subStages: s.subStages.map(sub => sub.id === subId ? { ...sub, ...fields } : sub)
+      };
+    }));
+  };
+
+  const addSubSubStage = (sId, subId) => {
+    setStages(prev => prev.map(s => {
+      if (s.id !== sId) return s;
+      return {
+        ...s,
+        subStages: s.subStages.map(sub => {
+          if (sub.id !== subId) return sub;
+          return {
+            ...sub,
+            subSubStages: [...(sub.subSubStages || []), {
+              id: `subsub-${Date.now()}`,
+              name: "",
+              status: "pending",
+              targetDate: "",
+              responsible: ""
+            }]
+          };
+        })
+      };
+    }));
+  };
+
+  const removeSubSubStage = (sId, subId, subSubId) => {
+    setStages(prev => prev.map(s => {
+      if (s.id !== sId) return s;
+      return {
+        ...s,
+        subStages: s.subStages.map(sub => {
+          if (sub.id !== subId) return sub;
+          return {
+            ...sub,
+            subSubStages: sub.subSubStages.filter(ss => ss.id !== subSubId)
+          };
+        })
+      };
+    }));
+  };
+
+  const updateSubSubStage = (sId, subId, subSubId, fields) => {
+    setStages(prev => prev.map(s => {
+      if (s.id !== sId) return s;
+      return {
+        ...s,
+        subStages: s.subStages.map(sub => {
+          if (sub.id !== subId) return sub;
+          return {
+            ...sub,
+            subSubStages: sub.subSubStages.map(ss => ss.id === subSubId ? { ...ss, ...fields } : ss)
+          };
+        })
+      };
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <form onSubmit={handleFormSubmit} className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-orange-100 flex flex-col max-h-[90vh]">
+        <div className="bg-gradient-to-r from-orange-500/10 to-teal-500/10 px-6 py-4 border-b border-orange-50 flex justify-between items-center shrink-0">
+          <h2 className="text-base font-bold text-slate-800" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+            {project ? "Edit Build Project" : "New Build Project"}
+          </h2>
+          <button type="button" onClick={onClose} className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+          <div>
+            <label className="font-bold text-slate-600 block mb-1">Project Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. ERP Software Implementation"
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500 text-slate-800 font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-600 block mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Summary of the initiative..."
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              rows={2}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="font-bold text-slate-600 block mb-1">Objective / Target Outcomes</label>
+              <textarea
+                value={objective}
+                onChange={e => setObjective(e.target.value)}
+                placeholder="What must be achieved..."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-600 block mb-1">Company / Client Details</label>
+              <textarea
+                value={companyDetails}
+                onChange={e => setCompanyDetails(e.target.value)}
+                placeholder="Contact, requirements, address..."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4 border-t border-slate-100 pt-3">
+            <div className="flex justify-between items-center">
+              <label className="font-bold text-slate-700 block text-sm">Build Project Milestones &amp; Nested Stages</label>
+              <button 
+                type="button" 
+                onClick={addStage}
+                className="text-[10px] bg-teal-50 text-teal-600 border border-teal-200 font-bold px-2.5 py-1 rounded-lg hover:bg-teal-100 transition-colors"
+              >
+                + Add Stage
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {stages.map((stage, idx) => (
+                <div key={stage.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 space-y-3 relative">
+                  <button 
+                    type="button" 
+                    onClick={() => removeStage(stage.id)}
+                    className="absolute top-3 right-3 text-rose-500 hover:text-rose-700 font-bold text-[10px]"
+                  >
+                    Delete Stage
+                  </button>
+
+                  <div className="grid grid-cols-12 gap-3 items-center">
+                    <div className="col-span-4">
+                      <label className="font-bold text-slate-500 block mb-0.5 text-[10px]">Stage {idx + 1} Name</label>
+                      <input
+                        type="text"
+                        value={stage.name}
+                        placeholder="e.g. Design & Prototype"
+                        onChange={e => updateStage(stage.id, { name: e.target.value })}
+                        className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 font-bold"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="font-bold text-slate-500 block mb-0.5 text-[10px]">Mode</label>
+                      <select
+                        value={stage.type}
+                        onChange={e => updateStage(stage.id, { type: e.target.value })}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                      >
+                        <option value="sequential">Sequential</option>
+                        <option value="parallel">Parallel</option>
+                      </select>
+                    </div>
+                    <div className="col-span-3">
+                      <label className="font-bold text-slate-500 block mb-0.5 text-[10px]">Target Date</label>
+                      <input
+                        type="date"
+                        value={stage.targetDate}
+                        onChange={e => updateStage(stage.id, { targetDate: e.target.value })}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="font-bold text-slate-500 block mb-0.5 text-[10px]">Responsible</label>
+                      <input
+                        type="text"
+                        value={stage.responsible || ""}
+                        placeholder="Name"
+                        onChange={e => updateStage(stage.id, { responsible: e.target.value })}
+                        className="w-full border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Sub-stages list */}
+                  <div className="pl-6 border-l-2 border-slate-200 space-y-3 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-600 text-[10px] uppercase tracking-wider">Sub-stages</span>
+                      <button 
+                        type="button" 
+                        onClick={() => addSubStage(stage.id)}
+                        className="text-[9px] bg-slate-100 hover:bg-slate-200 border border-slate-300 font-bold px-2 py-0.5 rounded"
+                      >
+                        + Add Sub-stage
+                      </button>
+                    </div>
+
+                    {stage.subStages?.map((sub, sIdx) => (
+                      <div key={sub.id} className="bg-white border border-slate-150 rounded-xl p-3 space-y-2 relative">
+                        <button 
+                          type="button" 
+                          onClick={() => removeSubStage(stage.id, sub.id)}
+                          className="absolute top-2 right-2 text-rose-500 hover:text-rose-700 text-[9px]"
+                        >
+                          ✕
+                        </button>
+                        
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-5">
+                            <label className="text-[9px] font-bold text-slate-400 block mb-0.5">Sub-stage {sIdx + 1}</label>
+                            <input
+                              type="text"
+                              value={sub.name}
+                              placeholder="e.g. UI/UX Wireframes"
+                              onChange={e => updateSubStage(stage.id, sub.id, { name: e.target.value })}
+                              className="w-full border border-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none font-semibold"
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <label className="text-[9px] font-bold text-slate-400 block mb-0.5">Target Date</label>
+                            <input
+                              type="date"
+                              value={sub.targetDate}
+                              onChange={e => updateSubStage(stage.id, sub.id, { targetDate: e.target.value })}
+                              className="w-full border border-slate-200 rounded-lg px-2 py-0.5 text-[11px] focus:outline-none"
+                            />
+                          </div>
+                          <div className="col-span-4">
+                            <label className="text-[9px] font-bold text-slate-400 block mb-0.5">Responsible</label>
+                            <input
+                              type="text"
+                              value={sub.responsible || ""}
+                              placeholder="Name"
+                              onChange={e => updateSubStage(stage.id, sub.id, { responsible: e.target.value })}
+                              className="w-full border border-slate-200 rounded-lg px-2 py-1 text-[11px] focus:outline-none font-medium"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Sub-sub stages */}
+                        <div className="pl-4 border-l border-dashed border-slate-300 space-y-2 pt-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-bold text-slate-500">Sub-sub-stages</span>
+                            <button 
+                              type="button" 
+                              onClick={() => addSubSubStage(stage.id, sub.id)}
+                              className="text-[8px] bg-slate-50 hover:bg-slate-100 border border-slate-200 font-bold px-1.5 py-0.5 rounded"
+                            >
+                              + Add Sub-sub
+                            </button>
+                          </div>
+
+                          {sub.subSubStages?.map((ss, ssIdx) => (
+                            <div key={ss.id} className="flex gap-2 items-center bg-slate-50/50 p-1.5 rounded-lg border border-slate-100 relative pr-6">
+                              <input
+                                type="text"
+                                value={ss.name}
+                                placeholder={`Sub-sub-stage ${ssIdx + 1}`}
+                                onChange={e => updateSubSubStage(stage.id, sub.id, ss.id, { name: e.target.value })}
+                                className="flex-1 border border-slate-200 rounded-lg px-2 py-0.5 text-[10px] focus:outline-none"
+                              />
+                              <input
+                                type="date"
+                                value={ss.targetDate}
+                                onChange={e => updateSubSubStage(stage.id, sub.id, ss.id, { targetDate: e.target.value })}
+                                className="border border-slate-200 rounded-lg px-2 py-0.5 text-[10px] focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={ss.responsible || ""}
+                                placeholder="Responsible"
+                                onChange={e => updateSubSubStage(stage.id, sub.id, ss.id, { responsible: e.target.value })}
+                                className="w-24 border border-slate-200 rounded-lg px-2 py-0.5 text-[10px] focus:outline-none"
+                              />
+                              <button 
+                                type="button" 
+                                onClick={() => removeSubSubStage(stage.id, sub.id, ss.id)}
+                                className="absolute right-1.5 text-rose-500 hover:text-rose-700 font-bold text-[9px]"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-end gap-2 shrink-0">
+          <button type="button" onClick={onClose} className="px-4 py-2 border border-slate-200 hover:bg-slate-100 font-bold rounded-xl transition-colors">
+            Cancel
+          </button>
+          <button type="submit" className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-xl transition-colors">
+            Save Project
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+
+/* ==================== CLIENT PROJECT WORKSPACE MODAL ==================== */
+
+function ClientProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdateProject, onAddTask, clientProjectLogs, onAddClientProjectLog }) {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [logText, setLogText] = useState("");
+  const [promptText, setPromptText] = useState("");
+  const [isDebating, setIsDebating] = useState(false);
+  const [debateHistory, setDebateHistory] = useState(project.aiChats || []);
+  const [newObjective, setNewObjective] = useState(project.objective || "");
+  const [newCompanyDetails, setNewCompanyDetails] = useState(project.companyDetails || "");
+  const [attachmentName, setAttachmentName] = useState("");
+  const [isEditingMeta, setIsEditingMeta] = useState(false);
+
+  const currentStage = project.stages[project.currentStageIdx] || { name: "Planning", status: "current" };
+
+  const projectLogs = (clientProjectLogs || []).filter(l => l.projectId === project.id);
+
+  const handleSaveMeta = () => {
+    onUpdateProject({
+      ...project,
+      objective: newObjective,
+      companyDetails: newCompanyDetails
+    });
+    setIsEditingMeta(false);
+  };
+
+  const handleAddLog = (e) => {
+    e.preventDefault();
+    if (!logText.trim()) return;
+    onAddClientProjectLog(project.id, logText.trim());
+    setLogText("");
+  };
+
+  const handleAddAttachment = (e) => {
+    e.preventDefault();
+    if (!attachmentName.trim()) return;
+    const newAttach = {
+      name: attachmentName.trim(),
+      date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+      size: "Placeholder Mock Size"
+    };
+    const updatedAttach = [...(project.attachments || []), newAttach];
+    onUpdateProject({
+      ...project,
+      attachments: updatedAttach
+    });
+    setAttachmentName("");
+  };
+
+  const triggerAIDebate = () => {
+    if (!promptText.trim()) return;
+    setIsDebating(true);
+    
+    const userPrompt = promptText.trim();
+    
+    // Simulate multi-agent discussion sequence (Claude -> Gemini -> OpenAI)
+    setTimeout(() => {
+      const claudeResp = {
+        agent: "Claude (Anthropic)",
+        avatarBg: "bg-orange-500",
+        text: `Based on architectural integrity and structured logic for the stage "${currentStage.name}", I propose defining a clear separation of concerns. We must catalog the specific bottlenecks here, design an optimized pipeline pattern, and implement automated verification tests. Specifically for: "${userPrompt}".`
+      };
+      setDebateHistory(prev => [...prev, { type: "user", text: userPrompt }, claudeResp]);
+
+      setTimeout(() => {
+        const geminiResp = {
+          agent: "Gemini Pro (Google)",
+          avatarBg: "bg-blue-500",
+          text: `Adding to Claude's points, looking at the wider context of this KPI project and client goals: We can leverage multi-modal context windows here. We should look at past metrics trends to auto-adjust targets, check external factors like holidays, and generate a dynamic execution overview. I suggest adding interactive visual charts for this stage.`
+        };
+        setDebateHistory(prev => [...prev, geminiResp]);
+
+        setTimeout(() => {
+          const openaiResp = {
+            agent: "OpenAI GPT-4o",
+            avatarBg: "bg-emerald-500",
+            text: `Combining the structure from Claude and Gemini, here is the finalized action plan: \n\n1. Define stage schema and validation metrics.\n2. Leverage automated scripting to resolve the bottleneck.\n3. Spin up targeted checklists for assignee.\n\nShall we export this proposal directly to team tasks?`
+          };
+          const finalHistory = [...debateHistory, { type: "user", text: userPrompt }, claudeResp, geminiResp, openaiResp];
+          setDebateHistory(finalHistory);
+          onUpdateProject({
+            ...project,
+            aiChats: finalHistory
+          });
+          setIsDebating(false);
+          setPromptText("");
+        }, 1200);
+      }, 1000);
+    }, 800);
+  };
+
+  const handleExportAITasks = () => {
+    onAddTask({
+      title: `[AI RESOLUTION] Stage: ${currentStage.name}`,
+      assignee: project.leadName || "Unassigned",
+      targetDate: project.targetDate || new Date().toISOString().split('T')[0],
+      kpiId: project.linkedKpiIds?.[0] || null,
+      objective: `Resolving: ${currentStage.name} objective`,
+      outcome: `Implement stage schema validation & automated bottleneck resolution scripts.`,
+      creator: "AI Consultation Chamber"
+    });
+    alert("AI Resolution plan tasks successfully exported and assigned to project lead!");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden border border-orange-100">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500/10 to-teal-500/10 px-6 py-4 flex items-center justify-between border-b border-orange-50 shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-500 text-white uppercase tracking-wider">Project Workspace</span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-orange-100 text-orange-700">Stage: {currentStage.name}</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 mt-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{project.title}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="flex border-b border-slate-100 bg-slate-50/50 shrink-0 px-6">
+          {["overview", "stages", "daily_logs", "ai_chamber"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-3 px-4 font-bold text-xs uppercase tracking-wider border-b-2 -mb-px transition-all ${
+                activeTab === tab 
+                  ? "border-teal-500 text-teal-600 font-extrabold" 
+                  : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {tab === "overview" && "📋 Project Details"}
+              {tab === "stages" && "📈 Objective Stages"}
+              {tab === "daily_logs" && "📰 Daily Log"}
+              {tab === "ai_chamber" && "🤖 AI Debate chamber"}
+            </button>
+          ))}
+        </div>
+
+        {/* Workspace Body */}
+        <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-slate-50/20">
+          
+          {/* TAB: OVERVIEW */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Project Target &amp; Company Metadata</h3>
+                  <button 
+                    onClick={() => { if (isEditingMeta) handleSaveMeta(); else setIsEditingMeta(true); }}
+                    className="text-xs font-semibold text-teal-600 hover:underline"
+                  >
+                    {isEditingMeta ? "Save Changes" : "Edit Metadata"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Objective / Goals</label>
+                    {isEditingMeta ? (
+                      <textarea 
+                        value={newObjective}
+                        onChange={e => setNewObjective(e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded-xl p-2 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100 whitespace-pre-wrap">{project.objective || "No objective set yet. Click Edit Metadata to set one."}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Company / Client Details</label>
+                    {isEditingMeta ? (
+                      <textarea 
+                        value={newCompanyDetails}
+                        onChange={e => setNewCompanyDetails(e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded-xl p-2 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100 whitespace-pre-wrap">{project.companyDetails || "No company details set yet. Click Edit to customize."}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachments Section */}
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Attachments &amp; Files</h3>
+                
+                <form onSubmit={handleAddAttachment} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={attachmentName}
+                    onChange={e => setAttachmentName(e.target.value)}
+                    placeholder="Enter file name (e.g. DesignSpecs.pdf, Mockups.zip)"
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  />
+                  <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-colors shrink-0">
+                    Add File
+                  </button>
+                </form>
+
+                <div className="divide-y divide-slate-100">
+                  {(project.attachments || []).map((attach, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-2 text-xs">
+                      <span className="font-semibold text-slate-700">📂 {attach.name}</span>
+                      <span className="text-[10px] text-slate-400">{attach.date}</span>
+                    </div>
+                  ))}
+                  {(!project.attachments || project.attachments.length === 0) && (
+                    <p className="text-xs text-slate-400 italic text-center py-4">No attachments linked yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: STAGES */}
+          {activeTab === "stages" && (
+            <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-6">
+              <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Hierarchical Milestones &amp; Responsible Owners</h3>
+              <div className="space-y-4">
+                {project.stages.map((stage, idx) => {
+                  const isCurrent = idx === project.currentStageIdx;
+                  const isCompleted = stage.status === "completed";
+                  return (
+                    <div key={stage.id || idx} className={`p-4 rounded-2xl border transition-all flex flex-col gap-3 ${
+                      isCurrent 
+                        ? "bg-orange-50/50 border-orange-200 shadow-sm" 
+                        : isCompleted 
+                          ? "bg-teal-50/20 border-teal-100" 
+                          : "bg-slate-50/20 border-slate-150"
+                    }`}>
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                              isCompleted 
+                                ? "bg-teal-100 text-teal-700" 
+                                : isCurrent 
+                                  ? "bg-orange-100 text-orange-700" 
+                                  : "bg-slate-100 text-slate-500"
+                            }`}>
+                              Stage {idx + 1}: {stage.status} ({stage.type || "sequential"})
+                            </span>
+                            {stage.targetDate && <span className="text-[10px] text-slate-400">Target: {stage.targetDate}</span>}
+                            {stage.responsible && <span className="text-[10px] text-teal-600 font-bold">Resp: {stage.responsible}</span>}
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-800">{stage.name}</h4>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            const nextStatus = isCompleted ? "current" : "completed";
+                            const updated = project.stages.map((s, sIdx) => {
+                              if (sIdx === idx) return { ...s, status: nextStatus };
+                              if (nextStatus === "current" && s.status === "current") {
+                                return { ...s, status: sIdx < idx ? "completed" : "pending" };
+                              }
+                              return s;
+                            });
+                            onUpdateProject({
+                              ...project,
+                              stages: updated,
+                              currentStageIdx: nextStatus === "current" ? idx : project.currentStageIdx
+                            });
+                          }}
+                          className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-colors ${
+                            isCompleted
+                              ? "bg-teal-50 border-teal-200 text-teal-700"
+                              : isCurrent
+                                ? "bg-orange-50 border-orange-200 text-orange-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          {isCompleted ? "Completed ✓" : isCurrent ? "Active Stage" : "Set Active"}
+                        </button>
+                      </div>
+
+                      {/* Sub stages display list */}
+                      {stage.subStages && stage.subStages.length > 0 && (
+                        <div className="pl-6 border-l-2 border-slate-200 space-y-3 mt-1">
+                          {stage.subStages.map((sub, sIdx) => (
+                            <div key={sub.id || sIdx} className="bg-white border border-slate-150 rounded-xl p-3 space-y-2">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-bold text-slate-700">Sub-stage {sIdx + 1}: {sub.name}</span>
+                                <div className="flex gap-2 text-[10px]">
+                                  {sub.targetDate && <span className="text-slate-400">Target: {sub.targetDate}</span>}
+                                  {sub.responsible && <span className="text-teal-600 font-bold">Resp: {sub.responsible}</span>}
+                                </div>
+                              </div>
+
+                              {/* Sub-sub stages display list */}
+                              {sub.subSubStages && sub.subSubStages.length > 0 && (
+                                <div className="pl-4 border-l border-dashed border-slate-250 space-y-1.5 pt-1">
+                                  {sub.subSubStages.map((ss, ssIdx) => (
+                                    <div key={ss.id || ssIdx} className="flex justify-between items-center text-[10px] bg-slate-50/50 px-2.5 py-1.5 rounded border border-slate-100">
+                                      <span className="font-semibold text-slate-600">↳ {ss.name}</span>
+                                      <div className="flex gap-2">
+                                        {ss.targetDate && <span className="text-slate-400">Target: {ss.targetDate}</span>}
+                                        {ss.responsible && <span className="text-teal-600 font-bold">Resp: {ss.responsible}</span>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DAILY LOGS */}
+          {activeTab === "daily_logs" && (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Add Log Update</h3>
+                <form onSubmit={handleAddLog} className="space-y-3">
+                  <textarea
+                    value={logText}
+                    onChange={e => setLogText(e.target.value)}
+                    placeholder="Describe today's achievements, updates or blockers..."
+                    className="w-full text-xs border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    rows={3}
+                  />
+                  <div className="flex justify-end">
+                    <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors">
+                      Post Entry
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Log History</h3>
+                <div className="relative border-l-2 border-slate-100 pl-4 space-y-6">
+                  {projectLogs.map((log, idx) => (
+                    <div key={log.id || idx} className="relative">
+                      <div className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-teal-500 ring-4 ring-white" />
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-semibold text-slate-700">{log.author}</span>
+                          <span className="text-[10px] text-slate-400">{log.date}</span>
+                        </div>
+                        <p className="text-xs text-slate-600">{log.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {projectLogs.length === 0 && (
+                    <p className="text-xs text-slate-400 italic text-center py-4">No daily logs registered yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: AI CHAMBER */}
+          {activeTab === "ai_chamber" && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-teal-500/5 to-purple-500/5 border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>🤖 LLM Collaboration panel</h3>
+                  <p className="text-xs text-slate-500 mt-1">Prompt Claude, Gemini, and OpenAI to debate and synthesize the ideal outcome for your active milestone bottleneck.</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promptText}
+                    onChange={e => setPromptText(e.target.value)}
+                    placeholder="Enter bottleneck or problem (e.g. need to test 100 features in 2 days)"
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    disabled={isDebating}
+                  />
+                  <button
+                    onClick={triggerAIDebate}
+                    disabled={isDebating || !promptText.trim()}
+                    className="bg-gradient-to-r from-teal-500 to-indigo-500 hover:from-teal-600 hover:to-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {isDebating ? "Agents debating..." : "Consult Agents"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Thread */}
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4 flex-1 flex flex-col justify-between">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agents Debate Transcript</h3>
+                  {debateHistory.length > 0 && (
+                    <button
+                      onClick={handleExportAITasks}
+                      className="text-[10px] font-bold bg-teal-50 text-teal-600 border border-teal-100 hover:bg-teal-100 px-3 py-1.5 rounded-xl transition-colors"
+                    >
+                      Export Resolution Plan to Task list
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                  {debateHistory.map((msg, idx) => {
+                    const isUser = msg.type === "user";
+                    return (
+                      <div key={idx} className={`flex gap-3 items-start ${isUser ? "justify-end" : "justify-start"}`}>
+                        {!isUser && (
+                          <div className={`h-8 w-8 rounded-full ${msg.avatarBg} text-white flex items-center justify-center font-black text-xs shrink-0`}>
+                            {msg.agent.charAt(0)}
+                          </div>
+                        )}
+                        <div className={`p-3 rounded-2xl text-xs max-w-[80%] ${
+                          isUser 
+                            ? "bg-teal-500 text-white" 
+                            : "bg-slate-50 border border-slate-100 text-slate-700"
+                        }`}>
+                          {!isUser && <p className="font-bold text-[10px] mb-1 text-slate-400">{msg.agent}</p>}
+                          <p className="whitespace-pre-wrap">{msg.text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {debateHistory.length === 0 && (
+                    <p className="text-xs text-slate-400 italic text-center py-10">Consult the debate panel above to populate agent discussions.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function ActiveProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdateProject, onAddTask }) {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [logText, setLogText] = useState("");
+  const [promptText, setPromptText] = useState("");
+  const [isDebating, setIsDebating] = useState(false);
+  const [debateHistory, setDebateHistory] = useState(project.aiChats || []);
+  const [newObjective, setNewObjective] = useState(project.objective || "");
+  const [newCompanyDetails, setNewCompanyDetails] = useState(project.companyDetails || "");
+  const [attachmentName, setAttachmentName] = useState("");
+  const [isEditingMeta, setIsEditingMeta] = useState(false);
+
+  const currentStage = project.stages[project.currentStageIdx] || { name: "Planning", status: "current" };
+
+  const handleSaveMeta = () => {
+    onUpdateProject({
+      ...project,
+      objective: newObjective,
+      companyDetails: newCompanyDetails
+    });
+    setIsEditingMeta(false);
+  };
+
+  const handleAddLog = (e) => {
+    e.preventDefault();
+    if (!logText.trim()) return;
+    const newLog = {
+      date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      text: logText.trim(),
+      author: "Admin"
+    };
+    const updatedLogs = [newLog, ...(project.dailyLogs || [])];
+    onUpdateProject({
+      ...project,
+      dailyLogs: updatedLogs
+    });
+    setLogText("");
+  };
+
+  const handleAddAttachment = (e) => {
+    e.preventDefault();
+    if (!attachmentName.trim()) return;
+    const newAttach = {
+      name: attachmentName.trim(),
+      date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+      size: "Placeholder Mock Size"
+    };
+    const updatedAttach = [...(project.attachments || []), newAttach];
+    onUpdateProject({
+      ...project,
+      attachments: updatedAttach
+    });
+    setAttachmentName("");
+  };
+
+  const triggerAIDebate = () => {
+    if (!promptText.trim()) return;
+    setIsDebating(true);
+    
+    const userPrompt = promptText.trim();
+    
+    // Simulate multi-agent discussion sequence (Claude -> Gemini -> OpenAI)
+    setTimeout(() => {
+      const claudeResp = {
+        agent: "Claude (Anthropic)",
+        avatarBg: "bg-orange-500",
+        text: `Based on architectural integrity and structured logic for the stage "${currentStage.name}", I propose defining a clear separation of concerns. We must catalog the specific bottlenecks here, design an optimized pipeline pattern, and implement automated verification tests. Specifically for: "${userPrompt}".`
+      };
+      setDebateHistory(prev => [...prev, { type: "user", text: userPrompt }, claudeResp]);
+
+      setTimeout(() => {
+        const geminiResp = {
+          agent: "Gemini Pro (Google)",
+          avatarBg: "bg-blue-500",
+          text: `Adding to Claude's points, looking at the wider context of this KPI project and client goals: We can leverage multi-modal context windows here. We should look at past metrics trends to auto-adjust targets, check external factors like holidays, and generate a dynamic execution overview. I suggest adding interactive visual charts for this stage.`
+        };
+        setDebateHistory(prev => [...prev, geminiResp]);
+
+        setTimeout(() => {
+          const openaiResp = {
+            agent: "OpenAI GPT-4o",
+            avatarBg: "bg-emerald-500",
+            text: `Combining the structure from Claude and Gemini, here is the finalized action plan: \n\n1. Define stage schema and validation metrics.\n2. Leverage automated scripting to resolve the bottleneck.\n3. Spin up targeted checklists for assignee.\n\nShall we export this proposal directly to team tasks?`
+          };
+          const finalHistory = [...debateHistory, { type: "user", text: userPrompt }, claudeResp, geminiResp, openaiResp];
+          setDebateHistory(finalHistory);
+          onUpdateProject({
+            ...project,
+            aiChats: finalHistory
+          });
+          setIsDebating(false);
+          setPromptText("");
+        }, 1200);
+      }, 1000);
+    }, 800);
+  };
+
+  const handleExportAITasks = () => {
+    // Generate tasks out of OpenAI's plan
+    onAddTask({
+      title: `[AI RESOLUTION] Stage: ${currentStage.name}`,
+      assignee: project.leadName || "Unassigned",
+      targetDate: project.targetDate || new Date().toISOString().split('T')[0],
+      kpiId: project.linkedKpiIds?.[0] || null,
+      objective: `Resolving: ${currentStage.name} objective`,
+      outcome: `Implement stage schema validation & automated bottleneck resolution scripts.`,
+      creator: "AI Consultation Chamber"
+    });
+    alert("AI Resolution plan tasks successfully exported and assigned to project lead!");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden border border-orange-100">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500/10 to-teal-500/10 px-6 py-4 flex items-center justify-between border-b border-orange-50 shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-500 text-white uppercase tracking-wider">Project Workspace</span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-orange-100 text-orange-700">Stage: {currentStage.name}</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 mt-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{project.title}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="flex border-b border-slate-100 bg-slate-50/50 shrink-0 px-6">
+          {["overview", "stages", "daily_logs", "ai_chamber"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-3 px-4 font-bold text-xs uppercase tracking-wider border-b-2 -mb-px transition-all ${
+                activeTab === tab 
+                  ? "border-teal-500 text-teal-600 font-extrabold" 
+                  : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {tab === "overview" && "📋 Project Details"}
+              {tab === "stages" && "📈 Objective Stages"}
+              {tab === "daily_logs" && "📰 Daily Log"}
+              {tab === "ai_chamber" && "🤖 AI Debate chamber"}
+            </button>
+          ))}
+        </div>
+
+        {/* Workspace Body */}
+        <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-slate-50/20">
+          
+          {/* TAB: OVERVIEW */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Project Target &amp; Company Metadata</h3>
+                  <button 
+                    onClick={() => { if (isEditingMeta) handleSaveMeta(); else setIsEditingMeta(true); }}
+                    className="text-xs font-semibold text-teal-600 hover:underline"
+                  >
+                    {isEditingMeta ? "Save Changes" : "Edit Metadata"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Objective / Goals</label>
+                    {isEditingMeta ? (
+                      <textarea 
+                        value={newObjective}
+                        onChange={e => setNewObjective(e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded-xl p-2 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100 whitespace-pre-wrap">{project.objective || "No objective set yet. Click Edit Metadata to set one."}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Company / Client Details</label>
+                    {isEditingMeta ? (
+                      <textarea 
+                        value={newCompanyDetails}
+                        onChange={e => setNewCompanyDetails(e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded-xl p-2 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                        rows={3}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-100 whitespace-pre-wrap">{project.companyDetails || "No company details set yet. Click Edit to customize."}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachments Section */}
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Attachments &amp; Files</h3>
+                
+                <form onSubmit={handleAddAttachment} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={attachmentName}
+                    onChange={e => setAttachmentName(e.target.value)}
+                    placeholder="Enter file name (e.g. DesignSpecs.pdf, Mockups.zip)"
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  />
+                  <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-colors shrink-0">
+                    Add File
+                  </button>
+                </form>
+
+                <div className="divide-y divide-slate-100">
+                  {(project.attachments || []).map((attach, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-2 text-xs">
+                      <span className="font-semibold text-slate-700">📂 {attach.name}</span>
+                      <span className="text-[10px] text-slate-400">{attach.date}</span>
+                    </div>
+                  ))}
+                  {(!project.attachments || project.attachments.length === 0) && (
+                    <p className="text-xs text-slate-400 italic text-center py-4">No attachments linked yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: STAGES */}
+          {activeTab === "stages" && (
+            <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-6">
+              <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Stages and Stage Objectives</h3>
+              <div className="space-y-4">
+                {project.stages.map((stage, idx) => {
+                  const isCurrent = idx === project.currentStageIdx;
+                  const isCompleted = stage.status === "completed";
+                  return (
+                    <div key={idx} className={`p-4 rounded-2xl border transition-all flex justify-between items-start ${
+                      isCurrent 
+                        ? "bg-orange-50/50 border-orange-200 shadow-sm" 
+                        : isCompleted 
+                          ? "bg-teal-50/20 border-teal-100" 
+                          : "bg-slate-50/20 border-slate-150"
+                    }`}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            isCompleted 
+                              ? "bg-teal-100 text-teal-700" 
+                              : isCurrent 
+                                ? "bg-orange-100 text-orange-700" 
+                                : "bg-slate-100 text-slate-500"
+                          }`}>
+                            Stage {idx + 1}: {stage.status}
+                          </span>
+                          <span className="text-[10px] text-slate-400">Target: {stage.targetDate}</span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-800">{stage.name}</h4>
+                        <p className="text-xs text-slate-500 mt-1">{stage.objective || "Deliver milestone deliverables according to target checklist specifications."}</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const nextStatus = isCompleted ? "current" : "completed";
+                          const updated = project.stages.map((s, sIdx) => {
+                            if (sIdx === idx) return { ...s, status: nextStatus };
+                            if (nextStatus === "current" && s.status === "current") {
+                              return { ...s, status: sIdx < idx ? "completed" : "pending" };
+                            }
+                            return s;
+                          });
+                          onUpdateProject({
+                            ...project,
+                            stages: updated,
+                            currentStageIdx: nextStatus === "current" ? idx : project.currentStageIdx
+                          });
+                        }}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${
+                          isCompleted
+                            ? "bg-teal-50 border-teal-200 text-teal-700"
+                            : isCurrent
+                              ? "bg-orange-50 border-orange-200 text-orange-700"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {isCompleted ? "Completed ✓" : isCurrent ? "Active Stage" : "Set Active"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DAILY LOGS */}
+          {activeTab === "daily_logs" && (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Add Log Update</h3>
+                <form onSubmit={handleAddLog} className="space-y-3">
+                  <textarea
+                    value={logText}
+                    onChange={e => setLogText(e.target.value)}
+                    placeholder="Describe today's achievements, updates or blockers..."
+                    className="w-full text-xs border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    rows={3}
+                  />
+                  <div className="flex justify-end">
+                    <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors">
+                      Post Entry
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Log History</h3>
+                <div className="relative border-l-2 border-slate-100 pl-4 space-y-6">
+                  {(project.dailyLogs || []).map((log, idx) => (
+                    <div key={idx} className="relative">
+                      <div className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-teal-500 ring-4 ring-white" />
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-semibold text-slate-700">{log.author}</span>
+                          <span className="text-[10px] text-slate-400">{log.date}</span>
+                        </div>
+                        <p className="text-xs text-slate-600">{log.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(!project.dailyLogs || project.dailyLogs.length === 0) && (
+                    <p className="text-xs text-slate-400 italic text-center py-4">No daily logs registered yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: AI CHAMBER */}
+          {activeTab === "ai_chamber" && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-teal-500/5 to-purple-500/5 border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>🤖 LLM Collaboration panel</h3>
+                  <p className="text-xs text-slate-500 mt-1">Prompt Claude, Gemini, and OpenAI to debate and synthesize the ideal outcome for your active milestone bottleneck.</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promptText}
+                    onChange={e => setPromptText(e.target.value)}
+                    placeholder="Enter bottleneck or problem (e.g. need to test 100 features in 2 days)"
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    disabled={isDebating}
+                  />
+                  <button
+                    onClick={triggerAIDebate}
+                    disabled={isDebating || !promptText.trim()}
+                    className="bg-gradient-to-r from-teal-500 to-indigo-500 hover:from-teal-600 hover:to-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {isDebating ? "Agents debating..." : "Consult Agents"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Thread */}
+              <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4 flex-1 flex flex-col justify-between">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Agents Debate Transcript</h3>
+                  {debateHistory.length > 0 && (
+                    <button
+                      onClick={handleExportAITasks}
+                      className="text-[10px] font-bold bg-teal-50 text-teal-600 border border-teal-100 hover:bg-teal-100 px-3 py-1.5 rounded-xl transition-colors"
+                    >
+                      Export Resolution Plan to Task list
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                  {debateHistory.map((msg, idx) => {
+                    const isUser = msg.type === "user";
+                    return (
+                      <div key={idx} className={`flex gap-3 items-start ${isUser ? "justify-end" : "justify-start"}`}>
+                        {!isUser && (
+                          <div className={`h-8 w-8 rounded-full ${msg.avatarBg} text-white flex items-center justify-center font-black text-xs shrink-0`}>
+                            {msg.agent.charAt(0)}
+                          </div>
+                        )}
+                        <div className={`p-3 rounded-2xl text-xs max-w-[80%] ${
+                          isUser 
+                            ? "bg-teal-500 text-white" 
+                            : "bg-slate-50 border border-slate-100 text-slate-700"
+                        }`}>
+                          {!isUser && <p className="font-bold text-[10px] mb-1 text-slate-400">{msg.agent}</p>}
+                          <p className="whitespace-pre-wrap">{msg.text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {debateHistory.length === 0 && (
+                    <p className="text-xs text-slate-400 italic text-center py-10">Consult the debate panel above to populate agent discussions.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+/* ==================== ANIMATED COUNT UP/DOWN COMPONENT ==================== */
+function AnimatedCounter({ value, duration = 400 }) {
+  const [displayValue, setDisplayValue] = React.useState(value);
+
+  React.useEffect(() => {
+    let startTimestamp = null;
+    const startValue = displayValue;
+    const endValue = parseFloat(value) || 0;
+    
+    // If numbers match, skip animating
+    if (startValue === endValue) return;
+
+    let animationFrameId;
+
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const current = startValue + progress * (endValue - startValue);
+      
+      // Keep decimals clean (match precision)
+      if (Number.isInteger(endValue) && Number.isInteger(startValue)) {
+        setDisplayValue(Math.round(current));
+      } else {
+        setDisplayValue(Math.round(current * 100) / 100);
+      }
+
+      if (progress < 1) {
+        animationFrameId = window.requestAnimationFrame(step);
+      } else {
+        setDisplayValue(endValue);
+      }
+    };
+
+    animationFrameId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(animationFrameId);
+  }, [value]);
+
+  return <span>{displayValue}</span>;
+}
+
+/* ==================== DAILY TARGET EVALUATION ENGINE ==================== */
+function getDailyTargetInfo(kpi, selectedDateStr) {
+  const dailyAlloc = kpi.dailyAlloc || {};
+  const dailyActual = kpi.dailyActual || {};
+  const targetDate = new Date(selectedDateStr);
+
+  // 1. Get target for the selected date
+  let dispTarget = dailyAlloc[selectedDateStr] ?? 0;
+  let upcomingInfo = null;
+
+  // If no target is set for selected date, find the next upcoming target date
+  if (dispTarget === 0) {
+    let minDiff = Infinity;
+    let nextDateStr = null;
+    
+    Object.keys(dailyAlloc).forEach(dStr => {
+      const d = new Date(dStr);
+      if (d > targetDate) {
+        const diffTime = d - targetDate;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays < minDiff && dailyAlloc[dStr] > 0) {
+          minDiff = diffDays;
+          nextDateStr = dStr;
+        }
+      }
+    });
+
+    if (nextDateStr) {
+      dispTarget = dailyAlloc[nextDateStr];
+      upcomingInfo = `in ${minDiff} day${minDiff > 1 ? 's' : ''}`;
+    }
+  }
+
+  // 2. Calculate sum of pending targets (previous targets that were not met)
+  let pendingSum = 0;
+  Object.keys(dailyAlloc).forEach(dStr => {
+    const d = new Date(dStr);
+    if (d < targetDate) {
+      const targetVal = dailyAlloc[dStr] || 0;
+      const actualVal = dailyActual[dStr] || 0;
+      if (kpi.direction === "higher") {
+        if (actualVal < targetVal) {
+          pendingSum += (targetVal - actualVal);
+        }
+      } else {
+        if (actualVal > targetVal) {
+          pendingSum += (actualVal - targetVal);
+        }
+      }
+    }
+  });
+
+  return {
+    target: dispTarget,
+    upcomingInfo,
+    pendingSum: pendingSum > 0 ? Math.round(pendingSum * 100) / 100 : 0
+  };
+}
+
+
 /* ==================== ADMIN APP ==================== */
 
 const ADMIN_NAV = [
@@ -4708,6 +6391,7 @@ const ADMIN_NAV = [
   { id: "kpis", label: "KPIs", icon: Target },
   { id: "review", label: "Morning Review", icon: Coffee },
   { id: "okrs", label: "OKRs", icon: TrendingUp },
+  { id: "build_projects", label: "Build Projects", icon: FolderGit2 },
   { id: "projects", label: "Projects", icon: FolderGit2 },
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "settings", label: "Settings", icon: Settings },
@@ -4774,7 +6458,7 @@ function MorningReviewScreen({ teams, kpis }) {
       <div className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden">
         <div className="bg-white border-b border-orange-100 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm z-10">
           <div>
-            <h1 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Poppins, sans-serif" }}>Morning Review</h1>
+            <h1 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Morning Review</h1>
             <p className="text-xs text-slate-500 font-medium">Daily team follow-ups & deliverables</p>
           </div>
         </div>
@@ -4817,7 +6501,7 @@ function MorningReviewScreen({ teams, kpis }) {
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Poppins, sans-serif" }}>Review: {selectedMember.name}</h1>
+          <h1 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Review: {selectedMember.name}</h1>
           <p className="text-xs text-slate-500 font-medium">{selectedMember.teamName}</p>
         </div>
       </div>
@@ -4940,7 +6624,17 @@ function MorningReviewScreen({ teams, kpis }) {
 }
 
 
-function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction }) {
+function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog }) {
+  const okrsData = [
+    { id: 1, objective: "Grow digital presence this quarter", level: "Company", owner: "Digital Marketing", keyResults: [
+      { id: 1, name: "Grow website traffic to 50,000 sessions/month", linkedKpiId: 1 },
+      { id: 2, name: "Lift social engagement rate to 4.5%", linkedKpiId: 2 },
+    ]},
+    { id: 2, objective: "Convert more enquiries into qualified leads", level: "Team", owner: "Enquiry Management", keyResults: [
+      { id: 3, name: "Cut enquiry response time to 4 hrs", linkedKpiId: 6 },
+      { id: 4, name: "Raise enquiry-to-lead conversion to 30%", linkedKpiId: 7 },
+    ]},
+  ];
   const [activeMemberKpis, setActiveMemberKpis] = useState(null);
   const [activeTeamId, setActiveTeamId] = useState(1);
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
@@ -4963,6 +6657,10 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
     const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
     return `${m} ${yr}`;
   });
+
+  // Daily vs Monthly view toggle for dashboard
+  const [dashboardMode, setDashboardMode] = useState("daily"); // "daily" or "monthly"
+  const [dashboardDate, setDashboardDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const handleDownloadTemplate = () => {
     const headers = [
@@ -5311,8 +7009,14 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
   const [teamFilter, setTeamFilter] = useState("All teams");
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [addVerticalOpen, setAddVerticalOpen] = useState(false);
+  const [credEditId, setCredEditId] = useState(null);
+  const [credEditData, setCredEditData] = useState({ loginId: "", password: "" });
+  const [selectedActiveProject, setSelectedActiveProject] = useState(null);
+  const [selectedClientProject, setSelectedClientProject] = useState(null);
+  const [addClientProjectOpen, setAddClientProjectOpen] = useState(false);
+  const [editingClientProject, setEditingClientProject] = useState(null);
 
-  const sidebarMinimized = !!activeMemberKpis || (screen === "teams" && activeMemberFilter !== null);
+  const sidebarMinimized = screen === "teams" && activeMemberFilter !== null;
 
   const teamOptions = ["All teams", ...new Set(kpis.map((k) => k.team))];
   const filteredKpis = teamFilter === "All teams" ? kpis : kpis.filter((k) => k.team === teamFilter);
@@ -5355,14 +7059,14 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
       <aside className={`bg-white border-r border-orange-100 flex flex-col h-full transition-all duration-300 shrink-0
         fixed inset-y-0 left-0 z-40 md:relative md:translate-x-0 shadow-lg md:shadow-none
         ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-        ${sidebarMinimized ? "md:w-12" : "md:w-44"}
+        ${sidebarMinimized ? "md:w-12" : "md:w-48"}
       `}>
         <div className="h-16 flex items-center justify-between px-4 border-b border-orange-100">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-300 to-teal-300 flex items-center justify-center shrink-0">
-              <span className="text-white font-semibold text-sm" style={{ fontFamily: "Poppins, sans-serif" }}>P</span>
+              <span className="text-white font-semibold text-sm" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>P</span>
             </div>
-            {!sidebarMinimized && <span className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>PulseKPI</span>}
+            {!sidebarMinimized && <span className="font-semibold text-slate-900 whitespace-nowrap" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>PulseKPI</span>}
           </div>
           {mobileMenuOpen && (
             <button onClick={() => setMobileMenuOpen(false)} className="text-slate-400 md:hidden">
@@ -5386,11 +7090,11 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                 className={`w-full flex items-center rounded-xl text-sm font-medium transition-colors ${
                   sidebarMinimized ? "justify-center p-2" : "gap-2.5 px-3 py-2"
                 } ${
-                  isActive ? "bg-orange-100 text-orange-700" : "text-slate-500 hover:bg-orange-50"
+                  isActive ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {!sidebarMinimized && <span>{item.label}</span>}
+                {!sidebarMinimized && <span className="whitespace-nowrap">{item.label}</span>}
               </button>
             );
           })}
@@ -5415,9 +7119,43 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             >
               <Menu className="h-5 w-5" />
             </button>
-            <h1 className="text-base sm:text-lg font-semibold text-slate-900 capitalize" style={{ fontFamily: "Poppins, sans-serif" }}>{screen}</h1>
+            <h1 className="text-base sm:text-lg font-semibold text-slate-900 capitalize" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{screen}</h1>
           </div>
           <div className="flex items-center gap-3">
+            {/* Individual Employee Screen Preview Switcher */}
+            <div className="relative">
+              <select
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "admin") {
+                    // Set back to admin view
+                    setActiveMemberFilter(null);
+                    setActiveMemberKpis(null);
+                  } else {
+                    const memberObj = teams.flatMap(t => t.members).find(m => m.name === val);
+                    if (memberObj) {
+                      setActiveMemberFilter(memberObj);
+                      // Pull employee's individual KPIs
+                      const employeeKpis = kpis.filter(k => k.owner === val);
+                      setActiveMemberKpis(employeeKpis);
+                    }
+                  }
+                }}
+                value={activeMemberFilter ? activeMemberFilter.name : "admin"}
+                className="appearance-none bg-orange-50 border border-orange-100 hover:border-orange-200 rounded-full pl-4 pr-9 py-1.5 text-xs text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer"
+              >
+                <option value="admin">💻 Admin (Desktop View)</option>
+                {teams.map(t => 
+                  t.members.map(m => (
+                    <option key={m.id || m.name} value={m.name}>
+                      👤 {m.name} ({t.name})
+                    </option>
+                  ))
+                )}
+              </select>
+              <ChevronDown className="h-3 w-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
             <div className="relative hidden lg:block">
               <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input placeholder="Search..." className="pl-9 pr-4 py-2 rounded-full bg-orange-50 border border-orange-100 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-teal-300" />
@@ -5428,99 +7166,361 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
         <div className="px-4 sm:px-8 py-6">
           {screen === "dashboard" && (
             <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-800">Overview</h2>
-                <div className="relative">
-                  <select 
-                    value={dashboardMonth} 
-                    onChange={(e) => setDashboardMonth(e.target.value)} 
-                    className="appearance-none bg-white border border-orange-100 rounded-full pl-4 pr-9 py-2 text-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-200"
-                  >
-                    <option value="All Year">All Year</option>
-                    {MONTHS_LIST.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-orange-100">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-slate-800" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Overview</h2>
+                  
+                  {/* Daily vs Monthly View Toggle */}
+                  <div className="bg-slate-100/80 p-0.5 rounded-xl flex items-center shadow-inner">
+                    <button
+                      onClick={() => setDashboardMode("daily")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        dashboardMode === "daily"
+                          ? "bg-teal-600 text-white shadow-sm"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Daily
+                    </button>
+                    <button
+                      onClick={() => setDashboardMode("monthly")}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        dashboardMode === "monthly"
+                          ? "bg-teal-600 text-white shadow-sm"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dynamic Controls based on toggle mode */}
+                <div className="flex items-center gap-2">
+                  {dashboardMode === "daily" ? (
+                    <div className="flex items-center gap-1.5 bg-white border border-orange-100 rounded-xl p-1.5 shadow-xs">
+                      {/* Left arrow navigate date */}
+                      <button
+                        onClick={() => {
+                          const curr = new Date(dashboardDate);
+                          curr.setDate(curr.getDate() - 1);
+                          setDashboardDate(curr.toISOString().split('T')[0]);
+                        }}
+                        className="p-1 rounded-lg hover:bg-orange-50 text-slate-600 transition-colors"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      
+                      {/* Interactive Custom Styled Calendar Date Picker */}
+                      <div className="relative flex items-center gap-1.5 px-2.5 py-1 hover:bg-orange-50 rounded-lg cursor-pointer group">
+                        <Calendar className="h-4 w-4 text-teal-600" />
+                        <input
+                          type="date"
+                          value={dashboardDate}
+                          onChange={(e) => setDashboardDate(e.target.value)}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                        />
+                        <span className="text-xs font-bold text-slate-700 min-w-[85px] text-center select-none group-hover:text-teal-700 transition-colors">
+                          {new Date(dashboardDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+
+                      {/* Right arrow navigate date */}
+                      <button
+                        onClick={() => {
+                          const curr = new Date(dashboardDate);
+                          curr.setDate(curr.getDate() + 1);
+                          setDashboardDate(curr.toISOString().split('T')[0]);
+                        }}
+                        className="p-1 rounded-lg hover:bg-orange-50 text-slate-600 transition-colors"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select 
+                        value={dashboardMonth} 
+                        onChange={(e) => setDashboardMonth(e.target.value)} 
+                        className="appearance-none bg-white border border-orange-100 rounded-full pl-4 pr-9 py-1.5 text-xs text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-teal-200 cursor-pointer shadow-xs"
+                      >
+                        <option value="All Year">All Year</option>
+                        {MONTHS_LIST.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <StatCard icon={Star} iconBg="bg-orange-100" iconColor="text-orange-500" value={kpis.length} label="Active KPIs" />
-                <StatCard icon={Mountain} iconBg="bg-teal-100" iconColor="text-teal-500" value={onTrackCount} label="On track" />
-                <StatCard icon={UserCheck} iconBg="bg-rose-100" iconColor="text-rose-500" value={teams.reduce((a, t) => a + t.members.length, 0)} label="Employees tracked" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {kpis.map((kpi) => {
-                  let dispTarget = kpi.target;
-                  let dispActual = getLatest(kpi);
-                  let dispStatus = getStatus(kpi);
-                  let dispLabel = "Target";
+              {(() => {
+                // Determine active member context
+                const activeName = activeMemberFilter ? activeMemberFilter.name : null;
 
-                  if (dashboardMonth !== "All Year") {
-                    const mKey = dashboardMonth;
-                    dispTarget = kpi.monthlyAlloc?.[mKey] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
-                    dispActual = kpi.monthlyActual?.[mKey] || 0;
-                    
-                    if (kpi.direction === "higher") {
-                      const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
-                      if (ratio >= 1) dispStatus = "on-track";
-                      else if (ratio >= 0.92) dispStatus = "at-risk";
-                      else dispStatus = "off-track";
-                    } else {
-                      if (dispActual <= dispTarget) dispStatus = "on-track";
-                      else if (dispActual <= dispTarget * 1.2) dispStatus = "at-risk";
-                      else dispStatus = "off-track";
+                // Resolve members list this user manages
+                const subMembers = [];
+                if (activeName) {
+                  // Find all members who report directly or indirectly to the active user
+                  const traverseReports = (managerName) => {
+                    teams.forEach(t => {
+                      t.members.forEach(m => {
+                        if (m.reportingManager === managerName && !subMembers.some(sm => sm.name === m.name)) {
+                          subMembers.push(m);
+                          traverseReports(m.name);
+                        }
+                      });
+                    });
+                  };
+                  traverseReports(activeName);
+                }
+
+                // Filter KPIs relative to selection
+                const displayKpis = activeName
+                  ? kpis.filter(k => 
+                      k.owner === activeName || 
+                      k.driveBy === activeName || 
+                      k.monitorBy === activeName ||
+                      subMembers.some(sm => k.owner === sm.name || k.driveBy === sm.name || k.monitorBy === sm.name)
+                    )
+                  : kpis;
+
+                const activeCount = displayKpis.length;
+
+                // Calculate daily / monthly on track count dynamically
+                const trackCount = displayKpis.filter(k => {
+                  let tVal = k.target;
+                  let aVal = getLatest(k);
+                  if (dashboardMode === "daily") {
+                    const info = getDailyTargetInfo(k, dashboardDate);
+                    tVal = info.target;
+                    aVal = k.dailyActual?.[dashboardDate] || 0;
+                  } else {
+                    if (dashboardMonth !== "All Year") {
+                      tVal = k.monthlyAlloc?.[dashboardMonth] ?? Math.round(((k.target || 0) / 12) * 100) / 100;
+                      aVal = k.monthlyActual?.[dashboardMonth] || 0;
                     }
-                    dispLabel = `${dashboardMonth.split(' ')[0]} Target`;
                   }
+                  
+                  if (k.direction === "higher") {
+                    const ratio = tVal === 0 ? 1 : aVal / tVal;
+                    return ratio >= 1;
+                  } else {
+                    return aVal <= tVal;
+                  }
+                }).length;
 
-                  return (
-                    <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all">
-                      <div className="flex items-start justify-between mb-0.5">
-                        <p className="text-sm font-medium text-slate-600">{kpi.name}</p>
-                        <StatusBadge status={dispStatus} />
-                      </div>
-                      <p className="text-xl font-bold text-slate-900 truncate flex items-baseline" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
-                        {dispActual}
-                        <span className="text-slate-400 font-medium mx-1 text-sm">/</span>
-                              <span className="text-lg">{dispTarget}</span>
-                        {dispTarget}
-                        <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">{dispLabel} · {kpi.team}</p>
-                        {(() => {
-                          const childKpi = kpis.find(k => String(k.id) === String(kpi.reportConfig?.followUpKpiId));
-                          const parentKpi = kpis.find(k => String(k.reportConfig?.followUpKpiId) === String(kpi.id));
+                // Employees count
+                let employeeCount = 0;
+                if (activeName) {
+                  // Count the user themselves + anyone reporting to them
+                  employeeCount = 1 + subMembers.length;
+                } else {
+                  employeeCount = teams.reduce((acc, t) => acc + t.members.length, 0);
+                }
+
+                return (
+                  <>
+                    <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                      <StatCard icon={Star} iconBg="bg-orange-100" iconColor="text-orange-500" value={activeCount} label="Active KPIs" />
+                      <StatCard icon={Mountain} iconBg="bg-teal-100" iconColor="text-teal-500" value={trackCount} label="On track" />
+                      <StatCard icon={UserCheck} iconBg="bg-rose-100" iconColor="text-rose-500" value={employeeCount} label="Employees tracked" />
+                    </div>
+                    <div className="space-y-8">
+                      {(() => {
+                        if (!activeName) {
+                          // Standard Grid when no member is selected
                           return (
-                            <>
-                              {parentKpi && (
-                                <div className="whitespace-nowrap flex items-center gap-1 w-full mt-2">
-                                  <span className="font-bold text-amber-700 bg-amber-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-amber-100">
-                                    <GitBranch className="w-2.5 h-2.5"/> Parent KPI
-                                  </span>
-                                  <span className="truncate text-amber-900 font-semibold max-w-[150px] text-[10px]">{parentKpi.name}</span>
-                                </div>
-                              )}
-                              {childKpi && (
-                                <div className="whitespace-nowrap flex items-center gap-1 w-full mt-2">
-                                  <span className="font-bold text-indigo-700 bg-indigo-50 px-1 rounded flex items-center gap-0.5 text-[9px] border border-indigo-100">
-                                    <GitBranch className="w-2.5 h-2.5"/> Child KPI
-                                  </span>
-                                  <span className="truncate text-indigo-900 font-semibold max-w-[150px] text-[10px]">{childKpi.name}</span>
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {displayKpis.map((kpi) => {
+                                const isDo = false;
+                                const isDrive = false;
+                                const isMonitor = false;
+                                
+                                let dispTarget = kpi.target;
+                                let dispActual = getLatest(kpi);
+                                let dispStatus = getStatus(kpi);
+                                let dispLabel = "Target";
+                                let upcomingText = "";
+                                let pendingSumVal = 0;
 
-                    </button>
-                  );
-                })}
-              </div>
+                                if (dashboardMode === "daily") {
+                                  const targetDateStr = dashboardDate;
+                                  const info = getDailyTargetInfo(kpi, targetDateStr);
+                                  dispTarget = info.target;
+                                  dispActual = kpi.dailyActual?.[targetDateStr] || 0;
+                                  pendingSumVal = info.pendingSum;
+                                  
+                                  if (kpi.direction === "higher") {
+                                    const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
+                                    dispStatus = ratio >= 1 ? "on-track" : (ratio >= 0.92 ? "at-risk" : "off-track");
+                                  } else {
+                                    dispStatus = dispActual <= dispTarget ? "on-track" : (dispActual <= dispTarget * 1.2 ? "at-risk" : "off-track");
+                                  }
+                                  
+                                  if (info.upcomingInfo) {
+                                    dispLabel = "Upcoming Target";
+                                    upcomingText = ` ${info.upcomingInfo}`;
+                                  } else {
+                                    dispLabel = "Daily Target";
+                                  }
+                                } else {
+                                  if (dashboardMonth !== "All Year") {
+                                    const mKey = dashboardMonth;
+                                    dispTarget = kpi.monthlyAlloc?.[mKey] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
+                                    dispActual = kpi.monthlyActual?.[mKey] || 0;
+                                    if (kpi.direction === "higher") {
+                                      const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
+                                      dispStatus = ratio >= 1 ? "on-track" : (ratio >= 0.92 ? "at-risk" : "off-track");
+                                    } else {
+                                      dispStatus = dispActual <= dispTarget ? "on-track" : (dispActual <= dispTarget * 1.2 ? "at-risk" : "off-track");
+                                    }
+                                    dispLabel = `${dashboardMonth.split(' ')[0]} Target`;
+                                  }
+                                }
+
+                                return (
+                                  <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all relative overflow-hidden">
+                                    <div className="flex items-start justify-between mb-0.5">
+                                      <div className="flex-1 min-w-0 pr-2">
+                                        <p className="text-sm font-medium text-slate-600 truncate">{kpi.name}</p>
+                                      </div>
+                                      <StatusBadge status={dispStatus} />
+                                    </div>
+                                    <p className="text-xl font-bold text-slate-900 truncate flex items-baseline" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
+                                      <AnimatedCounter value={dispActual} />
+                                      <span className="text-slate-400 font-medium mx-1 text-sm">/</span>
+                                      <span className="text-lg"><AnimatedCounter value={dispTarget} /></span>
+                                      {upcomingText && <span className="text-[10px] text-slate-400 font-semibold ml-1">{upcomingText}</span>}
+                                      {pendingSumVal > 0 && (
+                                        <span className="text-[10px] text-rose-600 font-bold ml-2 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 animate-pulse">
+                                          ({pendingSumVal} pending)
+                                        </span>
+                                      )}
+                                      <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-1">{dispLabel} · {kpi.team}</p>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+
+                        // Categorize KPIs for the active member
+                        const doKpis = displayKpis.filter(k => k.owner === activeName);
+                        const driveKpis = displayKpis.filter(k => k.driveBy === activeName);
+                        const monitorKpis = displayKpis.filter(k => k.monitorBy === activeName);
+
+                        const renderGroup = (title, kpiList, badgeColor, roleLabel) => {
+                          if (kpiList.length === 0) return null;
+                          return (
+                            <div className="space-y-3">
+                              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 pl-1">
+                                {title} ({kpiList.length})
+                              </h3>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {kpiList.map(kpi => {
+                                  let dispTarget = kpi.target;
+                                  let dispActual = getLatest(kpi);
+                                  let dispStatus = getStatus(kpi);
+                                  let dispLabel = "Target";
+                                  let upcomingText = "";
+                                  let pendingSumVal = 0;
+
+                                  if (dashboardMode === "daily") {
+                                    const targetDateStr = dashboardDate;
+                                    const info = getDailyTargetInfo(kpi, targetDateStr);
+                                    dispTarget = info.target;
+                                    dispActual = kpi.dailyActual?.[targetDateStr] || 0;
+                                    pendingSumVal = info.pendingSum;
+                                    
+                                    if (kpi.direction === "higher") {
+                                      const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
+                                      dispStatus = ratio >= 1 ? "on-track" : (ratio >= 0.92 ? "at-risk" : "off-track");
+                                    } else {
+                                      dispStatus = dispActual <= dispTarget ? "on-track" : (dispActual <= dispTarget * 1.2 ? "at-risk" : "off-track");
+                                    }
+                                    
+                                    if (info.upcomingInfo) {
+                                      dispLabel = "Upcoming Target";
+                                      upcomingText = ` ${info.upcomingInfo}`;
+                                    } else {
+                                      dispLabel = "Daily Target";
+                                    }
+                                  } else {
+                                    if (dashboardMonth !== "All Year") {
+                                      const mKey = dashboardMonth;
+                                      dispTarget = kpi.monthlyAlloc?.[mKey] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
+                                      dispActual = kpi.monthlyActual?.[mKey] || 0;
+                                      if (kpi.direction === "higher") {
+                                        const ratio = dispTarget === 0 ? 1 : dispActual / dispTarget;
+                                        dispStatus = ratio >= 1 ? "on-track" : (ratio >= 0.92 ? "at-risk" : "off-track");
+                                      } else {
+                                        dispStatus = dispActual <= dispTarget ? "on-track" : (dispActual <= dispTarget * 1.2 ? "at-risk" : "off-track");
+                                      }
+                                      dispLabel = `${dashboardMonth.split(' ')[0]} Target`;
+                                    }
+                                  }
+
+                                  return (
+                                    <button key={kpi.id} onClick={() => setDetailId(kpi.id)} className="text-left bg-white border border-orange-100 rounded-xl p-3 hover:border-orange-200 hover:shadow-sm transition-all relative overflow-hidden">
+                                      <div className="flex items-start justify-between mb-0.5">
+                                        <div className="flex-1 min-w-0 pr-2">
+                                          <p className="text-sm font-medium text-slate-600 truncate">{kpi.name}</p>
+                                          <span className={`inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${badgeColor}`}>
+                                            {roleLabel}
+                                          </span>
+                                        </div>
+                                        <StatusBadge status={dispStatus} />
+                                      </div>
+                                      <p className="text-xl font-bold text-slate-900 truncate flex items-baseline" title={`${dispActual} / ${dispTarget}${kpi.unit}`}>
+                                        <AnimatedCounter value={dispActual} />
+                                        <span className="text-slate-400 font-medium mx-1 text-sm">/</span>
+                                        <span className="text-lg"><AnimatedCounter value={dispTarget} /></span>
+                                        {upcomingText && <span className="text-[10px] text-slate-400 font-semibold ml-1">{upcomingText}</span>}
+                                        {pendingSumVal > 0 && (
+                                          <span className="text-[10px] text-rose-600 font-bold ml-2 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 animate-pulse">
+                                            ({pendingSumVal} pending)
+                                          </span>
+                                        )}
+                                        <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
+                                      </p>
+                                      <p className="text-xs text-slate-400 mt-1">{dispLabel} · {kpi.team}</p>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        };
+
+                        return (
+                          <>
+                            {renderGroup("DO (Owner)", doKpis, "bg-teal-50 text-teal-700 border-teal-150", "DO")}
+                            {renderGroup(`DRIVE (${activeName})`, driveKpis, "bg-indigo-50 text-indigo-700 border-indigo-150", "DRIVE")}
+                            {renderGroup(`MONITOR (${activeName})`, monitorKpis, "bg-amber-50 text-amber-700 border-amber-150", "MONITOR")}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </>
+                );
+              })()}
             </>
           )}
 
-          {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={activeMemberFilter ? activeMemberFilter.name : "Krithika"} onCompleteAction={handleCompleteAction} teams={teams} /> )}
+          {screen === "action" && ( 
+            <ActionScreen 
+              kpis={kpis} 
+              projects={projects} 
+              user={activeMemberFilter ? activeMemberFilter.name : "Krithika"} 
+              onCompleteAction={handleCompleteAction} 
+              teams={teams} 
+              clientProjects={clientProjects}
+              onUpdateClientProjectStage={onUpdateClientProjectStage}
+            /> 
+          )}
 
           {screen === "kpis" && (
             <>
@@ -5923,7 +7923,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                   <div className="flex flex-col items-center mb-8">
                     <div className="bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-2xl px-8 py-4 shadow-md text-center">
                       <p className="text-[10px] uppercase tracking-wider text-teal-100 font-bold">Company</p>
-                      <h3 className="text-lg font-bold" style={{ fontFamily: "Poppins, sans-serif" }}>BULL Machines</h3>
+                      <h3 className="text-lg font-bold" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>BULL Machines</h3>
                     </div>
                     <div className="w-0.5 h-8 bg-slate-300"></div>
                   </div>
@@ -5997,7 +7997,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                     <span className="text-xs font-medium bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">{okr.level}</span>
                     <span className="text-xs text-slate-400">{okr.owner}</span>
                   </div>
-                  <h3 className="font-semibold text-slate-900 mb-4" style={{ fontFamily: "Poppins, sans-serif" }}>{okr.objective}</h3>
+                  <h3 className="font-semibold text-slate-900 mb-4" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{okr.objective}</h3>
                   <div className="space-y-3">
                     {okr.keyResults.map((kr) => {
                       const kpi = kpis.find((k) => k.id === kr.linkedKpiId);
@@ -6026,7 +8026,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {campaignsData.map((c) => (
                 <div key={c.id} className="bg-white border border-orange-100 rounded-2xl p-5">
-                  <h3 className="font-semibold text-slate-900 mb-1" style={{ fontFamily: "Poppins, sans-serif" }}>{c.name}</h3>
+                  <h3 className="font-semibold text-slate-900 mb-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{c.name}</h3>
                   <p className="text-xs text-slate-400 mb-3">{c.start} – {c.end} · {c.owner}</p>
                   <div className="space-y-2">
                     {c.linkedKpiIds.map((id) => {
@@ -6044,6 +8044,140 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
               ))}
             </div>
           )}
+
+          {screen === "build_projects" && (() => {
+            return (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Build Projects Workspace</h2>
+                    <p className="text-xs text-slate-400">Manage build projects, outline nested milestones, log daily progress feed, and run collaborative AI debates.</p>
+                  </div>
+                  <button onClick={() => setAddClientProjectOpen(true)} className="flex items-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium px-4 py-2 rounded-full transition-colors shadow-sm">
+                    <Plus className="h-4 w-4" /> New Build Project
+                  </button>
+                </div>
+
+                {/* Masonry or Uneven Column Align Layout */}
+                <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6 [column-fill:_balance] break-inside-avoid">
+                  {clientProjects.map((proj) => {
+                    const totalStages = proj.stages?.length || 0;
+                    const completedStages = proj.stages?.filter(s => s.status === "completed").length || 0;
+                    const percentComplete = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
+                    return (
+                      <div key={proj.id} className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 break-inside-avoid mb-6 inline-block w-full">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <h3 
+                                onClick={() => setSelectedClientProject(proj)} 
+                                className="text-base font-bold text-slate-900 hover:text-teal-650 hover:underline cursor-pointer truncate"
+                              >
+                                {proj.title}
+                              </h3>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100 shrink-0">
+                                {percentComplete}% Done
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => setEditingClientProject(proj)}
+                                className="text-slate-400 hover:text-teal-600 p-1.5 rounded-lg border border-slate-100 hover:bg-teal-50 transition-all"
+                                title="Edit Project Details"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => onDeleteClientProject(proj.id)}
+                                className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition-all"
+                                title="Delete Project"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-slate-500 leading-relaxed">{proj.description}</p>
+
+                          {proj.objective && (
+                            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                              <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mb-0.5">Objective Outcomes</span>
+                              <p className="text-[10px] text-slate-600 font-medium leading-normal">{proj.objective}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Stages Progression List Preview */}
+                        <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Milestone Stages</span>
+                          <div className="space-y-2">
+                            {proj.stages.map((stg, sIdx) => {
+                              const isActive = sIdx === proj.currentStageIdx;
+                              const isComp = stg.status === "completed";
+                              return (
+                                <div key={stg.id || sIdx} className="bg-slate-50/50 p-2 rounded-xl border border-slate-100 space-y-1">
+                                  <div className="flex flex-col gap-1 text-[11px]">
+                                    <div className="flex items-center justify-between gap-1">
+                                      {/* Stage Name */}
+                                      <span className={`font-bold truncate ${
+                                        isActive 
+                                          ? "text-orange-600 font-extrabold" 
+                                          : isComp 
+                                            ? "text-teal-650" 
+                                            : "text-slate-650"
+                                      }`}>
+                                        {isComp ? "✓" : isActive ? "●" : "○"} {stg.name}
+                                      </span>
+                                      
+                                      <span className={`font-bold px-1 py-0.2 rounded uppercase tracking-wider text-[8px] shrink-0 ${
+                                        isComp 
+                                          ? "bg-teal-50 text-teal-700" 
+                                          : isActive 
+                                            ? "bg-orange-50 text-orange-700" 
+                                            : "bg-slate-100 text-slate-500"
+                                      }`}>
+                                        {stg.status}
+                                      </span>
+                                    </div>
+
+                                    {/* Inline Details: Responsible & Target Date */}
+                                    {(stg.responsible || stg.targetDate) && (
+                                      <div className="flex flex-wrap items-center justify-between text-[9px] text-slate-400 font-medium pt-0.5 border-t border-slate-100/50">
+                                        {stg.responsible && <span>R: <strong className="text-slate-600 font-semibold">{stg.responsible}</strong></span>}
+                                        {stg.targetDate && <span className="font-mono">{stg.targetDate}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Sub-stages list inside card preview */}
+                                  {stg.subStages && stg.subStages.length > 0 && (
+                                    <div className="pl-2 border-l border-slate-200 space-y-0.5 mt-1 text-[9px] text-slate-500">
+                                      {stg.subStages.map((sub, subIdx) => (
+                                        <div key={sub.id || subIdx} className="flex justify-between items-center">
+                                          <span className="truncate max-w-[130px]">↳ {sub.name}</span>
+                                          {sub.responsible && <span className="text-[7.5px] bg-slate-100 text-slate-600 px-1 rounded truncate max-w-[50px]">{sub.responsible}</span>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                  {clientProjects.length === 0 && (
+                    <div className="col-span-full bg-white border border-slate-150 rounded-2xl p-12 text-center text-slate-400 italic">
+                      No Build Projects found. Click "New Build Project" to get started.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {screen === "projects" && (() => {
             const openProjects = projects.filter(p => p.status !== "bin" && p.stages[p.currentStageIdx]?.status !== "completed");
@@ -6094,7 +8228,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                         <div>
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-base font-bold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{proj.title}</h3>
+                              <h3 className="text-base font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{proj.title}</h3>
                               {projectTab === "bin" && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100">
                                   Waiting for admin approval to remove
@@ -6276,13 +8410,23 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                   >
                     ⚙️ Org & Utilities
                   </button>
+                  <button
+                    onClick={() => setSettingsTab("credentials")}
+                    className={`px-5 py-2.5 font-bold text-xs sm:text-sm transition-all border-b-2 -mb-px flex items-center gap-1.5 ${
+                      settingsTab === "credentials"
+                        ? "border-teal-500 text-teal-600 font-extrabold"
+                        : "border-transparent text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    🔐 User Credentials
+                  </button>
                 </div>
 
                 {settingsTab === "utilities" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Organization info card */}
                 <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm">
-                  <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Poppins, sans-serif" }}>Organization</h3>
+                  <h3 className="font-semibold text-slate-900 mb-3" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Organization</h3>
                   <div className="space-y-3 text-sm">
                     <div><p className="text-slate-400 text-xs mb-1">Name</p><p className="text-slate-800 font-medium">BULL Machines</p></div>
                     <div><p className="text-slate-400 text-xs mb-1">Industry</p><p className="text-slate-800 font-medium">Manufacturing</p></div>
@@ -6292,7 +8436,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
 
                 {/* Database utilities upload/download card */}
                 <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
-                  <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>Database Utilities</h3>
+                  <h3 className="font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Database Utilities</h3>
                   
                   <div className="space-y-3">
                     <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">KPI Excel Import / Export</h4>
@@ -6369,7 +8513,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                     <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Teams List</h3>
+                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Teams List</h3>
                           <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">View and manage organizational team groups.</p>
                         </div>
                         <button 
@@ -6424,7 +8568,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                     <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
                         <div>
-                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>Players & Hierarchy Tree</h3>
+                          <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Players & Hierarchy Tree</h3>
                           <p className="text-xs text-slate-400 mt-0.5 font-medium text-slate-500">Explore team rosters grouped by department, with subordinates indented to represent reporting lines.</p>
                         </div>
                          <div className="flex items-center gap-2">
@@ -6603,6 +8747,11 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                                           Reports to: <span className="font-semibold text-slate-700">{member.reportingManager}</span>
                                         </span>
                                       )}
+                                      {member.loginId && (
+                                        <span className="text-[10px] text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded font-mono" title="Login ID">
+                                          🔑 {member.loginId}
+                                        </span>
+                                      )}
                                       {member.description && (
                                         <span className="text-[10px] text-slate-400 italic max-w-[180px] truncate" title={member.description}>
                                           ({member.description})
@@ -6661,7 +8810,7 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                   <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Poppins, sans-serif" }}>KPI Grid Spreadsheet</h3>
+                    <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>KPI Grid Spreadsheet</h3>
                     <p className="text-xs text-slate-400 mt-0.5">Live spreadsheet of your KPIs. Enable edit and double-click cells to edit or add content.</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -6863,6 +9012,108 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
                 </div>
               </div>
             )}
+
+                {settingsTab === "credentials" && (
+                  <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>🔐 User Credentials</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">Manage login IDs and passwords for each team member. These are used to log in to the Employee view.</p>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Name</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Team</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Employee ID</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Login ID</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Password</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {allPlayers.map(player => {
+                            const isEditingCred = credEditId === player.id;
+                            return (
+                              <tr key={player.id} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="px-4 py-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-7 w-7 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-[10px] shrink-0">
+                                      {player.name.charAt(0)}
+                                    </div>
+                                    <span className="font-semibold text-slate-800 text-xs">{player.name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-2.5 text-xs text-slate-500">{player.teamName}</td>
+                                <td className="px-4 py-2.5 text-xs font-mono text-slate-500">{player.employeeId || "—"}</td>
+                                <td className="px-4 py-2.5">
+                                  {isEditingCred ? (
+                                    <input
+                                      type="text"
+                                      value={credEditData.loginId}
+                                      onChange={e => setCredEditData(prev => ({ ...prev, loginId: e.target.value }))}
+                                      className="w-full border border-teal-300 rounded-lg px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-teal-300"
+                                    />
+                                  ) : (
+                                    <span className="text-xs font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">{player.loginId || player.employeeId || "—"}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  {isEditingCred ? (
+                                    <input
+                                      type="text"
+                                      value={credEditData.password}
+                                      onChange={e => setCredEditData(prev => ({ ...prev, password: e.target.value }))}
+                                      className="w-full border border-teal-300 rounded-lg px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-teal-300"
+                                    />
+                                  ) : (
+                                    <span className="text-xs font-mono text-slate-400">••••••</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  {isEditingCred ? (
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => {
+                                          onUpdateMember(player.id, { ...player, loginId: credEditData.loginId, password: credEditData.password });
+                                          setCredEditId(null);
+                                        }}
+                                        className="text-[10px] font-bold text-white bg-teal-500 hover:bg-teal-600 px-2.5 py-1 rounded-lg transition-colors"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => setCredEditId(null)}
+                                        className="text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setCredEditId(player.id);
+                                        setCredEditData({ loginId: player.loginId || player.employeeId || "", password: player.password || "123" });
+                                      }}
+                                      className="text-[10px] font-bold text-teal-600 bg-teal-50 hover:bg-teal-100 border border-teal-100 px-2.5 py-1 rounded-lg transition-colors"
+                                    >
+                                      Edit
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {allPlayers.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-10 text-center text-xs text-slate-400 italic">No team members found. Add players in the Teams &amp; Players tab first.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
           </div>
         );
       })()}
@@ -6918,6 +9169,65 @@ function AdminApp({ kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onD
       )}
       {editingKpi && (
         <EditKpiModal kpi={editingKpi} allKpis={kpis} teams={teams} sidebarMinimized={sidebarMinimized} onClose={() => setEditingKpi(null)} onSubmit={onEditKpi} onAddVertical={onAddVertical} onAddMember={onAddMember} />
+      )}
+      {selectedActiveProject && (
+        <ActiveProjectWorkspaceModal
+          project={selectedActiveProject}
+          kpis={kpis}
+          teams={teams}
+          onClose={() => setSelectedActiveProject(null)}
+          onUpdateProject={(updatedProj) => {
+            onAddProject(updatedProj);
+            setSelectedActiveProject(updatedProj);
+          }}
+          onAddTask={(taskData) => {
+            handleCompleteAction({
+              type: 'create_delegated_task',
+              taskData: taskData
+            });
+          }}
+        />
+      )}
+      {addClientProjectOpen && (
+        <AddClientProjectModal
+          teams={teams}
+          onClose={() => setAddClientProjectOpen(false)}
+          onSubmit={(newProj) => {
+            onAddClientProject(newProj);
+            setAddClientProjectOpen(false);
+          }}
+        />
+      )}
+      {editingClientProject && (
+        <AddClientProjectModal
+          teams={teams}
+          project={editingClientProject}
+          onClose={() => setEditingClientProject(null)}
+          onSubmit={(updatedProj) => {
+            onAddClientProject(updatedProj);
+            setEditingClientProject(null);
+          }}
+        />
+      )}
+      {selectedClientProject && (
+        <ClientProjectWorkspaceModal
+          project={selectedClientProject}
+          kpis={kpis}
+          teams={teams}
+          onClose={() => setSelectedClientProject(null)}
+          onUpdateProject={(updatedProj) => {
+            onAddClientProject(updatedProj);
+            setSelectedClientProject(updatedProj);
+          }}
+          onAddTask={(taskData) => {
+            handleCompleteAction({
+              type: 'create_delegated_task',
+              taskData: taskData
+            });
+          }}
+          clientProjectLogs={clientProjectLogs}
+          onAddClientProjectLog={onAddClientProjectLog}
+        />
       )}
       {columnMapModal && (
         <ExcelColumnMapModal
@@ -7002,7 +9312,7 @@ function StatCard({ icon: Icon, iconBg, iconColor, value, label }) {
         <Icon className={`h-5 w-5 ${iconColor}`} />
       </div>
       <div>
-        <p className="text-xl font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{value}</p>
+        <p className="text-xl font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{value}</p>
         <p className="text-xs text-slate-500">{label}</p>
       </div>
     </div>
@@ -7021,16 +9331,19 @@ const EMP_NAV = [
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
+function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
   const [shift, setShift] = useState("Excellent");
 
-  const myKpis = kpis.filter((k) => k.owner === CURRENT_EMPLOYEE).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  // Use logged-in user name if available, otherwise fall back to CURRENT_EMPLOYEE
+  const currentEmployee = loggedInUser?.name || CURRENT_EMPLOYEE;
+
+  const myKpis = kpis.filter((k) => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const detailKpi = kpis.find((k) => k.id === detailId);
   const loggingKpi = kpis.find((k) => k.id === loggingId);
-  const myTeam = teams.find((t) => t.members.some((m) => m.name === CURRENT_EMPLOYEE));
+  const myTeam = teams.find((t) => t.members.some((m) => m.name === currentEmployee));
   const teamKpis = kpis.filter((k) => k.team === myTeam?.name).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const onTrackInTeam = teamKpis.filter((k) => getStatus(k) === "on-track").length;
 
@@ -7041,7 +9354,17 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
       >
         <div className="flex-1 overflow-y-auto flex flex-col">
 
-        {screen === "action" && ( <ActionScreen kpis={kpis} projects={projects} user={CURRENT_EMPLOYEE} onCompleteAction={handleCompleteAction} teams={teams} /> )}
+        {screen === "action" && ( 
+          <ActionScreen 
+            kpis={kpis} 
+            projects={projects} 
+            user={currentEmployee} 
+            onCompleteAction={handleCompleteAction} 
+            teams={teams} 
+            clientProjects={clientProjects}
+            onUpdateClientProjectStage={onUpdateClientProjectStage}
+          /> 
+        )}
 
         {screen === "home" && (
           <>
@@ -7052,8 +9375,8 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
                 <path d="M0 190 Q120 165 220 185 T400 180 V220 H0 Z" className="fill-teal-100" opacity="0.8" />
               </svg>
               <div className="relative">
-                <p className="text-sm font-medium text-orange-900/70" style={{ fontFamily: "Poppins, sans-serif" }}>Hello {CURRENT_EMPLOYEE.split(" ")[0]}!</p>
-                <h1 className="text-2xl font-semibold text-orange-950 mt-0.5" style={{ fontFamily: "Poppins, sans-serif" }}>Have a good shift!</h1>
+                <p className="text-sm font-medium text-orange-900/70" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Hello {currentEmployee.split(" ")[0]}!</p>
+                <h1 className="text-2xl font-semibold text-orange-950 mt-0.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Have a good shift!</h1>
                 {myKpis[0] && (
                   <button onClick={() => setLoggingId(myKpis[0].id)} className="mt-6 bg-white/90 backdrop-blur rounded-2xl p-3 flex items-center gap-3 shadow-sm w-full text-left">
                     <div className="h-11 w-11 rounded-xl bg-teal-400 flex items-center justify-center shrink-0">
@@ -7070,7 +9393,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
 
             <div className="bg-white rounded-t-[2rem] -mt-4 relative px-5 pt-6 pb-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>My KPIs</h2>
+                <h2 className="text-base font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My KPIs</h2>
                 <button onClick={() => setScreen("mykpis")} className="text-xs font-medium text-teal-600 flex items-center">
                   View all <ChevronRight className="h-3.5 w-3.5" />
                 </button>
@@ -7110,7 +9433,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
               </button>
 
               <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-4">
-                <p className="text-sm font-semibold text-slate-900 text-center mb-1" style={{ fontFamily: "Poppins, sans-serif" }}>How did the shift go?</p>
+                <p className="text-sm font-semibold text-slate-900 text-center mb-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>How did the shift go?</p>
                 <p className="text-xs text-slate-400 text-center mb-4">Quick pulse check</p>
                 <div className="flex justify-center mb-3">
                   <span className="px-4 py-1.5 rounded-full bg-orange-100 text-orange-700 text-sm font-medium">{shift}</span>
@@ -7131,7 +9454,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
           <div className="bg-white min-h-full flex-1 px-5 pt-6 pb-4">
             <div className="flex items-center gap-3 mb-5">
               <button onClick={() => setScreen("home")} className="text-slate-500"><ChevronLeft className="h-5 w-5" /></button>
-              <h2 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>My KPIs</h2>
+              <h2 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My KPIs</h2>
             </div>
             <div className="space-y-3">
               {myKpis.map((kpi) => (
@@ -7152,7 +9475,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
           <div className="bg-white min-h-full flex-1 px-5 pt-6 pb-4">
             <div className="flex items-center gap-3 mb-5">
               <button onClick={() => setScreen("home")} className="text-slate-500"><ChevronLeft className="h-5 w-5" /></button>
-              <h2 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{myTeam?.name}</h2>
+              <h2 className="text-lg font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{myTeam?.name}</h2>
             </div>
             <p className="text-xs text-slate-400 mb-4">{myTeam?.members.map((m) => m.name).join(", ")}</p>
             <div className="space-y-3">
@@ -7179,8 +9502,8 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
         {screen === "profile" && (
           <div className="bg-white min-h-full flex-1 px-5 pt-6 pb-4">
             <div className="flex flex-col items-center pt-4 pb-6">
-              <div className="h-16 w-16 rounded-full bg-orange-200 flex items-center justify-center text-lg font-medium text-orange-800 mb-3">AR</div>
-              <p className="font-semibold text-slate-900" style={{ fontFamily: "Poppins, sans-serif" }}>{CURRENT_EMPLOYEE}</p>
+              <div className="h-16 w-16 rounded-full bg-orange-200 flex items-center justify-center text-lg font-medium text-orange-800 mb-3">{currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}</div>
+              <p className="font-semibold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{currentEmployee}</p>
               <p className="text-xs text-slate-400">{myTeam?.name} · BULL Machines</p>
             </div>
             <div className="space-y-2">
@@ -7191,6 +9514,15 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction }) {
                 </div>
               ))}
             </div>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="mt-6 w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-500 font-bold py-3 rounded-2xl transition-colors text-sm border border-rose-100"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
+            )}
           </div>
         )}
 
@@ -7333,19 +9665,63 @@ export default function App() {
   const computedKpis = useMemo(() => computeReportKpis(kpis), [kpis]);
   const [teams, setTeams] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [role, setRole] = useState("admin");
+  const [clientProjects, setClientProjects] = useState([]);
+  const [clientProjectLogs, setClientProjectLogs] = useState([]);
+  const [loggedInUser, setLoggedInUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("persistent_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const [role, setRole] = useState(() => {
+    try {
+      const saved = localStorage.getItem("persistent_role");
+      return saved || "admin";
+    } catch { return "admin"; }
+  });
   const [loading, setLoading] = useState(true);
+  const [loginForm, setLoginForm] = useState({ loginId: "", password: "" });
+  const [loginError, setLoginError] = useState("");
 
   // Load from Supabase on mount, seed if empty
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
+
+      // 1. Fetch Teams
+      let dbTeams = null, dbMembers = null;
       try {
-        setLoading(true);
+        const resTeams = await supabase.from('teams').select('*');
+        dbTeams = resTeams.data;
+        if (resTeams.error) throw resTeams.error;
+        const resMembers = await supabase.from('team_members').select('*');
+        dbMembers = resMembers.data;
+        if (resMembers.error) throw resMembers.error;
+      } catch (netErr) {
+        console.warn("Teams offline, reading from localStorage backup:", netErr);
+        let cachedTeams = localStorage.getItem("backup_teams");
+        if (!cachedTeams) {
+          // Initialize mock teams config
+          const mockTeams = [
+            {
+              id: 1,
+              name: "Digital Marketing",
+              description: "Digital presence & conversion leads",
+              lead: "Anand Kumar",
+              leadEmployeeId: "EMP001",
+              members: [
+                { id: 101, name: "Anand Kumar", employeeId: "EMP001", designation: "Team Lead", experience: "5 Yrs", reportingManager: "Ravi", description: "Lead", loginId: "anand", password: "123" },
+                { id: 102, name: "Aditi Rao", employeeId: "EMP002", designation: "Social Specialist", experience: "2 Yrs", reportingManager: "Anand Kumar", description: "Design", loginId: "aditi", password: "123" }
+              ]
+            }
+          ];
+          localStorage.setItem("backup_teams", JSON.stringify(mockTeams));
+          cachedTeams = JSON.stringify(mockTeams);
+        }
+        setTeams(JSON.parse(cachedTeams));
+      }
 
-        // Fetch Teams
-        let { data: dbTeams, error: teamsError } = await supabase.from('teams').select('*');
-        let { data: dbMembers, error: membersError } = await supabase.from('team_members').select('*');
-
+      if (dbTeams && dbMembers) {
         const loadedTeams = (dbTeams || []).map(t => {
           const leadMember = (dbMembers || []).find(m => m.employee_id === t.employee_id);
           return {
@@ -7354,110 +9730,251 @@ export default function App() {
             description: t.description,
             lead: leadMember ? leadMember.name : (t.lead || "Unassigned"),
             leadEmployeeId: t.employee_id,
-            members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => ({
-              id: m.id,
-              name: m.name,
-              employeeId: m.employee_id,
-              designation: m.designation,
-              experience: m.experience,
-              reportingManager: m.reporting_manager,
-              description: m.description
-            }))
+            members: (dbMembers || []).filter(m => m.team_id === t.id).map(m => {
+              let bio = m.description || "";
+              let loginId = m.employee_id || "";
+              let password = "123";
+              try {
+                const parsed = JSON.parse(m.description);
+                if (parsed && typeof parsed === "object") {
+                  bio = parsed.bio || "";
+                  loginId = parsed.loginId || m.employee_id || "";
+                  password = parsed.password || "123";
+                }
+              } catch(e) { /* plain text description */ }
+              return {
+                id: m.id,
+                name: m.name,
+                employeeId: m.employee_id,
+                designation: m.designation,
+                experience: m.experience,
+                reportingManager: m.reporting_manager,
+                description: bio,
+                loginId,
+                password
+              };
+            })
           };
         });
         setTeams(loadedTeams);
-
-        // Fetch KPIs
-        let { data: dbKpis, error: kpisError } = await supabase.from('kpis').select('*');
-        if (kpisError) {
-          console.error("Error fetching KPIs from Supabase:", kpisError);
-        } else if (!dbKpis || dbKpis.length === 0) {
-          console.log("No KPIs found in Supabase.");
-          setKpis([]);
-        } else {
-          setKpis(dbKpis.map(k => ({
-            id: k.id,
-            name: k.name,
-            unit: k.unit,
-            target: parseFloat(k.target),
-            direction: k.direction,
-            team: k.team,
-            owner: k.owner,
-            driveBy: k.drive_by || "",
-            monitorBy: k.monitor_by || "",
-            description: k.description || "",
-            kra: k.kra,
-            history: k.history || [],
-            dailyActual: k.daily_actual || {},
-            revisedAlloc: k.revised_alloc || {},
-            customHolidays: k.custom_holidays || {},
-            holidaysEnabled: k.holidays_enabled,
-            targetType: k.target_type,
-            targetsList: k.targets_list,
-            monthlyAlloc: k.monthly_alloc || {},
-            monthlyActual: k.monthly_actual || {},
-            weeklyAlloc: k.weekly_alloc || {},
-            weeklyActual: k.weekly_actual || {},
-            dailyAlloc: k.daily_alloc || {},
-            kpiType: k.kpi_type || 'activity',
-            reportConfig: k.report_config || {}
-          })));
-        }
-
-        // Fetch Projects
-        let { data: dbProjects, error: projectsError } = await supabase.from('projects').select('*');
-        
-        const mapDbProjectToUi = (p) => {
-          let resultAndImprovement = p.description || "";
-          let linkedKpiIds = [];
-          let memberNames = [p.lead];
-          let targetDate = "";
-          let projectStatus = "open";
-          if (p.stages && p.stages.length > 0) {
-            targetDate = p.stages[p.stages.length - 1].targetDate || "";
-          }
-
-          try {
-            const parsed = JSON.parse(p.description);
-            if (parsed && typeof parsed === "object") {
-              resultAndImprovement = parsed.resultAndImprovement || "";
-              linkedKpiIds = parsed.linkedKpiIds || (parsed.linkedKpiId ? [parsed.linkedKpiId] : []);
-              memberNames = parsed.memberNames || [p.lead];
-              targetDate = parsed.targetDate || targetDate;
-              projectStatus = parsed.status || "open";
-            }
-          } catch (e) {
-            // Not JSON
-          }
-
-          return {
-            id: p.id,
-            title: p.name,
-            resultAndImprovement,
-            linkedKpiIds,
-            leadName: p.lead,
-            memberNames,
-            targetDate,
-            status: projectStatus,
-            team: p.team,
-            stages: p.stages || [],
-            currentStageIdx: p.current_stage_idx || 0
-          };
-        };
-
-        if (projectsError) {
-          console.error("Error fetching projects from Supabase:", projectsError);
-        } else if (!dbProjects || dbProjects.length === 0) {
-          console.log("No projects found in Supabase.");
-          setProjects([]);
-        } else {
-          setProjects(dbProjects.map(mapDbProjectToUi));
-        }
-      } catch (err) {
-        console.error("Error loading data from Supabase:", err);
-      } finally {
-        setLoading(false);
+        localStorage.setItem("backup_teams", JSON.stringify(loadedTeams));
       }
+
+      // 2. Fetch KPIs
+      let dbKpis = null;
+      try {
+        const resKpis = await supabase.from('kpis').select('*');
+        dbKpis = resKpis.data;
+        if (resKpis.error) throw resKpis.error;
+      } catch (netErr) {
+        console.warn("KPIs offline, reading from localStorage backup:", netErr);
+        let cachedKpis = localStorage.getItem("backup_kpis");
+        if (!cachedKpis) {
+          const mockKpis = [
+            {
+              id: 1,
+              name: "No of digital enquiry resulted in sales - Domestic",
+              unit: " Nos",
+              target: 400.0,
+              direction: "higher",
+              team: "Digital Marketing",
+              owner: "Anand Kumar",
+              driveBy: "Aditi Rao",
+              monitorBy: "Ravi",
+              description: "Domestic Enquiry conversion",
+              kra: "Marketing",
+              history: [{ d: "W1", v: 10 }, { d: "W2", v: 25 }],
+              dailyActual: { "2026-08-22": 5, "2026-08-23": 8 },
+              revisedAlloc: {},
+              customHolidays: {},
+              holidaysEnabled: true,
+              targetType: "monthly",
+              targetsList: [
+                { id: "Aug 2026", label: "Aug 2026", targetValue: 35, targetDate: "2026-08-31" }
+              ],
+              monthlyAlloc: { "Aug 2026": 35 },
+              monthlyActual: { "Aug 2026": 13 },
+              weeklyAlloc: {},
+              weeklyActual: {},
+              dailyAlloc: {},
+              kpiType: "activity",
+              reportConfig: {}
+            }
+          ];
+          localStorage.setItem("backup_kpis", JSON.stringify(mockKpis));
+          cachedKpis = JSON.stringify(mockKpis);
+        }
+        setKpis(JSON.parse(cachedKpis));
+      }
+
+      if (dbKpis) {
+        const loadedKpis = dbKpis.map(k => ({
+          id: k.id,
+          name: k.name,
+          unit: k.unit,
+          target: parseFloat(k.target),
+          direction: k.direction,
+          team: k.team,
+          owner: k.owner,
+          driveBy: k.drive_by || "",
+          monitorBy: k.monitor_by || "",
+          description: k.description || "",
+          kra: k.kra,
+          history: k.history || [],
+          dailyActual: k.daily_actual || {},
+          revisedAlloc: k.revised_alloc || {},
+          customHolidays: k.custom_holidays || {},
+          holidaysEnabled: k.holidays_enabled,
+          targetType: k.target_type,
+          targetsList: k.targets_list,
+          monthlyAlloc: k.monthly_alloc || {},
+          monthlyActual: k.monthly_actual || {},
+          weeklyAlloc: k.weekly_alloc || {},
+          weeklyActual: k.weekly_actual || {},
+          dailyAlloc: k.daily_alloc || {},
+          kpiType: k.kpi_type || 'activity',
+          reportConfig: k.report_config || {}
+        }));
+        setKpis(loadedKpis);
+        localStorage.setItem("backup_kpis", JSON.stringify(loadedKpis));
+      }
+
+      // 3. Fetch Projects
+      let dbProjects = null;
+      try {
+        const resProjects = await supabase.from('projects').select('*');
+        dbProjects = resProjects.data;
+        if (resProjects.error) throw resProjects.error;
+      } catch (netErr) {
+        console.warn("Projects offline, reading from localStorage backup:", netErr);
+        const cachedProjects = localStorage.getItem("backup_projects");
+        if (cachedProjects) {
+          setProjects(JSON.parse(cachedProjects));
+        }
+      }
+
+      const mapDbProjectToUi = (p) => {
+        let resultAndImprovement = p.description || "";
+        let linkedKpiIds = [];
+        let memberNames = [p.lead];
+        let targetDate = "";
+        let projectStatus = "open";
+        let assignedTo = p.lead;
+        let kpiId = null;
+        let objective = "";
+        let companyDetails = "";
+        let attachments = [];
+        let dailyLogs = [];
+        let aiChats = [];
+        
+        if (p.stages && p.stages.length > 0) {
+          targetDate = p.stages[p.stages.length - 1].targetDate || "";
+        }
+
+        try {
+          const parsed = JSON.parse(p.description);
+          if (parsed && typeof parsed === "object") {
+            resultAndImprovement = parsed.resultAndImprovement || "";
+            linkedKpiIds = parsed.linkedKpiIds || (parsed.linkedKpiId ? [parsed.linkedKpiId] : (parsed.kpiId ? [parsed.kpiId] : []));
+            memberNames = parsed.memberNames || [p.lead];
+            targetDate = parsed.targetDate || targetDate;
+            projectStatus = parsed.status || "open";
+            assignedTo = parsed.assignedTo || parsed.assigned_to || p.lead;
+            kpiId = parsed.kpiId || parsed.kpi_id || null;
+            objective = parsed.objective || "";
+            companyDetails = parsed.companyDetails || "";
+            attachments = parsed.attachments || [];
+            dailyLogs = parsed.dailyLogs || [];
+            aiChats = parsed.aiChats || [];
+          }
+        } catch (e) {
+          // Not JSON
+        }
+
+        return {
+          id: p.id,
+          title: p.name,
+          resultAndImprovement,
+          linkedKpiIds,
+          leadName: p.lead,
+          memberNames,
+          targetDate,
+          status: projectStatus,
+          team: p.team,
+          stages: p.stages || [],
+          currentStageIdx: p.current_stage_idx || 0,
+          assignedTo,
+          kpiId,
+          objective,
+          companyDetails,
+          attachments,
+          dailyLogs,
+          aiChats
+        };
+      };
+
+      if (dbProjects) {
+        const mappedProjs = dbProjects.map(mapDbProjectToUi);
+        setProjects(mappedProjs);
+        localStorage.setItem("backup_projects", JSON.stringify(mappedProjs));
+      }
+
+      // 4. Fetch Client Projects
+      let dbClientProjects = null;
+      let dbClientProjectLogs = null;
+      try {
+        const resCP = await supabase.from('client_projects').select('*');
+        dbClientProjects = resCP.data;
+        if (resCP.error) throw resCP.error;
+
+        const resCPLogs = await supabase.from('client_project_logs').select('*');
+        dbClientProjectLogs = resCPLogs.data;
+        if (resCPLogs.error) throw resCPLogs.error;
+      } catch (netErr) {
+        console.warn("Client projects offline, reading backup:", netErr);
+        const cachedCP = localStorage.getItem("backup_client_projects");
+        if (cachedCP) {
+          setClientProjects(JSON.parse(cachedCP));
+        }
+        const cachedCPLogs = localStorage.getItem("backup_client_project_logs");
+        if (cachedCPLogs) {
+          setClientProjectLogs(JSON.parse(cachedCPLogs));
+        }
+      }
+
+      const mapDbClientProjectToUi = (p) => {
+        return {
+          id: p.id,
+          title: p.title,
+          description: p.description || "",
+          objective: p.objective || "",
+          companyDetails: p.company_details || "",
+          attachments: p.attachments || [],
+          stages: p.stages || [],
+          currentStageIdx: p.current_stage_idx || 0,
+          aiChats: p.ai_chats || [],
+          createdAt: p.created_at
+        };
+      };
+
+      if (dbClientProjects) {
+        const mappedCPs = dbClientProjects.map(mapDbClientProjectToUi);
+        setClientProjects(mappedCPs);
+        localStorage.setItem("backup_client_projects", JSON.stringify(mappedCPs));
+      }
+      if (dbClientProjectLogs) {
+        const mappedLogs = dbClientProjectLogs.map(l => ({
+          id: l.id,
+          projectId: l.project_id,
+          text: l.log_text,
+          author: l.author,
+          date: new Date(l.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        }));
+        setClientProjectLogs(mappedLogs);
+        localStorage.setItem("backup_client_project_logs", JSON.stringify(mappedLogs));
+      }
+
+      setLoading(false);
     }
 
     loadData();
@@ -7475,6 +9992,11 @@ export default function App() {
   }
 
   async function handleAddMember(teamId, member) {
+    const descJson = JSON.stringify({
+      bio: member.description || "",
+      loginId: member.loginId || member.employeeId || "",
+      password: member.password || "123"
+    });
     const { data: memberRow, error } = await supabase.from('team_members').insert({
       team_id: teamId,
       name: member.name,
@@ -7482,7 +10004,7 @@ export default function App() {
       designation: member.designation,
       experience: member.experience,
       reporting_manager: member.reportingManager,
-      description: member.description
+      description: descJson
     }).select().single();
 
     if (error) {
@@ -7496,7 +10018,9 @@ export default function App() {
         designation: memberRow.designation,
         experience: memberRow.experience,
         reportingManager: memberRow.reporting_manager,
-        description: memberRow.description
+        description: member.description || "",
+        loginId: member.loginId || memberRow.employee_id || "",
+        password: member.password || "123"
       };
       setTeams((prev) => prev.map((t) => t.id === teamId ? { ...t, members: [...t.members, formattedMember] } : t));
     }
@@ -7545,7 +10069,9 @@ export default function App() {
         experience: updatedFields.experience !== undefined ? updatedFields.experience : player.experience,
         reportingManager: updatedFields.reportingManager !== undefined ? updatedFields.reportingManager : player.reportingManager,
         employeeId: updatedFields.employeeId !== undefined ? updatedFields.employeeId : player.employeeId,
-        description: updatedFields.description !== undefined ? updatedFields.description : player.description
+        description: updatedFields.description !== undefined ? updatedFields.description : player.description,
+        loginId: updatedFields.loginId !== undefined ? updatedFields.loginId : player.loginId,
+        password: updatedFields.password !== undefined ? updatedFields.password : player.password
       };
 
       const nextTeamId = updatedFields.teamId !== undefined ? updatedFields.teamId : player.teamId;
@@ -7567,6 +10093,12 @@ export default function App() {
       });
     });
 
+    // Build description JSON to persist loginId + password
+    let existingBio = updatedFields.description || "";
+    let existingLoginId = updatedFields.loginId || updatedFields.employeeId || "";
+    let existingPassword = updatedFields.password || "123";
+    const descJson = JSON.stringify({ bio: existingBio, loginId: existingLoginId, password: existingPassword });
+
     // Save background update to database
     const { error } = await supabase.from('team_members').update({
       team_id: updatedFields.teamId,
@@ -7574,7 +10106,7 @@ export default function App() {
       designation: updatedFields.designation,
       experience: updatedFields.experience,
       reporting_manager: updatedFields.reportingManager,
-      description: updatedFields.description,
+      description: descJson,
       employee_id: updatedFields.employeeId
     }).eq('id', memberId);
 
@@ -7826,16 +10358,16 @@ export default function App() {
         kpiId: task.kpiId || null,
         creator: task.creator,
         rescheduleCount: 0,
-        rescheduleReason: ""
+        rescheduleReason: "",
+        assignedTo: task.assignee,
+        isRepetitive: task.isRepetitive || false,
+        repetitiveConfig: task.repetitiveConfig || null
       });
       const dbPayload = {
         name: task.title,
         description: descriptionJson,
         team: teamName,
-        assigned_to: task.assignee,
-        kpi_id: task.kpiId || null,
-        target_date: task.targetDate,
-        status: "open"
+        lead: task.assignee || ""
       };
       const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
       if (!error && data) {
@@ -7844,13 +10376,15 @@ export default function App() {
           title: data.name,
           description: data.description,
           team: data.team,
-          assignedTo: data.assigned_to,
-          kpiId: data.kpi_id,
-          targetDate: data.target_date,
-          status: data.status,
+          assignedTo: task.assignee,
+          kpiId: task.kpiId || null,
+          targetDate: task.targetDate,
+          status: "pending",
           createdAt: data.created_at,
           memberNames: []
         }]);
+      } else if (error) {
+        console.error("Error creating delegated task:", error);
       }
       return;
     }
@@ -7861,8 +10395,8 @@ export default function App() {
       try { meta = JSON.parse(p.description); } catch(e) {}
       meta.status = "accepted";
       const descriptionJson = JSON.stringify(meta);
-      await supabase.from('projects').update({ description: descriptionJson, status: "open" }).eq('id', p.id);
-      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, status: "open" } : proj));
+      await supabase.from('projects').update({ description: descriptionJson }).eq('id', p.id);
+      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, status: "accepted" } : proj));
       return;
     }
 
@@ -7875,14 +10409,18 @@ export default function App() {
       meta.rescheduleCount = (meta.rescheduleCount || 0) + 1;
       meta.rescheduleReason = actionData.reason;
       const descriptionJson = JSON.stringify(meta);
-      await supabase.from('projects').update({ description: descriptionJson, target_date: actionData.newDate, status: "open" }).eq('id', p.id);
-      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, targetDate: actionData.newDate, status: "open" } : proj));
+      await supabase.from('projects').update({ description: descriptionJson }).eq('id', p.id);
+      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, targetDate: actionData.newDate, status: "accepted" } : proj));
       return;
     }
 
     const isPending = actionData.type === 'pending' || actionData.type === 'delegated_active';
     const isDelayed = actionData.isDelayed || false;
     
+    let kpi = kpis.find(k => k.id === actionData.kpiId);
+    let assignedTo = isPending ? (actionData.pendingProject?.assignedTo || kpi?.owner) : (kpi?.owner || "Unassigned");
+    let teamName = kpi?.team || "Digital Marketing";
+
     const descriptionJson = JSON.stringify({
       objective: actionData.objective,
       targetDate: actionData.date,
@@ -7890,22 +10428,22 @@ export default function App() {
       status: isDelayed ? "delayed" : "completed",
       submissionLink: actionData.submissionLink || "",
       isDelayed: isDelayed,
-      delayReason: actionData.delayReason || ""
+      delayReason: actionData.delayReason || "",
+      assignedTo: assignedTo,
+      kpiId: actionData.kpiId || null
     });
-
-    let kpi = kpis.find(k => k.id === actionData.kpiId);
-    let assignedTo = isPending ? (actionData.pendingProject?.assignedTo || kpi?.owner) : (kpi?.owner || "Unassigned");
-    let teamName = kpi?.team || "Digital Marketing";
 
     let completedProjectData = null;
 
     if (isPending) {
-      const { data } = await supabase.from('projects').update({
+      const { data, error } = await supabase.from('projects').update({
         name: actionData.title,
-        description: descriptionJson,
-        status: isDelayed ? "delayed" : "completed"
+        description: descriptionJson
       }).eq('id', actionData.pendingProject.id).select().single();
       
+      if (error) {
+        console.error("Error updating pending task:", error);
+      }
       completedProjectData = data;
       setProjects(prev => prev.map(p => p.id === actionData.pendingProject.id ? {
         ...p,
@@ -7918,13 +10456,13 @@ export default function App() {
         name: actionData.title,
         description: descriptionJson,
         team: teamName,
-        assigned_to: assignedTo,
-        kpi_id: actionData.kpiId,
-        target_date: actionData.date,
-        status: isDelayed ? "delayed" : "completed"
+        lead: assignedTo
       };
       
       const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
+      if (error) {
+        console.error("Error inserting completed project:", error);
+      }
       completedProjectData = data;
       if (!error && data) {
         const formatted = {
@@ -7932,10 +10470,10 @@ export default function App() {
           title: data.name,
           description: data.description,
           team: data.team,
-          assignedTo: data.assigned_to,
-          kpiId: data.kpi_id,
-          targetDate: data.target_date,
-          status: data.status,
+          assignedTo: assignedTo,
+          kpiId: actionData.kpiId,
+          targetDate: actionData.date,
+          status: isDelayed ? "delayed" : "completed",
           createdAt: data.created_at,
           memberNames: []
         };
@@ -7983,28 +10521,30 @@ export default function App() {
           status: "pending",
           parentLink: actionData.submissionLink || "",
           parentDelayed: isDelayed,
-          parentDelayReason: actionData.delayReason || ""
+          parentDelayReason: actionData.delayReason || "",
+          assignedTo: followUpKpi.owner || "Unassigned",
+          kpiId: followUpKpi.id
         });
         const followUpPayload = {
           name: "Pending: " + actionData.title,
           description: followUpDesc,
           team: followUpKpi.team || "Digital Marketing",
-          assigned_to: followUpKpi.owner || "Unassigned",
-          kpi_id: followUpKpi.id,
-          target_date: targetDateForChild,
-          status: "open"
+          lead: followUpKpi.owner || "Unassigned"
         };
-        const { data } = await supabase.from('projects').insert(followUpPayload).select().single();
+        const { data, error } = await supabase.from('projects').insert(followUpPayload).select().single();
+        if (error) {
+          console.error("Error creating follow up task:", error);
+        }
         if (data) {
           setProjects(prev => [...prev, {
             id: data.id,
             title: data.name,
             description: data.description,
             team: data.team,
-            assignedTo: data.assigned_to,
-            kpiId: data.kpi_id,
-            targetDate: data.target_date,
-            status: data.status,
+            assignedTo: followUpKpi.owner || "Unassigned",
+            kpiId: followUpKpi.id,
+            targetDate: targetDateForChild,
+            status: "pending",
             createdAt: data.created_at,
             memberNames: []
           }]);
@@ -8022,7 +10562,12 @@ export default function App() {
       linkedKpiIds: newProject.linkedKpiIds || [],
       memberNames: newProject.memberNames,
       targetDate: newProject.targetDate,
-      status: newProject.status || "open"
+      status: newProject.status || "open",
+      objective: newProject.objective || "",
+      companyDetails: newProject.companyDetails || "",
+      attachments: newProject.attachments || [],
+      dailyLogs: newProject.dailyLogs || [],
+      aiChats: newProject.aiChats || []
     });
 
     let teamName = newProject.team || "Digital Marketing";
@@ -8054,7 +10599,12 @@ export default function App() {
           targetDate: newProject.targetDate,
           team: projectRow.team,
           stages: projectRow.stages || [],
-          currentStageIdx: projectRow.current_stage_idx
+          currentStageIdx: projectRow.current_stage_idx,
+          objective: newProject.objective || "",
+          companyDetails: newProject.companyDetails || "",
+          attachments: newProject.attachments || [],
+          dailyLogs: newProject.dailyLogs || [],
+          aiChats: newProject.aiChats || []
         }]);
       }
     } else {
@@ -8063,6 +10613,158 @@ export default function App() {
       if (error) {
         console.error("Error updating project in Supabase:", error);
       }
+    }
+  }
+
+  async function handleAddClientProject(newProj) {
+    const isNew = typeof newProj.id === "string" && newProj.id.startsWith("temp-");
+    const dbPayload = {
+      title: newProj.title,
+      description: newProj.description || "",
+      objective: newProj.objective || "",
+      company_details: newProj.companyDetails || "",
+      attachments: newProj.attachments || [],
+      stages: newProj.stages || [],
+      current_stage_idx: newProj.currentStageIdx || 0,
+      ai_chats: newProj.aiChats || []
+    };
+
+    if (isNew) {
+      const { data, error } = await supabase.from('client_projects').insert(dbPayload).select().single();
+      if (data) {
+        const formatted = {
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          objective: data.objective,
+          companyDetails: data.company_details,
+          attachments: data.attachments,
+          stages: data.stages,
+          currentStageIdx: data.current_stage_idx,
+          aiChats: data.ai_chats,
+          createdAt: data.created_at
+        };
+        setClientProjects(prev => {
+          const next = [...prev.filter(p => p.id !== newProj.id), formatted];
+          localStorage.setItem("backup_client_projects", JSON.stringify(next));
+          return next;
+        });
+      } else if (error) {
+        console.error("Error inserting client project in Supabase:", error);
+        // Fallback for offline mode
+        const localId = Date.now();
+        const fallback = { ...newProj, id: localId, createdAt: new Date().toISOString() };
+        setClientProjects(prev => {
+          const next = [...prev.filter(p => p.id !== newProj.id), fallback];
+          localStorage.setItem("backup_client_projects", JSON.stringify(next));
+          return next;
+        });
+      }
+    } else {
+      setClientProjects(prev => {
+        const next = prev.map(p => p.id === newProj.id ? newProj : p);
+        localStorage.setItem("backup_client_projects", JSON.stringify(next));
+        return next;
+      });
+      const { error } = await supabase.from('client_projects').update(dbPayload).eq('id', newProj.id);
+      if (error) console.error("Error updating client project in Supabase:", error);
+    }
+  }
+
+  async function handleAddClientProjectLog(projectId, logText) {
+    const tempId = Date.now();
+    const newLog = {
+      id: tempId,
+      projectId,
+      text: logText,
+      author: "Admin",
+      date: new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    };
+    setClientProjectLogs(prev => [newLog, ...prev]);
+
+    // Update backup cache
+    const nextLogs = [newLog, ...clientProjectLogs];
+    localStorage.setItem("backup_client_project_logs", JSON.stringify(nextLogs));
+
+    const { data, error } = await supabase.from('client_project_logs').insert({
+      project_id: projectId,
+      log_text: logText,
+      author: "Admin"
+    }).select().single();
+
+    if (data) {
+      const formatted = {
+        id: data.id,
+        projectId: data.project_id,
+        text: data.log_text,
+        author: data.author,
+        date: new Date(data.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      };
+      setClientProjectLogs(prev => prev.map(l => l.id === tempId ? formatted : l));
+      const updatedLogs = clientProjectLogs.map(l => l.id === tempId ? formatted : l);
+      localStorage.setItem("backup_client_project_logs", JSON.stringify(updatedLogs));
+    } else if (error) {
+      console.error("Error saving log to Supabase:", error);
+    }
+  }
+
+  async function handleUpdateClientProjectStage(projectId, stageIdx, status, subIdx = null, subSubIdx = null) {
+    let updatedStages = [];
+    let currentStageIdx = 0;
+    
+    setClientProjects((prev) => {
+      const next = prev.map((proj) => {
+        if (proj.id !== projectId) return proj;
+        updatedStages = proj.stages.map((stage, idx) => {
+          if (idx !== stageIdx) return stage;
+          
+          if (subIdx === null) {
+            // Main stage update
+            return { ...stage, status };
+          } else if (subSubIdx === null) {
+            // Sub stage update
+            const updatedSubs = (stage.subStages || []).map((sub, sIdx) => {
+              if (sIdx === subIdx) return { ...sub, status };
+              return sub;
+            });
+            return { ...stage, subStages: updatedSubs };
+          } else {
+            // Sub-sub stage update
+            const updatedSubs = (stage.subStages || []).map((sub, sIdx) => {
+              if (sIdx !== subIdx) return sub;
+              const updatedSubSubs = (sub.subSubStages || []).map((ss, ssIdx) => {
+                if (ssIdx === subSubIdx) return { ...ss, status };
+                return ss;
+              });
+              return { ...sub, subSubStages: updatedSubSubs };
+            });
+            return { ...stage, subStages: updatedSubs };
+          }
+        });
+        
+        // Find first pending or current stage index
+        const firstActiveIdx = updatedStages.findIndex(s => s.status === "current" || s.status === "pending");
+        currentStageIdx = firstActiveIdx !== -1 ? firstActiveIdx : updatedStages.length - 1;
+        
+        return { ...proj, stages: updatedStages, currentStageIdx };
+      });
+      localStorage.setItem("backup_client_projects", JSON.stringify(next));
+      return next;
+    });
+
+    // Run database write
+    await supabase.from('client_projects').update({
+      stages: updatedStages,
+      current_stage_idx: currentStageIdx
+    }).eq('id', projectId);
+  }
+
+  async function handleDeleteClientProject(id) {
+    if (window.confirm("Are you sure you want to delete this Client Project?")) {
+      setClientProjects(prev => prev.filter(p => p.id !== id));
+      localStorage.setItem("backup_client_projects", JSON.stringify(clientProjects.filter(p => p.id !== id)));
+      const { error } = await supabase.from('client_projects').delete().eq('id', id);
+      if (error) console.error("Error deleting client project from Supabase:", error);
     }
   }
 
@@ -8193,27 +10895,137 @@ export default function App() {
       </div>
     );
   }
-  return (
-    <div className="h-screen w-screen bg-orange-50 sm:p-4 flex flex-col overflow-hidden relative" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-      <div className="absolute top-4 right-4 z-50 hidden sm:flex items-center gap-1 bg-white border border-orange-200 rounded-full p-1 shadow-sm">
-        <button
-          onClick={() => setRole("employee")}
-          title="Employee View (Mobile)"
-          className={`p-2 rounded-full transition-colors ${role === "employee" ? "bg-teal-500 text-white" : "text-slate-500 hover:bg-orange-50"}`}
-        >
-          <Smartphone className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => setRole("admin")}
-          title="Admin View (Desktop)"
-          className={`p-2 rounded-full transition-colors ${role === "admin" ? "bg-teal-500 text-white" : "text-slate-500 hover:bg-orange-50"}`}
-        >
-          <Monitor className="h-4 w-4" />
-        </button>
+
+  // Login Screen
+  if (!loggedInUser) {
+    const handleLogin = () => {
+      const { loginId, password } = loginForm;
+      if (!loginId.trim() || !password.trim()) {
+        setLoginError("Please enter your Login ID and Password.");
+        return;
+      }
+      // Admin shortcut
+      if (loginId.trim() === "admin" && password.trim() === "admin123") {
+        const u = { name: "Admin", loginId: "admin", role: "admin" };
+        setLoggedInUser(u);
+        setRole("admin");
+        localStorage.setItem("persistent_user", JSON.stringify(u));
+        localStorage.setItem("persistent_role", "admin");
+        setLoginError("");
+        return;
+      }
+      // Match against team members
+      const allMembers = teams.flatMap(t => t.members);
+      const match = allMembers.find(m =>
+        (m.loginId || m.employeeId || "").toLowerCase() === loginId.trim().toLowerCase() &&
+        (m.password || "123") === password.trim()
+      );
+      if (match) {
+        const u = { name: match.name, loginId: match.loginId || match.employeeId, role: "employee" };
+        setLoggedInUser(u);
+        setRole("employee");
+        localStorage.setItem("persistent_user", JSON.stringify(u));
+        localStorage.setItem("persistent_role", "employee");
+        setLoginError("");
+      } else {
+        setLoginError("Invalid Login ID or Password. Please try again.");
+      }
+    };
+
+    return (
+      <div className="h-screen w-screen bg-gradient-to-b from-orange-50 to-orange-100 flex items-center justify-center p-4" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+        <div className="w-full max-w-sm">
+          {/* Logo / Header */}
+          <div className="text-center mb-8">
+            <div className="h-16 w-16 rounded-2xl bg-teal-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <span className="text-white font-black text-2xl">K</span>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>PulseKPI</h1>
+            <p className="text-sm text-slate-500 mt-1">Sign in to your account</p>
+          </div>
+
+          {/* Login Card */}
+          <div className="bg-white rounded-3xl shadow-xl border border-orange-100 p-6 space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1.5">Login ID</label>
+              <input
+                type="text"
+                value={loginForm.loginId}
+                onChange={e => setLoginForm(prev => ({ ...prev, loginId: e.target.value }))}
+                onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-medium"
+                placeholder="Enter your Login ID or Employee ID"
+                autoComplete="username"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-600 block mb-1.5">Password</label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={e => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-medium"
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+            </div>
+            {loginError && (
+              <p className="text-xs text-rose-500 font-medium bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{loginError}</p>
+            )}
+            <button
+              onClick={handleLogin}
+              className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl transition-colors shadow-sm text-sm"
+            >
+              Sign In
+            </button>
+            <p className="text-center text-[10px] text-slate-400 mt-1">
+              Contact your admin if you have forgotten your login ID or password.
+            </p>
+          </div>
+          <p className="text-center text-[10px] text-slate-400 mt-4">BULL Machines · PulseKPI v1.0</p>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="h-screen w-screen bg-orange-50 sm:p-4 flex flex-col overflow-hidden relative" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+      {/* Role switcher (only for admin users) */}
+      {loggedInUser.role === "admin" && (
+        <div className="absolute top-4 right-4 z-50 hidden sm:flex items-center gap-1 bg-white border border-orange-200 rounded-full p-1 shadow-sm">
+          <button
+            onClick={() => setRole("employee")}
+            title="Employee View (Mobile)"
+            className={`p-2 rounded-full transition-colors ${role === "employee" ? "bg-teal-500 text-white" : "text-slate-500 hover:bg-orange-50"}`}
+          >
+            <Smartphone className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setRole("admin")}
+            title="Admin View (Desktop)"
+            className={`p-2 rounded-full transition-colors ${role === "admin" ? "bg-teal-500 text-white" : "text-slate-500 hover:bg-orange-50"}`}
+          >
+            <Monitor className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setLoggedInUser(null);
+              setLoginForm({ loginId: "", password: "" });
+              setLoginError("");
+              localStorage.removeItem("persistent_user");
+              localStorage.removeItem("persistent_role");
+            }}
+            title="Logout"
+            className="p-2 rounded-full transition-colors text-slate-500 hover:bg-rose-50 hover:text-rose-500 ml-1 border-l border-slate-100"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 w-full h-full flex flex-col min-h-0">
-        {role === "admin" ? (
+        {(role === "admin" && loggedInUser.role === "admin") ? (
           <AdminApp 
             kpis={computedKpis} 
             setKpis={setKpis}
@@ -8233,9 +11045,26 @@ export default function App() {
             onDeleteTeam={handleDeleteTeam}
             onUploadKpis={handleUploadKpis}
             handleCompleteAction={handleCompleteAction}
+            onUpdateMember={handleUpdateMember}
+            clientProjects={clientProjects}
+            onAddClientProject={handleAddClientProject}
+            onUpdateClientProjectStage={handleUpdateClientProjectStage}
+            onDeleteClientProject={handleDeleteClientProject}
+            clientProjectLogs={clientProjectLogs}
+            onAddClientProjectLog={handleAddClientProjectLog}
           />
         ) : (
-          <EmployeeApp kpis={kpis} onLog={handleLog} teams={teams} projects={projects} handleCompleteAction={handleCompleteAction} />
+          <EmployeeApp 
+            kpis={kpis} 
+            onLog={handleLog} 
+            teams={teams} 
+            projects={projects} 
+            handleCompleteAction={handleCompleteAction} 
+            loggedInUser={loggedInUser} 
+            onLogout={() => { setLoggedInUser(null); setLoginForm({ loginId: "", password: "" }); setLoginError(""); localStorage.removeItem("persistent_user"); localStorage.removeItem("persistent_role"); }} 
+            clientProjects={clientProjects}
+            onUpdateClientProjectStage={handleUpdateClientProjectStage}
+          />
         )}
       </div>
     </div>
