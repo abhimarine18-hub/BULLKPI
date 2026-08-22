@@ -10734,20 +10734,23 @@ export default function App() {
 
     // 3. Attempt Supabase save
     try {
+      if (!updatedKpi.id) throw new Error("KPI id is missing — cannot update.");
+      const safeNum = (v) => (v === undefined || v === null || isNaN(Number(v))) ? 0 : Number(v);
+      const safeStr = (v) => (v === undefined || v === null) ? "" : String(v);
       const payload = {
-        name: updatedKpi.name,
-        unit: updatedKpi.unit,
-        target: updatedKpi.target,
-        direction: updatedKpi.direction,
-        team: updatedKpi.team,
-        owner: updatedKpi.owner,
-        drive_by: updatedKpi.driveBy || "",
-        monitor_by: updatedKpi.monitorBy || "",
-        description: updatedKpi.description || "",
-        kra: updatedKpi.kra,
+        name: safeStr(updatedKpi.name),
+        unit: safeStr(updatedKpi.unit),
+        target: safeNum(updatedKpi.target),
+        direction: safeStr(updatedKpi.direction),
+        team: safeStr(updatedKpi.team),
+        owner: safeStr(updatedKpi.owner),
+        drive_by: safeStr(updatedKpi.driveBy),
+        monitor_by: safeStr(updatedKpi.monitorBy),
+        description: safeStr(updatedKpi.description),
+        kra: safeStr(updatedKpi.kra),
         history: updatedKpi.history || [],
-        target_type: updatedKpi.targetType,
-        targets_list: updatedKpi.targetsList,
+        target_type: safeStr(updatedKpi.targetType) || "monthly",
+        targets_list: updatedKpi.targetsList || [],
         monthly_alloc: updatedKpi.monthlyAlloc || {},
         monthly_actual: updatedKpi.monthlyActual || {},
         weekly_alloc: updatedKpi.weeklyAlloc || {},
@@ -10757,7 +10760,7 @@ export default function App() {
         revised_alloc: updatedKpi.revisedAlloc || {},
         custom_holidays: updatedKpi.customHolidays || {},
         holidays_enabled: updatedKpi.holidaysEnabled ?? true,
-        kpi_type: updatedKpi.kpiType || 'activity',
+        kpi_type: safeStr(updatedKpi.kpiType) || 'activity',
         report_config: updatedKpi.reportConfig || {}
       };
       const { error } = await supabase.from('kpis').update(payload).eq('id', updatedKpi.id);
