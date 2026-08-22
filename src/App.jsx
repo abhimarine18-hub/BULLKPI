@@ -10183,7 +10183,7 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
         return;
       }
 
-      const isNew = !editingItem?.id;
+      const isNew = !editingItem?.id || editingItem.id === 'new';
       const descriptionJson = JSON.stringify({
         type: "action_item",
         status: "planned",
