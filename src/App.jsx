@@ -9477,73 +9477,84 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
     );
   };
 
-  /* ── KPI card (reusable with 1-31 dots) ── */
+  /* ── KPI card (reusable with 1-31 dots aligned week-wise on the right) ── */
   const KpiCard = ({ kpi, onClick }) => {
     const status = getStatus(kpi);
     const todayTarget = kpi.dailyAlloc?.[todayStr] || 0;
     const todayActual = kpi.dailyActual?.[todayStr] || 0;
 
-    // Generate 31 dots logic for the selectedMonth
-    const monthDays = useMemo(() => getDaysInMonth(selectedMonth), [selectedMonth]);
+    // Use calendar cells (which are naturally grouped in weeks of 7)
+    const cells = useMemo(() => getCalendarCells(selectedMonth), [selectedMonth]);
+    const numRows = Math.ceil(cells.length / 7);
     
     return (
       <button onClick={onClick} className={`w-full text-left rounded-2xl p-4 border border-transparent hover:border-teal-200 transition-all shadow-sm ${statusColor(status).replace("text-", "").split(" ")[0] === "bg-teal-100" ? "bg-teal-50" : status === "at-risk" ? "bg-orange-50" : "bg-rose-50"}`}>
+        {/* Top Row: KPI Name & Status Badge */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">{kpi.name}</p>
           <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(status)}`}>{status === "on-track" ? "On Track" : status === "at-risk" ? "At Risk" : "Off Track"}</span>
         </div>
         
-        <div className="flex items-end justify-between gap-2 mb-2">
-          <div>
-            <p className="text-2xl font-bold text-slate-900 leading-none">{getLatest(kpi)}<span className="text-sm font-normal text-slate-400 ml-1">{kpi.unit}</span></p>
-            <p className="text-xs text-slate-400 mt-0.5">Target: {kpi.target}{kpi.unit}</p>
+        {/* Middle Row: Numbers (Left) and Mini-Calendar Dots Grid (Right) */}
+        <div className="flex items-center justify-between gap-4 mb-3">
+          {/* Left Side: Numeric values */}
+          <div className="shrink-0">
+            <p className="text-2xl font-extrabold text-slate-900 leading-none">{getLatest(kpi)}<span className="text-sm font-normal text-slate-400 ml-1">{kpi.unit}</span></p>
+            <p className="text-xs text-slate-500 font-bold mt-1">Target: {kpi.target}{kpi.unit}</p>
+            {todayTarget > 0 && (
+              <p className="text-[10px] text-teal-700 font-semibold mt-1 bg-white/60 px-1.5 py-0.5 rounded-md border border-teal-100 inline-block">
+                Today: {todayActual}/{todayTarget}
+              </p>
+            )}
           </div>
-          {todayTarget > 0 && (
-            <div className="text-right shrink-0">
-              <p className="text-[10px] text-slate-400">Today</p>
-              <p className={`text-xs font-bold ${todayActual >= todayTarget ? "text-teal-600" : "text-orange-600"}`}>{todayActual}/{todayTarget}</p>
-            </div>
-          )}
+
+          {/* Right Side: Week-wise Dot Matrix (7 dots per row, 4-5 rows) */}
+          <div className="flex flex-col gap-[3px] bg-white/40 p-1.5 rounded-lg border border-slate-100/50 shrink-0">
+            {Array.from({ length: numRows }).map((_, rIdx) => (
+              <div key={rIdx} className="flex gap-[3px]">
+                {cells.slice(rIdx * 7, (rIdx + 1) * 7).map((cell, cIdx) => {
+                  if (!cell || cell.isEmpty) {
+                    // Empty placeholder dot
+                    return <div key={`empty-${rIdx}-${cIdx}`} className="h-[6px] w-[6px] rounded-full opacity-10 bg-slate-350" />;
+                  }
+                  
+                  const dStr = cell.dateStr;
+                  const dayNum = cell.dayNum;
+                  const tVal = kpi.dailyAlloc?.[dStr] || 0;
+                  const aVal = kpi.dailyActual?.[dStr] || 0;
+
+                  let dotClass = "bg-slate-200 border border-slate-300/40"; // No target
+                  let titleText = `Day ${dayNum}: No target`;
+
+                  if (tVal > 0) {
+                    if (aVal >= tVal) {
+                      dotClass = "bg-emerald-500 ring-[1px] ring-emerald-250"; // target met
+                      titleText = `Day ${dayNum}: Met (${aVal}/${tVal})`;
+                    } else if (dStr === todayStr) {
+                      dotClass = "bg-amber-400 ring-[1px] ring-amber-300 animate-pulse"; // pending today
+                      titleText = `Day ${dayNum} (Today): Pending (${aVal}/${tVal})`;
+                    } else {
+                      dotClass = "bg-rose-500 ring-[1px] ring-rose-350"; // target missed
+                      titleText = `Day ${dayNum}: Missed (${aVal}/${tVal})`;
+                    }
+                  }
+
+                  return (
+                    <div 
+                      key={dStr} 
+                      className={`h-[6.5px] w-[6.5px] rounded-full shrink-0 ${dotClass}`} 
+                      title={titleText} 
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="h-1.5 rounded-full bg-white/80 overflow-hidden mb-3">
+        {/* Progress Bar */}
+        <div className="h-1.5 rounded-full bg-white/80 overflow-hidden">
           <div className={`h-full rounded-full ${barColor(status)}`} style={{ width: `${Math.min(progressPct(kpi), 100)}%` }} />
-        </div>
-
-        {/* 1-31 Progress Dots Grid */}
-        <div className="space-y-1">
-          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Daily Target Status ({selectedMonth})</span>
-          <div className="flex flex-wrap gap-[3px]">
-            {monthDays.map(dStr => {
-              const dayNum = parseInt(dStr.slice(-2));
-              const tVal = kpi.dailyAlloc?.[dStr] || 0;
-              const aVal = kpi.dailyActual?.[dStr] || 0;
-
-              let dotClass = "bg-slate-200 border border-slate-300"; // default: no target
-              let titleText = `Day ${dayNum}: No target`;
-
-              if (tVal > 0) {
-                if (aVal >= tVal) {
-                  dotClass = "bg-emerald-500 ring-1 ring-emerald-250"; // target met
-                  titleText = `Day ${dayNum}: Met (${aVal}/${tVal})`;
-                } else if (dStr === todayStr) {
-                  dotClass = "bg-amber-400 ring-1 ring-amber-300 animate-pulse"; // pending today
-                  titleText = `Day ${dayNum} (Today): Pending (${aVal}/${tVal})`;
-                } else {
-                  dotClass = "bg-rose-500 ring-1 ring-rose-300"; // target missed
-                  titleText = `Day ${dayNum}: Missed (${aVal}/${tVal})`;
-                }
-              }
-
-              return (
-                <div 
-                  key={dStr} 
-                  className={`h-[7px] w-[7px] rounded-full shrink-0 ${dotClass}`} 
-                  title={titleText} 
-                />
-              );
-            })}
-          </div>
         </div>
       </button>
     );
