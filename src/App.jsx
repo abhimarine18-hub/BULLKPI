@@ -2865,15 +2865,14 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
     const effHolidays = overrides.customHolidays !== undefined ? overrides.customHolidays : customHolidays;
     const effExclude = overrides.excludeSundays !== undefined ? overrides.excludeSundays : excludeSundays;
 
+    // Only distribute the selected month — leave other months intact
+    const val = monthlyAlloc[selectedMonth] || 0;
     let nextW = { ...weeklyAlloc };
     let nextD = { ...dailyAlloc };
 
-    MONTHS_LIST.forEach(m => {
-      const val = monthlyAlloc[m] || 0;
-      const subRes = distributeMonthToSubperiods(m, val, nextD, nextW, holidaysEnabled, effHolidays, effExclude);
-      nextW = subRes.nextW;
-      nextD = subRes.nextD;
-    });
+    const subRes = distributeMonthToSubperiods(selectedMonth, val, nextD, nextW, holidaysEnabled, effHolidays, effExclude);
+    nextW = subRes.nextW;
+    nextD = subRes.nextD;
 
     setWeeklyAlloc(nextW);
     setDailyAlloc(nextD);
