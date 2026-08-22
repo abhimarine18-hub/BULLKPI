@@ -10199,12 +10199,10 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
     // Get planned deliverables for a KPI in selectedMonth
     const getKpiPlannedItems = (kpiId) => {
-      return projects.filter(p => {
-        if (p.assignedTo !== currentEmployee || p.status === "bin" || p.kpiId !== kpiId) return false;
-        try {
-          const meta = JSON.parse(p.description);
-          return meta.type === "action_item" && meta.status === "planned" && meta.targetDate?.startsWith(prefix);
-        } catch(e) { return false; }
+      const kpiObj = kpis.find(k => k.id === kpiId);
+      if (!kpiObj) return [];
+      return (kpiObj.reportConfig?.plans || []).filter(p => {
+        return (p.status === "planned" || p.status === "completed") && p.targetDate?.startsWith(prefix);
       });
     };
 
@@ -10240,13 +10238,10 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
       // Group planned items by date for quick lookup
       const plannedByDate = {};
       kpiPlanned.forEach(p => {
-        try {
-          const meta = JSON.parse(p.description);
-          if (meta.targetDate) {
-            if (!plannedByDate[meta.targetDate]) plannedByDate[meta.targetDate] = [];
-            plannedByDate[meta.targetDate].push(p);
-          }
-        } catch(e) {}
+        if (p.targetDate) {
+          if (!plannedByDate[p.targetDate]) plannedByDate[p.targetDate] = [];
+          plannedByDate[p.targetDate].push(p);
+        }
       });
 
       return (
