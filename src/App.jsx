@@ -7818,11 +7818,24 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
 
                               return (
                               <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
-                                <td className="px-5 py-3.5 font-bold text-slate-800 text-xs max-w-xs truncate">
-                                  {kpi.name}
-                                  <span className={`ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                                    {kpi.kpiType === 'report' ? 'Report' : 'Activity'}
-                                  </span>
+                                <td className="px-5 py-3.5 font-bold text-slate-800 text-xs max-w-xs">
+                                   <div className="flex items-center gap-2 flex-wrap">
+                                     <span className="truncate">{kpi.name}</span>
+                                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${kpi.kpiType === 'report' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                                       {kpi.kpiType === 'report' ? 'Report' : 'Activity'}
+                                     </span>
+                                   </div>
+                                   <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                     {kpi.reportConfig?.planRequired ? (
+                                       <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-150">
+                                         Plan Required
+                                       </span>
+                                     ) : (
+                                       <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border border-slate-150">
+                                         Plan Not Required
+                                       </span>
+                                     )}
+                                   </div>
                                 
                                     {(() => {
                                       const childKpi = kpis.find(k => String(k.id) === String(kpi.reportConfig?.followUpKpiId));
@@ -7963,6 +7976,15 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
           {kpi.kpiType === "report" ? "Report" : "Activity"}
         </span>
       </div>
+      {kpi.reportConfig?.planRequired ? (
+        <span className="inline-flex items-center rounded px-1 py-0.25 text-[8px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-150">
+          Plan Required
+        </span>
+      ) : (
+        <span className="inline-flex items-center rounded px-1 py-0.25 text-[8px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border border-slate-150">
+          Plan Not Required
+        </span>
+      )}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-0 bg-white/80 p-0.5 rounded-md backdrop-blur-sm">
         <button onClick={(e) => { e.stopPropagation(); const { id, history, monthlyActual, monthly_actual, weeklyActual, weekly_actual, ...kpiCopy } = kpi; setEditingKpi({ ...kpiCopy, id: `temp-${Date.now()}`, name: kpi.name + " (Copy)" }); }} className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50 transition-colors" title="Duplicate KPI">
           <Copy className="w-3.5 h-3.5"/>
@@ -9722,36 +9744,38 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
           {/* Top Row: KPI Name & On Track/Off Track Status Badge */}
           <div className="flex items-start justify-between gap-4 mb-2">
             <p className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2">{kpi.name}</p>
-            <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-              status === "on-track" 
-                ? "bg-teal-50 text-teal-700 border border-teal-200" 
-                : status === "at-risk"
-                  ? "bg-orange-50 text-orange-700 border border-orange-200"
-                  : "bg-rose-50 text-rose-700 border border-rose-250"
-            }`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${
-                status === "on-track" ? "bg-teal-500" : status === "at-risk" ? "bg-orange-500" : "bg-rose-500"
-              }`} />
-              {status === "on-track" ? "On track" : status === "at-risk" ? "At risk" : "Off track"}
-            </span>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                status === "on-track" 
+                  ? "bg-teal-50 text-teal-700 border border-teal-200" 
+                  : status === "at-risk"
+                    ? "bg-orange-50 text-orange-700 border border-orange-200"
+                    : "bg-rose-50 text-rose-700 border border-rose-250"
+              }`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${
+                  status === "on-track" ? "bg-teal-500" : status === "at-risk" ? "bg-orange-500" : "bg-rose-500"
+                }`} />
+                {status === "on-track" ? "On track" : status === "at-risk" ? "At risk" : "Off track"}
+              </span>
+              {kpi.reportConfig?.planRequired ? (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-teal-200 text-teal-700 bg-teal-50/50 uppercase tracking-wider whitespace-nowrap">
+                  Plan Required
+                </span>
+              ) : (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-slate-200 text-slate-400 bg-slate-50 uppercase tracking-wider whitespace-nowrap">
+                  Plan Not Required
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Relation Badge (DO / DRIVE / MONITOR) & Plan Status */}
-          <div className="flex items-center gap-1.5 mb-2.5">
+          {/* Relation Badge (DO / DRIVE / MONITOR) */}
+          <div className="mb-2.5">
             <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
               relBadgeColor[relationType] || "border-slate-300 text-slate-600 bg-slate-50"
             }`}>
               {relLabels[relationType] || "KPI"}
             </span>
-            {kpi.reportConfig?.planRequired ? (
-              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-teal-200 text-teal-700 bg-teal-50/50 uppercase tracking-wider">
-                Plan Required
-              </span>
-            ) : (
-              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-slate-200 text-slate-400 bg-slate-55 uppercase tracking-wider">
-                Plan Not Required
-              </span>
-            )}
           </div>
           
           {/* Middle Row: Numbers (Left) and Mini-Calendar Dots Grid (Right) */}
