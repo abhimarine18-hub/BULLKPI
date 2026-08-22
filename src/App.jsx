@@ -10141,10 +10141,8 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
   /* ── Monthly Plan screen ── */
   const PlanningScreen = () => {
     const [expandedKpiId, setExpandedKpiId] = useState(null);
-    const [editingItem, setEditingItem] = useState(null); // { id: null/string, title: '', objective: '', date: '' }
-    const [formTitle, setFormTitle] = useState("");
-    const [formObjective, setFormObjective] = useState("");
-    const [formDate, setFormDate] = useState("");
+    const [selectedDateForPlan, setSelectedDateForPlan] = useState(null);
+    const [selectedKpiForPlan, setSelectedKpiForPlan] = useState(null);
 
     // Helper for date prefix
     const getYearMonthPrefix = (mStr) => {
@@ -10172,87 +10170,6 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
       });
     };
 
-    // Save handler
-    const handleSaveItem = async (kpi) => {
-      if (!formTitle.trim()) {
-        alert("Please enter a title for the deliverable.");
-        return;
-      }
-      if (!formDate) {
-        alert("Please select a target date.");
-        return;
-      }
-
-      const isNew = !editingItem?.id || editingItem.id === 'new';
-      const descriptionJson = JSON.stringify({
-        type: "action_item",
-        status: "planned",
-        objective: formObjective,
-        targetDate: formDate,
-        assignedTo: currentEmployee,
-        kpiId: kpi.id
-      });
-
-      const dbPayload = {
-        name: formTitle,
-        description: descriptionJson,
-        team: kpi.team,
-        lead: currentEmployee
-      };
-
-      try {
-        if (isNew) {
-          const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
-          if (error) throw error;
-          if (data) {
-            setProjects(prev => [...prev, {
-              id: data.id,
-              title: data.name,
-              description: data.description,
-              team: data.team,
-              assignedTo: currentEmployee,
-              kpiId: kpi.id,
-              targetDate: formDate,
-              status: "planned",
-              createdAt: data.created_at,
-              memberNames: []
-            }]);
-          }
-        } else {
-          const { data, error } = await supabase.from('projects').update(dbPayload).eq('id', editingItem.id).select().single();
-          if (error) throw error;
-          if (data) {
-            setProjects(prev => prev.map(p => p.id === editingItem.id ? {
-              ...p,
-              title: data.name,
-              description: data.description,
-              targetDate: formDate,
-              objective: formObjective
-            } : p));
-          }
-        }
-        setEditingItem(null);
-        setFormTitle("");
-        setFormObjective("");
-        setFormDate("");
-      } catch (err) {
-        alert("Error saving planned item: " + err.message);
-      }
-    };
-
-    // Delete handler
-    const handleDeleteItem = async (itemId) => {
-      if (window.confirm("Are you sure you want to delete this planned deliverable?")) {
-        try {
-          const { error } = await supabase.from('projects').delete().eq('id', itemId);
-          if (error) throw error;
-          setProjects(prev => prev.filter(p => p.id !== itemId));
-        } catch(err) {
-          alert("Error deleting item: " + err.message);
-        }
-      }
-    };
-
     // Determine planning completion status
     const allPlannedCount = planningRequiredKpis.reduce((acc, kpi) => {
       const target = kpi.monthlyAlloc?.[selectedMonth] || 0;
@@ -10264,6 +10181,96 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
     }, 0);
 
     const planningCompleted = allActualPlannedCount >= allPlannedCount && allPlannedCount > 0;
+
+    const WeekHeader = () => (
+      <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 shrink-0">
+        <div>Sun</div>
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
+      </div>
+    );
+
+    const renderKpiCalendar = (kpi) => {
+      const cells = getCalendarCells(selectedMonth);
+      const kpiPlanned = getKpiPlannedItems(kpi.id);
+
+      // Group planned items by date for quick lookup
+      const plannedByDate = {};
+      kpiPlanned.forEach(p => {
+        try {
+          const meta = JSON.parse(p.description);
+          if (meta.targetDate) {
+            if (!plannedByDate[meta.targetDate]) plannedByDate[meta.targetDate] = [];
+            plannedByDate[meta.targetDate].push(p);
+          }
+        } catch(e) {}
+      });
+
+      return (
+        <div className="w-full">
+          <WeekHeader />
+          <div className="grid grid-cols-7 gap-1.5">
+            {cells.map((cell, idx) => {
+              if (!cell || cell.isEmpty) {
+                return <div key={`empty-${idx}`} className="aspect-square bg-slate-50/20 border border-slate-100/30 rounded-lg" />;
+              }
+
+              const dStr = cell.dateStr;
+              const tVal = kpi.dailyAlloc?.[dStr] || 0;
+              const cellPlanned = plannedByDate[dStr] || [];
+              const plannedCount = cellPlanned.length;
+
+              if (tVal === 0) {
+                // Non-target day
+                return (
+                  <div key={dStr} className="aspect-square bg-slate-50/60 border border-slate-100 rounded-lg flex flex-col items-center justify-center p-1 opacity-30">
+                    <span className="text-[10px] font-semibold text-slate-400">{cell.dayNum}</span>
+                  </div>
+                );
+              }
+
+              const isPlanned = plannedCount >= tVal;
+
+              return (
+                <div
+                  key={dStr}
+                  onClick={() => {
+                    setSelectedKpiForPlan(kpi);
+                    setSelectedDateForPlan(dStr);
+                  }}
+                  className={`aspect-square border rounded-xl flex flex-col items-center justify-between p-1.5 cursor-pointer transition-all hover:scale-102 hover:shadow-xs ${
+                    isPlanned 
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400" 
+                      : "bg-rose-50 border-rose-250 text-rose-800 hover:bg-rose-100 hover:border-rose-350"
+                  }`}
+                >
+                  <div className="w-full flex items-center justify-between">
+                    <span className="text-[10px] font-bold leading-none">{cell.dayNum}</span>
+                    <span className="text-[8px] font-extrabold px-1 rounded bg-white/60 leading-none">T: {tVal}</span>
+                  </div>
+                  
+                  {plannedCount > 0 && (
+                    <div className="w-full text-center">
+                      <span className="text-[8px] font-black tracking-tighter bg-white/70 px-1 py-0.25 rounded border border-current leading-none">
+                        P: {plannedCount}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="w-full text-right leading-none text-[8px] font-bold">
+                    {isPlanned ? "✅" : "⚠️"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
 
     return (
       <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-6">
@@ -10334,183 +10341,229 @@ function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleComplete
                   </div>
                 </div>
 
-                {/* KPI Expanded Content */}
+                {/* KPI Expanded Content (Calendar) */}
                 {isExpanded && (
-                  <div className="border-t border-slate-100 p-4 bg-slate-50/20 space-y-4">
-                    {/* Deliverables List */}
-                    <div className="space-y-2">
-                      {kpiPlanned.map((item, idx) => {
-                        let objText = "";
-                        let dateText = "";
-                        try {
-                          const meta = JSON.parse(item.description);
-                          objText = meta.objective || "";
-                          dateText = meta.targetDate || "";
-                        } catch(e) {}
-
-                        const showEditForm = editingItem?.id === item.id;
-
-                        if (showEditForm) {
-                          return (
-                            <div key={item.id} className="bg-white border border-orange-200 rounded-2xl p-4 shadow-sm space-y-3">
-                              <h4 className="text-xs font-bold text-slate-700">Edit Deliverable</h4>
-                              <div className="space-y-2">
-                                <input 
-                                  type="text" 
-                                  placeholder="Deliverable Title (e.g. Independence Day poster)" 
-                                  value={formTitle}
-                                  onChange={(e) => setFormTitle(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
-                                />
-                                <textarea 
-                                  placeholder="Objective / Brief notes" 
-                                  value={formObjective}
-                                  onChange={(e) => setFormObjective(e.target.value)}
-                                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
-                                  rows={2}
-                                />
-                                <div>
-                                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Target Date</label>
-                                  <select 
-                                    value={formDate}
-                                    onChange={(e) => setFormDate(e.target.value)}
-                                    className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none"
-                                  >
-                                    <option value="">Select Target Date...</option>
-                                    {getCalendarCells(selectedMonth)
-                                      .filter(c => c && !c.isEmpty && (kpi.dailyAlloc?.[c.dateStr] || 0) > 0)
-                                      .map(c => <option key={c.dateStr} value={c.dateStr}>{new Date(c.dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", weekday: "short" })} (Target: {kpi.dailyAlloc[c.dateStr]})</option>)
-                                    }
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 pt-1">
-                                <button onClick={() => handleSaveItem(kpi)} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs">Save</button>
-                                <button onClick={() => { setEditingItem(null); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs">Cancel</button>
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <div key={item.id} className="bg-white border border-slate-100 rounded-xl p-3 flex items-start justify-between gap-3 shadow-2xs">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-extrabold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100 uppercase">
-                                  {new Date(dateText).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                                </span>
-                                <h4 className="text-xs font-bold text-slate-850 truncate">{item.title}</h4>
-                              </div>
-                              {objText && <p className="text-[11px] text-slate-500 mt-1">{objText}</p>}
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button 
-                                onClick={() => {
-                                  setEditingItem({ id: item.id, title: item.title, objective: objText, date: dateText });
-                                  setFormTitle(item.title);
-                                  setFormObjective(objText);
-                                  setFormDate(dateText);
-                                }}
-                                className="text-slate-400 hover:text-teal-600 p-1 hover:bg-slate-50 rounded"
-                                title="Edit"
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteItem(item.id)}
-                                className="text-slate-400 hover:text-rose-600 p-1 hover:bg-slate-50 rounded"
-                                title="Delete"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {kpiPlanned.length === 0 && !editingItem && (
-                        <p className="text-center text-xs text-slate-400 italic py-4">No deliverables planned for this KPI yet.</p>
-                      )}
-                    </div>
-
-                    {/* Inline Add Form */}
-                    {editingItem?.id === 'new' ? (
-                      <div className="bg-white border border-teal-200 rounded-2xl p-4 shadow-sm space-y-3">
-                        <h4 className="text-xs font-bold text-slate-700">Add Planned Deliverable</h4>
-                        <div className="space-y-2">
-                          <input 
-                            type="text" 
-                            placeholder="Deliverable Title (e.g. Independence Day poster)" 
-                            value={formTitle}
-                            onChange={(e) => setFormTitle(e.target.value)}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
-                          />
-                          <textarea 
-                            placeholder="Objective / Brief notes" 
-                            value={formObjective}
-                            onChange={(e) => setFormObjective(e.target.value)}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
-                            rows={2}
-                          />
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-500 block mb-1">Target Date</label>
-                            <select 
-                              value={formDate}
-                              onChange={(e) => setFormDate(e.target.value)}
-                              className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none"
-                            >
-                              <option value="">Select Target Date...</option>
-                              {getCalendarCells(selectedMonth)
-                                .filter(c => c && !c.isEmpty && (kpi.dailyAlloc?.[c.dateStr] || 0) > 0)
-                                .map(c => {
-                                  const plannedOnThisDate = kpiPlanned.filter(p => {
-                                    try { return JSON.parse(p.description).targetDate === c.dateStr; } catch(e) { return false; }
-                                  }).length;
-                                  const remainingSlots = (kpi.dailyAlloc[c.dateStr] || 0) - plannedOnThisDate;
-                                  return (
-                                    <option key={c.dateStr} value={c.dateStr} disabled={remainingSlots <= 0}>
-                                      {new Date(c.dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", weekday: "short" })} 
-                                      {` (Allocated: ${kpi.dailyAlloc[c.dateStr]} · Remaining Slots: ${remainingSlots})`}
-                                    </option>
-                                  );
-                                })
-                              }
-                            </select>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 pt-1">
-                          <button onClick={() => handleSaveItem(kpi)} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs">Add Deliverable</button>
-                          <button onClick={() => { setEditingItem(null); }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs">Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      kpiPlanned.length < targetVal && !editingItem && (
-                        <button 
-                          onClick={() => {
-                            setEditingItem({ id: 'new' });
-                            setFormTitle("");
-                            setFormObjective("");
-                            const validCells = getCalendarCells(selectedMonth)
-                              .filter(c => c && !c.isEmpty && (kpi.dailyAlloc?.[c.dateStr] || 0) > 0);
-                            const firstAvailable = validCells.find(c => {
-                              const plannedOnThisDate = kpiPlanned.filter(p => {
-                                try { return JSON.parse(p.description).targetDate === c.dateStr; } catch(e) { return false; }
-                              }).length;
-                              return (kpi.dailyAlloc[c.dateStr] || 0) > plannedOnThisDate;
-                            });
-                            setFormDate(firstAvailable?.dateStr || "");
-                          }}
-                          className="w-full flex items-center justify-center gap-1.5 bg-white border border-dashed border-teal-200 text-teal-700 font-bold text-xs p-3.5 rounded-xl hover:bg-teal-50 transition-colors"
-                        >
-                          <Plus className="h-4 w-4" /> Add Planned Deliverable
-                        </button>
-                      )
-                    )}
+                  <div className="border-t border-slate-100 p-5 bg-slate-50/10 space-y-4">
+                    {renderKpiCalendar(kpi)}
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
+
+        {/* Deliverables Plan Popup Modal */}
+        {selectedDateForPlan && selectedKpiForPlan && (
+          <PlanModal 
+            kpi={selectedKpiForPlan}
+            dateStr={selectedDateForPlan}
+            onClose={() => { setSelectedDateForPlan(null); setSelectedKpiForPlan(null); }}
+          />
+        )}
+      </div>
+    );
+  };
+
+  /* ── Plan details popup modal ── */
+  const PlanModal = ({ kpi, dateStr, onClose }) => {
+    const prefix = `${new Date(dateStr).getFullYear()}-${String(new Date(dateStr).getMonth() + 1).padStart(2, '0')}`;
+    
+    const kpiPlanned = projects.filter(p => {
+      if (p.assignedTo !== currentEmployee || p.status === "bin" || p.kpiId !== kpi.id) return false;
+      try {
+        const meta = JSON.parse(p.description);
+        return meta.type === "action_item" && meta.status === "planned" && meta.targetDate === dateStr;
+      } catch(e) { return false; }
+    });
+
+    const tVal = kpi.dailyAlloc?.[dateStr] || 0;
+
+    const [modalTitle, setModalTitle] = useState("");
+    const [modalObjective, setModalObjective] = useState("");
+    const [editingItemInModal, setEditingItemInModal] = useState(null); // project item
+
+    const handleSave = async () => {
+      if (!modalTitle.trim()) {
+        alert("Please enter a title.");
+        return;
+      }
+
+      const isNew = !editingItemInModal?.id;
+      const descriptionJson = JSON.stringify({
+        type: "action_item",
+        status: "planned",
+        objective: modalObjective,
+        targetDate: dateStr,
+        assignedTo: currentEmployee,
+        kpiId: kpi.id
+      });
+
+      const dbPayload = {
+        name: modalTitle,
+        description: descriptionJson,
+        team: kpi.team,
+        lead: currentEmployee
+      };
+
+      try {
+        if (isNew) {
+          const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
+          if (error) throw error;
+          if (data) {
+            setProjects(prev => [...prev, {
+              id: data.id,
+              title: data.name,
+              description: data.description,
+              team: data.team,
+              assignedTo: currentEmployee,
+              kpiId: kpi.id,
+              targetDate: dateStr,
+              status: "planned",
+              createdAt: data.created_at,
+              memberNames: []
+            }]);
+          }
+        } else {
+          const { data, error } = await supabase.from('projects').update(dbPayload).eq('id', editingItemInModal.id).select().single();
+          if (error) throw error;
+          if (data) {
+            setProjects(prev => prev.map(p => p.id === editingItemInModal.id ? {
+              ...p,
+              title: data.name,
+              description: data.description,
+              targetDate: dateStr,
+              objective: modalObjective
+            } : p));
+          }
+        }
+        setEditingItemInModal(null);
+        setModalTitle("");
+        setModalObjective("");
+      } catch (err) {
+        alert("Error saving: " + err.message);
+      }
+    };
+
+    const handleDelete = async (itemId) => {
+      if (window.confirm("Delete this planned deliverable?")) {
+        try {
+          const { error } = await supabase.from('projects').delete().eq('id', itemId);
+          if (error) throw error;
+          setProjects(prev => prev.filter(p => p.id !== itemId));
+        } catch(err) {
+          alert("Error deleting: " + err.message);
+        }
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+            <div>
+              <h3 className="text-base font-bold text-slate-800">{kpi.name}</h3>
+              <p className="text-xs font-semibold text-teal-650 mt-0.5">
+                Plan for {new Date(dateStr).toLocaleDateString("en-IN", { weekday: 'long', day: 'numeric', month: 'short' })}
+              </p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold text-sm">Close</button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
+            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3 flex items-center justify-between text-xs font-semibold text-slate-700 shrink-0">
+              <span>Target Allocated for this Day: <span className="font-extrabold text-slate-900">{tVal} deliverables</span></span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${kpiPlanned.length >= tVal ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                {kpiPlanned.length} of {tVal} Planned
+              </span>
+            </div>
+
+            {/* List of current planned items for this day */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Current Deliverables Plan ({kpiPlanned.length})</p>
+              {kpiPlanned.map((item, idx) => {
+                let obj = "";
+                try { obj = JSON.parse(item.description).objective || ""; } catch(e) {}
+                
+                return (
+                  <div key={item.id} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-bold text-slate-850 truncate">#{idx + 1}: {item.title}</h4>
+                      {obj && <p className="text-[11px] text-slate-500 mt-1 leading-snug">{obj}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button 
+                        onClick={() => {
+                          setEditingItemInModal(item);
+                          setModalTitle(item.title);
+                          setModalObjective(obj);
+                        }}
+                        className="text-slate-400 hover:text-teal-650 p-1 hover:bg-slate-100 rounded"
+                        title="Edit"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(item.id)}
+                        className="text-slate-400 hover:text-rose-600 p-1 hover:bg-slate-100 rounded"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {kpiPlanned.length === 0 && (
+                <p className="text-center text-xs text-slate-400 italic py-4">No deliverables planned for this date yet.</p>
+              )}
+            </div>
+
+            {/* Add / Edit Form */}
+            {editingItemInModal || kpiPlanned.length < tVal ? (
+              <div className="bg-white border border-teal-200 rounded-2xl p-4 shadow-2xs space-y-3 shrink-0">
+                <h4 className="text-xs font-extrabold text-teal-700 uppercase tracking-wide">
+                  {editingItemInModal ? "Edit Deliverable Plan" : "Add Deliverable Plan"}
+                </h4>
+                <div className="space-y-2.5">
+                  <input 
+                    type="text" 
+                    placeholder="Deliverable Title (e.g. Independence Day poster)" 
+                    value={modalTitle}
+                    onChange={(e) => setModalTitle(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
+                  />
+                  <textarea 
+                    placeholder="Objective / Brief notes / Specifications" 
+                    value={modalObjective}
+                    onChange={(e) => setModalObjective(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300"
+                    rows={2}
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={handleSave} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs">
+                    {editingItemInModal ? "Save Changes" : "Save Plan"}
+                  </button>
+                  {editingItemInModal && (
+                    <button onClick={() => {
+                      setEditingItemInModal(null);
+                      setModalTitle("");
+                      setModalObjective("");
+                    }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3.5 py-1.5 rounded-xl text-xs">
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-teal-50 border border-teal-150 rounded-2xl p-3 text-center text-xs font-semibold text-teal-850 shrink-0">
+                🎉 All target deliverables for this date have been planned!
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
