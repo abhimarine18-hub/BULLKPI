@@ -9603,7 +9603,7 @@ const EMP_NAV = [
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage }) {
+function EmployeeApp({ kpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -12346,6 +12346,7 @@ export default function App() {
             onLog={handleLog} 
             teams={teams} 
             projects={projects} 
+            setProjects={setProjects}
             handleCompleteAction={handleCompleteAction} 
             loggedInUser={loggedInUser} 
             onLogout={() => { setLoggedInUser(null); setLoginForm({ loginId: "", password: "" }); setLoginError(""); localStorage.removeItem("persistent_user"); localStorage.removeItem("persistent_role"); }} 
