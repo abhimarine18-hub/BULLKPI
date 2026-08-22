@@ -9509,42 +9509,62 @@ function EmployeeApp({ kpis, onLog, teams, projects, handleCompleteAction, logge
           </div>
 
           {/* Right Side: Week-wise Dot Matrix (7 dots per row, 4-5 rows) */}
-          <div className="flex flex-col gap-[3px] bg-white/40 p-1.5 rounded-lg border border-slate-100/50 shrink-0">
+          <div className="flex flex-col gap-[4px] bg-white/50 p-2 rounded-xl border border-slate-100/80 shrink-0">
             {Array.from({ length: numRows }).map((_, rIdx) => (
-              <div key={rIdx} className="flex gap-[3px]">
+              <div key={rIdx} className="flex gap-[4px]">
                 {cells.slice(rIdx * 7, (rIdx + 1) * 7).map((cell, cIdx) => {
                   if (!cell || cell.isEmpty) {
                     // Empty placeholder dot
-                    return <div key={`empty-${rIdx}-${cIdx}`} className="h-[6px] w-[6px] rounded-full opacity-10 bg-slate-350" />;
+                    return <div key={`empty-${rIdx}-${cIdx}`} className="h-[10px] w-[10px] rounded-full opacity-10 bg-slate-350" />;
                   }
                   
                   const dStr = cell.dateStr;
                   const dayNum = cell.dayNum;
                   const tVal = kpi.dailyAlloc?.[dStr] || 0;
                   const aVal = kpi.dailyActual?.[dStr] || 0;
+                  const isToday = dStr === todayStr;
 
-                  let dotClass = "bg-slate-200 border border-slate-300/40"; // No target
                   let titleText = `Day ${dayNum}: No target`;
+                  let content = null;
+                  let containerClass = "h-[10px] w-[10px] rounded-full shrink-0 flex items-center justify-center ";
 
                   if (tVal > 0) {
                     if (aVal >= tVal) {
-                      dotClass = "bg-emerald-500 ring-[1px] ring-emerald-250"; // target met
+                      // Completed: Blue outline + Green smaller dot inside with 1px gap
+                      containerClass += "border-[1.5px] border-blue-500 bg-white p-[1px]";
+                      content = <div className="h-full w-full rounded-full bg-emerald-500" />;
                       titleText = `Day ${dayNum}: Met (${aVal}/${tVal})`;
-                    } else if (dStr === todayStr) {
-                      dotClass = "bg-amber-400 ring-[1px] ring-amber-300 animate-pulse"; // pending today
+                    } else if (isToday) {
+                      // Today: Yellow glow (animate pulse)
+                      containerClass += "bg-amber-400 ring-2 ring-amber-300 shadow-[0_0_6px_rgba(251,191,36,0.8)] animate-pulse border border-amber-500";
                       titleText = `Day ${dayNum} (Today): Pending (${aVal}/${tVal})`;
                     } else {
-                      dotClass = "bg-rose-500 ring-[1px] ring-rose-350"; // target missed
-                      titleText = `Day ${dayNum}: Missed (${aVal}/${tVal})`;
+                      // Missed past day: Blue outline + Red smaller dot inside with 1px gap
+                      // Since target is missed on a past day
+                      const isPast = new Date(dStr) < new Date(todayStr);
+                      if (isPast) {
+                        containerClass += "border-[1.5px] border-blue-500 bg-white p-[1px]";
+                        content = <div className="h-full w-full rounded-full bg-rose-500" />;
+                        titleText = `Day ${dayNum} (Missed): Pending (${aVal}/${tVal})`;
+                      } else {
+                        // Future day target (not yet completed): Blue outline round only
+                        containerClass += "border-[1.5px] border-blue-400 bg-white";
+                        titleText = `Day ${dayNum} (Future): Target (${tVal})`;
+                      }
                     }
+                  } else {
+                    // No target: gray outline/dot
+                    containerClass += "bg-slate-200 border border-slate-300/60";
                   }
 
                   return (
                     <div 
                       key={dStr} 
-                      className={`h-[6.5px] w-[6.5px] rounded-full shrink-0 ${dotClass}`} 
-                      title={titleText} 
-                    />
+                      className={containerClass} 
+                      title={titleText}
+                    >
+                      {content}
+                    </div>
                   );
                 })}
               </div>
