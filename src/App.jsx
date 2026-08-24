@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -1727,7 +1727,13 @@ const campaignsData = [
 
 function getLatest(kpi) { 
   if (!kpi.history || kpi.history.length === 0) return 0;
-  return kpi.history[kpi.history.length - 1].v || 0; 
+  for (let i = kpi.history.length - 1; i >= 0; i--) {
+    const entry = kpi.history[i];
+    if (entry.status === "approved" || !entry.status) {
+      return entry.v || 0;
+    }
+  }
+  return 0; 
 }
 
 function getStatus(kpi) {
@@ -9627,8 +9633,118 @@ const EMP_NAV = [
   { id: "planning", icon: Calendar },
   { id: "my_tasks", icon: CheckSquare },
   { id: "team", icon: Trophy },
+  { id: "reviews", icon: ClipboardCheck },
   { id: "profile", icon: User },
 ];
+
+function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
+  const pendingReviews = [];
+  (kpis || []).forEach(k => {
+    const isChecker = k.checker === loggedInUser?.name;
+    const isApprover = k.approver === loggedInUser?.name;
+    if (!isChecker && !isApprover) return;
+
+    (k.history || []).forEach(h => {
+      if (isChecker && h.status === "pending_checker") {
+        pendingReviews.push({ kpi: k, log: h, role: "Checker" });
+      }
+      if (isApprover && h.status === "pending_approver") {
+        pendingReviews.push({ kpi: k, log: h, role: "Approver" });
+      }
+    });
+  });
+
+  const handleApprove = async (review) => {
+    const { kpi, log, role } = review;
+    const newStatus = role === "Checker" ? "pending_approver" : "approved";
+    
+    const updatedHistory = kpi.history.map(h => h.id === log.id ? { ...h, status: newStatus } : h);
+    setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, history: updatedHistory } : k));
+    await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpi.id);
+
+    if (newStatus === "pending_approver" && kpi.approver) {
+      supabase.from('notifications').insert({
+        type: 'review_required',
+        title: 'Value Log Review Required',
+        message: `${log.submittedBy || 'Someone'} logged a new value (${log.v} ${kpi.unit}) for KPI "${kpi.name}". It is waiting for your approval as Approver.`,
+        related_kpi_id: kpi.id,
+        recipient: kpi.approver,
+        status: 'unread'
+      }).then(()=>{});
+    } else if (newStatus === "approved") {
+      supabase.from('notifications').insert({
+        type: 'log_approved',
+        title: 'Value Log Approved',
+        message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was approved!`,
+        related_kpi_id: kpi.id,
+        recipient: log.submittedBy || kpi.owner,
+        status: 'unread'
+      }).then(()=>{});
+    }
+  };
+
+  const handleReject = async (review) => {
+    const reason = window.prompt("Enter reason for rejection:");
+    if (reason === null) return;
+    
+    const { kpi, log, role } = review;
+    const updatedHistory = kpi.history.map(h => h.id === log.id ? { ...h, status: "rejected" } : h);
+    setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, history: updatedHistory } : k));
+    await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpi.id);
+
+    supabase.from('notifications').insert({
+      type: 'log_rejected',
+      title: 'Value Log Rejected',
+      message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was rejected by ${loggedInUser.name} (Role: ${role}). Reason: ${reason}`,
+      related_kpi_id: kpi.id,
+      recipient: log.submittedBy || kpi.owner,
+      status: 'unread'
+    }).then(()=>{});
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 bg-slate-50 min-h-screen">
+      <div className="flex items-center gap-3 mb-6">
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Pending Reviews</h2>
+      </div>
+
+      {pendingReviews.length === 0 ? (
+        <div className="bg-white rounded-2xl p-6 text-center border border-slate-100 shadow-sm">
+          <ClipboardCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-slate-500">You have no pending value logs to review.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {pendingReviews.map((review, i) => (
+            <div key={`${review.kpi.id}-${review.log.id || i}`} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm mb-1">{review.kpi.name}</h4>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                    <span className="bg-slate-100 px-2 py-1 rounded font-semibold">Value: {review.log.v} {review.kpi.unit}</span>
+                    <span>Week/Date: {review.log.d}</span>
+                    <span>By: <strong className="text-slate-700">{review.log.submittedBy || review.kpi.owner}</strong></span>
+                    <span className="text-orange-500 font-semibold bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
+                      As {review.role}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleApprove(review)} className="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-4 py-2 rounded-xl text-xs transition-colors">
+                    Approve
+                  </button>
+                  <button onClick={() => handleReject(review)} className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-4 py-2 rounded-xl text-xs transition-colors">
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
@@ -10593,6 +10709,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     mykpis: <MyKpisScreen />, 
     planning: <PlanningScreen />,
     team: <TeamScreen />, 
+    reviews: <EmployeeReviewScreen kpis={kpis} setKpis={setKpis} loggedInUser={loggedInUser} />,
     action: <ActionScreen kpis={kpis} projects={projects} user={currentEmployee} onCompleteAction={handleCompleteAction} teams={teams} clientProjects={clientProjects} onUpdateClientProjectStage={onUpdateClientProjectStage} />, 
     my_tasks: <EmployeeTasksScreen individualTasks={individualTasks} onUpdateIndividualTaskStatus={onUpdateIndividualTaskStatus} currentEmployee={currentEmployee} kpis={kpis} />,
     profile: <ProfileScreen /> 
@@ -11441,13 +11558,49 @@ export default function App() {
 
   async function handleLog(kpiId, value) {
     let updatedHistory = [];
+    let kpiToUpdate = null;
+    let newEntryStatus = "approved";
+    
     setKpis((prev) => prev.map((k) => {
       if (k.id !== kpiId) return k;
+      kpiToUpdate = k;
       const nextIndex = k.history.length + 1;
-      updatedHistory = [...k.history, { d: `W${nextIndex}`, v: value }];
+      
+      newEntryStatus = k.checker ? "pending_checker" : (k.approver ? "pending_approver" : "approved");
+      
+      updatedHistory = [...k.history, { 
+        id: `log-${Date.now()}`,
+        d: `W${nextIndex}`, 
+        v: value,
+        status: newEntryStatus,
+        submittedBy: loggedInUser?.name || "Unknown"
+      }];
       return { ...k, history: updatedHistory };
     }));
-    await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpiId);
+
+    if (kpiToUpdate) {
+      await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpiId);
+      
+      // Notify checker or approver
+      let recipient = null;
+      let reviewType = null;
+      if (newEntryStatus === "pending_checker") { recipient = kpiToUpdate.checker; reviewType = "Checker"; }
+      else if (newEntryStatus === "pending_approver") { recipient = kpiToUpdate.approver; reviewType = "Approver"; }
+      
+      if (recipient) {
+        const payload = {
+          type: 'review_required',
+          title: 'Value Log Review Required',
+          message: `${loggedInUser?.name} logged a new value (${value} ${kpiToUpdate.unit}) for KPI "${kpiToUpdate.name}". It is waiting for your approval as ${reviewType}.`,
+          related_kpi_id: kpiId,
+          recipient: recipient,
+          status: 'unread'
+        };
+        supabase.from('notifications').insert(payload).select().single().then(({ data }) => {
+          if (data) setNotifications(prev => [...prev, data]);
+        });
+      }
+    }
   }
 
   async function handleAddMember(teamId, member) {
