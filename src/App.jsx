@@ -1910,6 +1910,24 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
                   message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was approved!`,
                   related_kpi_id: kpi.id, recipient: log.submittedBy || kpi.owner, status: 'unread'
                 }).then(()=>{});
+
+                if (kpi.reportConfig?.followUpKpiId) {
+                  const childKpi = allKpis?.find(k => String(k.id) === String(kpi.reportConfig.followUpKpiId));
+                  if (childKpi) {
+                    supabase.from('notifications').insert({
+                      type: 'child_kpi_ready', title: `Ready to start: ${childKpi.name}`,
+                      message: `The parent KPI "${kpi.name}" has had a value of ${log.v} approved. You can now start on this KPI.`,
+                      related_kpi_id: childKpi.id, recipient: childKpi.owner, status: 'unread'
+                    }).then(()=>{});
+                    
+                    if (childKpi.is_initiated_type) {
+                      const initiatedAt = new Date().toISOString();
+                      const initiatedBy = loggedInUser?.name || "System";
+                      setKpis(prev => prev.map(k => k.id === childKpi.id ? { ...k, is_initiated: true, initiated_at: initiatedAt, initiated_by: initiatedBy } : k));
+                      supabase.from('kpis').update({ is_initiated: true, initiated_at: initiatedAt, initiated_by: initiatedBy }).eq('id', childKpi.id).then(()=>{});
+                    }
+                  }
+                }
               }
             };
           
@@ -6824,6 +6842,24 @@ function MorningReviewScreen({ teams, kpis, setKpis, loggedInUser }) {
         message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was approved!`,
         related_kpi_id: kpi.id, recipient: log.submittedBy || kpi.owner, status: 'unread'
       }).then(()=>{});
+
+      if (kpi.reportConfig?.followUpKpiId) {
+        const childKpi = kpis?.find(k => String(k.id) === String(kpi.reportConfig.followUpKpiId));
+        if (childKpi) {
+          supabase.from('notifications').insert({
+            type: 'child_kpi_ready', title: `Ready to start: ${childKpi.name}`,
+            message: `The parent KPI "${kpi.name}" has had a value of ${log.v} approved. You can now start on this KPI.`,
+            related_kpi_id: childKpi.id, recipient: childKpi.owner, status: 'unread'
+          }).then(()=>{});
+          
+          if (childKpi.is_initiated_type) {
+            const initiatedAt = new Date().toISOString();
+            const initiatedBy = loggedInUser?.name || "System";
+            setKpis(prev => prev.map(k => k.id === childKpi.id ? { ...k, is_initiated: true, initiated_at: initiatedAt, initiated_by: initiatedBy } : k));
+            supabase.from('kpis').update({ is_initiated: true, initiated_at: initiatedAt, initiated_by: initiatedBy }).eq('id', childKpi.id).then(()=>{});
+          }
+        }
+      }
     }
   };
 
@@ -9950,6 +9986,24 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
         recipient: log.submittedBy || kpi.owner,
         status: 'unread'
       }).then(()=>{});
+
+      if (kpi.reportConfig?.followUpKpiId) {
+        const childKpi = kpis?.find(k => String(k.id) === String(kpi.reportConfig.followUpKpiId));
+        if (childKpi) {
+          supabase.from('notifications').insert({
+            type: 'child_kpi_ready', title: `Ready to start: ${childKpi.name}`,
+            message: `The parent KPI "${kpi.name}" has had a value of ${log.v} approved. You can now start on this KPI.`,
+            related_kpi_id: childKpi.id, recipient: childKpi.owner, status: 'unread'
+          }).then(()=>{});
+          
+          if (childKpi.is_initiated_type) {
+            const initiatedAt = new Date().toISOString();
+            const initiatedBy = loggedInUser?.name || "System";
+            setKpis(prev => prev.map(k => k.id === childKpi.id ? { ...k, is_initiated: true, initiated_at: initiatedAt, initiated_by: initiatedBy } : k));
+            supabase.from('kpis').update({ is_initiated: true, initiated_at: initiatedAt, initiated_by: initiatedBy }).eq('id', childKpi.id).then(()=>{});
+          }
+        }
+      }
     }
   };
 
