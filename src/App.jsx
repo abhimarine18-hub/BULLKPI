@@ -1777,6 +1777,7 @@ function StatusBadge({ status }) {
 
 function LogValueModal({ kpi, onClose, onSubmit }) {
   const [value, setValue] = useState(getLatest(kpi));
+  const [note, setNote] = useState("");
   return (
     <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-5 w-full max-w-sm">
@@ -1794,8 +1795,18 @@ function LogValueModal({ kpi, onClose, onSubmit }) {
           />
           <span className="text-slate-400 text-sm">{kpi.unit}</span>
         </div>
+        <div className="mb-4">
+          <label className="text-xs font-bold text-slate-500 mb-1 block">Note (Optional)</label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows="2"
+            placeholder="Add context or details..."
+            className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-300 resize-none"
+          />
+        </div>
         <button
-          onClick={() => { onSubmit(kpi.id, parseFloat(value)); onClose(); }}
+          onClick={() => { onSubmit(kpi.id, parseFloat(value), note); onClose(); }}
           className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-xl transition-colors"
         >
           Save entry
@@ -2889,6 +2900,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const [owner, setOwner] = useState(kpi.owner);
   const [checker, setChecker] = useState(kpi.checker || "");
   const [approver, setApprover] = useState(kpi.approver || "");
+  const [aiCheckEnabled, setAiCheckEnabled] = useState(kpi.aiCheckEnabled || false);
 
   // Advanced targeting configuration
   const [totalTargetInput, setTotalTargetInput] = useState(kpi.target || 0);
@@ -3323,6 +3335,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       owner,
       checker,
       approver,
+      aiCheckEnabled,
       driveBy,
       monitorBy,
       weightage,
@@ -3604,6 +3617,14 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                   {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                 </select>
               </div>
+
+              <div className="flex flex-col justify-center mt-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={aiCheckEnabled} onChange={(e) => setAiCheckEnabled(e.target.checked)} className="rounded text-teal-500 focus:ring-teal-500 h-4 w-4 border-slate-300" />
+                  <span className="text-xs font-bold text-slate-700">Enable AI Review Assist</span>
+                </label>
+              </div>
+
 
               <div>
                 <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Drive (Optional)</label>
@@ -9728,6 +9749,25 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
                       As {review.role}
                     </span>
                   </div>
+                  {(review.log.note || review.log.aiSuggestion) && (
+                    <div className="mt-3 space-y-2">
+                      {review.log.note && (
+                        <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          <strong className="text-slate-900 block mb-0.5">Note from Doer:</strong>
+                          {review.log.note}
+                        </p>
+                      )}
+                      {review.log.aiSuggestion && (
+                        <div className="flex items-start gap-2 bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100">
+                          <Star className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                          <p className="text-xs text-indigo-900 leading-relaxed">
+                            <strong className="block mb-0.5 text-indigo-700">AI Review Assist:</strong>
+                            {review.log.aiSuggestion}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handleApprove(review)} className="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-4 py-2 rounded-xl text-xs transition-colors">
@@ -11224,6 +11264,7 @@ export default function App() {
           owner: k.owner,
           checker: k.checker || "",
           approver: k.approver || "",
+          aiCheckEnabled: k.ai_check_enabled || false,
           driveBy: k.drive_by || "",
           monitorBy: k.monitor_by || "",
           description: k.description || "",
@@ -11556,50 +11597,72 @@ export default function App() {
     loadData();
   }, []);
 
-  async function handleLog(kpiId, value) {
-    let updatedHistory = [];
-    let kpiToUpdate = null;
-    let newEntryStatus = "approved";
+  async function handleLog(kpiId, value, note) {
+    let kpiToUpdate = kpis.find(k => k.id === kpiId);
+    if (!kpiToUpdate) return;
     
+    let aiSuggestion = null;
+    if (kpiToUpdate.aiCheckEnabled && note) {
+      try {
+        const res = await supabase.functions.invoke('ai-review', {
+          body: {
+            kpiName: kpiToUpdate.name,
+            kpiDescription: kpiToUpdate.description,
+            target: kpiToUpdate.target,
+            unit: kpiToUpdate.unit,
+            submittedValue: value,
+            note: note
+          }
+        });
+        if (res.data?.suggestion) {
+          aiSuggestion = res.data.suggestion;
+        }
+      } catch (err) {
+        console.error("AI Review failed", err);
+      }
+    }
+
+    let updatedHistory = [];
+    let newEntryStatus = kpiToUpdate.checker ? "pending_checker" : (kpiToUpdate.approver ? "pending_approver" : "approved");
+
     setKpis((prev) => prev.map((k) => {
       if (k.id !== kpiId) return k;
-      kpiToUpdate = k;
       const nextIndex = k.history.length + 1;
       
-      newEntryStatus = k.checker ? "pending_checker" : (k.approver ? "pending_approver" : "approved");
-      
-      updatedHistory = [...k.history, { 
+      const newEntry = { 
         id: `log-${Date.now()}`,
         d: `W${nextIndex}`, 
         v: value,
         status: newEntryStatus,
-        submittedBy: loggedInUser?.name || "Unknown"
-      }];
+        submittedBy: loggedInUser?.name || "Unknown",
+        note: note || undefined,
+        aiSuggestion: aiSuggestion || undefined
+      };
+      
+      updatedHistory = [...k.history, newEntry];
       return { ...k, history: updatedHistory };
     }));
 
-    if (kpiToUpdate) {
-      await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpiId);
-      
-      // Notify checker or approver
-      let recipient = null;
-      let reviewType = null;
-      if (newEntryStatus === "pending_checker") { recipient = kpiToUpdate.checker; reviewType = "Checker"; }
-      else if (newEntryStatus === "pending_approver") { recipient = kpiToUpdate.approver; reviewType = "Approver"; }
-      
-      if (recipient) {
-        const payload = {
-          type: 'review_required',
-          title: 'Value Log Review Required',
-          message: `${loggedInUser?.name} logged a new value (${value} ${kpiToUpdate.unit}) for KPI "${kpiToUpdate.name}". It is waiting for your approval as ${reviewType}.`,
-          related_kpi_id: kpiId,
-          recipient: recipient,
-          status: 'unread'
-        };
-        supabase.from('notifications').insert(payload).select().single().then(({ data }) => {
-          if (data) setNotifications(prev => [...prev, data]);
-        });
-      }
+    await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpiId);
+    
+    // Notify checker or approver
+    let recipient = null;
+    let reviewType = null;
+    if (newEntryStatus === "pending_checker") { recipient = kpiToUpdate.checker; reviewType = "Checker"; }
+    else if (newEntryStatus === "pending_approver") { recipient = kpiToUpdate.approver; reviewType = "Approver"; }
+    
+    if (recipient) {
+      const payload = {
+        type: 'review_required',
+        title: 'Value Log Review Required',
+        message: `${loggedInUser?.name} logged a new value (${value} ${kpiToUpdate.unit}) for KPI "${kpiToUpdate.name}". It is waiting for your approval as ${reviewType}.`,
+        related_kpi_id: kpiId,
+        recipient: recipient,
+        status: 'unread'
+      };
+      supabase.from('notifications').insert(payload).select().single().then(({ data }) => {
+        if (data) setNotifications(prev => [...prev, data]);
+      });
     }
   }
 
@@ -11964,6 +12027,7 @@ export default function App() {
         owner: updatedKpi.owner,
         checker: updatedKpi.checker || "",
         approver: updatedKpi.approver || "",
+        ai_check_enabled: updatedKpi.aiCheckEnabled || false,
         drive_by: updatedKpi.driveBy || "",
         monitor_by: updatedKpi.monitorBy || "",
         description: updatedKpi.description || "",
@@ -12004,6 +12068,7 @@ export default function App() {
         owner: safeStr(updatedKpi.owner),
         checker: safeStr(updatedKpi.checker),
         approver: safeStr(updatedKpi.approver),
+        ai_check_enabled: updatedKpi.aiCheckEnabled || false,
         drive_by: safeStr(updatedKpi.driveBy),
         monitor_by: safeStr(updatedKpi.monitorBy),
         description: safeStr(updatedKpi.description),
