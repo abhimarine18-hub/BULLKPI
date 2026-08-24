@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -1801,7 +1801,7 @@ function LogValueModal({ kpi, onClose, onSubmit }) {
 
 /* ---------------- KPI detail drawer (shared) ---------------- */
 
-function KpiDetail({ kpi, allKpis, onClose, onLog }) {
+function KpiDetail({ kpi, allKpis, onClose, onLog, onInitiateKpi, loggedInUser }) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const d = new Date();
     const m = d.toLocaleString('en-US', { month: 'short' });
@@ -1956,6 +1956,37 @@ function KpiDetail({ kpi, allKpis, onClose, onLog }) {
             </div>
           </div>
         </div>
+
+        {kpi.isInitiatedType && (
+          <div className="mb-4 p-3.5 rounded-xl border border-orange-100 bg-orange-50/40 text-xs font-semibold text-slate-700">
+            <p className="font-bold flex items-center gap-1.5 text-slate-800">
+              ⚡ Manual Release Status
+            </p>
+            {kpi.initiatedAt ? (
+              <p className="text-[10px] text-teal-700 mt-1 font-semibold">
+                Released/Initiated by <span className="font-bold">{kpi.initiatedBy}</span> on {new Date(kpi.initiatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            ) : (
+              <div className="mt-2.5 flex flex-col gap-2">
+                <span className="text-[10px] text-amber-600 font-bold block">
+                  ⚠️ Target schedule is currently ON HOLD. Releases require manager initiation.
+                </span>
+                {loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.designation?.toLowerCase().includes('lead') || loggedInUser.designation?.toLowerCase().includes('manager')) && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to initiate/release this KPI target schedule?")) {
+                        onInitiateKpi(kpi.id, loggedInUser.name);
+                      }
+                    }}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors shadow-sm"
+                  >
+                    🚀 Initiate KPI target schedule now
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {kpi.kpiType !== 'report' && (
           <button
@@ -2813,6 +2844,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const [kpiType, setKpiType] = useState(kpi.kpiType || 'activity');
   const [reportConfig, setReportConfig] = useState(kpi.reportConfig || { type: 'sum', kpiIds: [], numeratorIds: [], denominatorIds: [] });
   const [planRequired, setPlanRequired] = useState(kpi.reportConfig?.planRequired ?? false);
+  const [isInitiatedType, setIsInitiatedType] = useState(kpi.isInitiatedType || false);
 
   // Drive, Monitor, DO (owner) and Weightage configurations
   const [driveBy, setDriveBy] = useState(kpi.driveBy || "");
@@ -3297,6 +3329,9 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       targetType: distributeEnabled ? "daily" : "monthly",
       targetsList: Object.entries(dailyAlloc).filter(([_, val]) => val > 0).map(([dStr, val]) => ({ id: dStr, label: dStr, targetValue: val, targetDate: dStr })),
       kpiType,
+      isInitiatedType,
+      initiatedAt: kpi.initiatedAt || null,
+      initiatedBy: kpi.initiatedBy || null,
       _linkedParentId: linkMode === 'child' ? linkedParentId : "",
       reportConfig: {
         ...reportConfig,
@@ -3570,6 +3605,19 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 type="checkbox"
                 checked={planRequired}
                 onChange={(e) => setPlanRequired(e.target.checked)}
+                className="w-4 h-4 text-teal-600 border-orange-200 rounded focus:ring-teal-500"
+              />
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Manual Initiation Required</span>
+                <span className="text-[9px] text-slate-450">This KPI target must be manually released/initiated by a manager</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={isInitiatedType}
+                onChange={(e) => setIsInitiatedType(e.target.checked)}
                 className="w-4 h-4 text-teal-600 border-orange-200 rounded focus:ring-teal-500"
               />
             </div>
@@ -4197,39 +4245,20 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
   const [delayReason, setDelayReason] = useState("");
   const [isReportingDelay, setIsReportingDelay] = useState(false);
   
-  // Delegated Task modal states
-  const [showDelegateModal, setShowDelegateModal] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskObjective, setTaskObjective] = useState("");
-  const [taskOutcome, setTaskOutcome] = useState("");
-  const [taskTargetDate, setTaskTargetDate] = useState(new Date().toISOString().split('T')[0]);
-  const [taskAssignee, setTaskAssignee] = useState("");
-  const [taskKpiId, setTaskKpiId] = useState("");
-
   // Rescheduling state
   const [reschedulingProjectId, setReschedulingProjectId] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleReason, setRescheduleReason] = useState("");
 
-  // Repetitive Task Configuration states
-  const [isRepetitive, setIsRepetitive] = useState(false);
-  const [repetitiveFrequency, setRepetitiveFrequency] = useState("daily");
-  const [weeklyDay, setWeeklyDay] = useState("Monday");
-  const [monthlyDate, setMonthlyDate] = useState(1);
-
   // Month-wise past pending filter state (April to March fiscal layout)
   const [selectedPendingMonth, setSelectedPendingMonth] = useState(new Date().toISOString().split('-')[1]);
-
-  // KPI Search dropdown states
-  const [kpiSearchQuery, setKpiSearchQuery] = useState("");
-  const [showKpiDropdown, setShowKpiDropdown] = useState(false);
 
   const myKpis = kpis.filter(k => k.owner === user);
   const myProjects = projects.filter(p => {
     if (p.assignedTo !== user) return false;
     try {
       const meta = JSON.parse(p.description);
-      return meta.type === "action_item" || meta.type === "delegated_task";
+      return meta.type === "action_item";
     } catch(e) { return false; }
   });
 
@@ -4283,28 +4312,8 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
     });
   });
 
-  // Add accepted/delayed delegated tasks to active day checklist
-  const activeTasks = parsedProjects.filter(p => p.meta.type === 'delegated_task' && (p.meta.status === 'accepted' || p.meta.status === 'delayed'));
-  activeTasks.forEach(p => {
-    actionSlots.push({
-      id: `delegated_${p.id}`,
-      kpiId: p.kpiId || null,
-      kpiName: p.kpiId ? (kpis.find(k => k.id === p.kpiId)?.name || "Linked KPI") : "Independent Task",
-      date: p.targetDate,
-      pendingProject: p,
-      type: 'delegated_active'
-    });
-  });
-
   // Filter slots for active date
   const slotsForDate = actionSlots.filter(s => s.date === activeDate);
-
-  // Get all members for Assignee Dropdown
-  const allMembers = teams.flatMap(t => t.members);
-  const assigneeOptions = allMembers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i);
-
-  // New Incoming Task Requests (pending delegated tasks)
-  const incomingTaskRequests = parsedProjects.filter(p => p.meta.type === 'delegated_task' && p.meta.status === 'pending');
 
   // Past Pending Work (incomplete before activeDate)
   const pastPendingSlots = actionSlots.filter(s => {
@@ -4320,15 +4329,6 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
           <ListTodo className="h-6 w-6 text-teal-600" /> Action Screen
         </h2>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              setShowDelegateModal(true);
-              if (assigneeOptions.length > 0) setTaskAssignee(assigneeOptions[0].name);
-            }} 
-            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm hover:shadow-md"
-          >
-            <Plus className="h-4 w-4" /> Delegate Task
-          </button>
           <input type="date" value={activeDate} onChange={(e) => setActiveDate(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-2 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-300" />
         </div>
       </div>
@@ -4462,108 +4462,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                   </div>
                 );
               })}
-            </div>
-          </div>
-        )}
-        {/* Incoming Task Requests Panel */}
-        {incomingTaskRequests.length > 0 && (
-          <div className="bg-amber-50/40 border border-amber-100 rounded-3xl p-5 space-y-3 mb-4 shadow-sm">
-            <h3 className="text-sm font-bold text-amber-800 flex items-center gap-1.5 uppercase tracking-wider">
-              <GitBranch className="h-4 w-4" /> New Task Requests ({incomingTaskRequests.length})
-            </h3>
-            <div className="space-y-3">
-              {incomingTaskRequests.map(task => {
-                const isRescheduling = reschedulingProjectId === task.id;
-                return (
-                  <div key={task.id} className="bg-white rounded-2xl p-4 border border-amber-100 shadow-sm space-y-3">
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">{task.title}</h4>
-                      <p className="text-xs text-slate-500 mt-1 font-semibold">
-                        Assigned By: {task.meta.creator || "Manager"} · Target: {task.targetDate}
-                      </p>
-                      {task.meta.objective && (
-                        <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded-lg italic">
-                          Objective: {task.meta.objective}
-                        </p>
-                      )}
-                      {task.meta.expectedOutcome && (
-                        <p className="text-xs text-slate-600 mt-1.5 bg-slate-50 p-2 rounded-lg italic">
-                          Outcome: {task.meta.expectedOutcome}
-                        </p>
-                      )}
-                    </div>
-
-                    {!isRescheduling ? (
-                      <div className="flex items-center gap-2 pt-1">
-                        <button 
-                          onClick={() => onCompleteAction({ type: 'accept_task', project: task })}
-                          className="px-3.5 py-1.5 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-lg text-xs transition-colors"
-                        >
-                          Accept Task
-                        </button>
-                        {task.meta.rescheduleCount === 0 && (
-                          <button 
-                            onClick={() => {
-                              setReschedulingProjectId(task.id);
-                              setRescheduleDate(task.targetDate);
-                            }}
-                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition-colors"
-                          >
-                            Reschedule
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="bg-slate-50 p-3 rounded-xl space-y-2 border border-slate-200">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">New Target Date</label>
-                            <input 
-                              type="date" 
-                              value={rescheduleDate} 
-                              onChange={(e) => setRescheduleDate(e.target.value)} 
-                              className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white" 
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Reschedule Reason</label>
-                            <input 
-                              type="text" 
-                              placeholder="Why reschedule?" 
-                              value={rescheduleReason} 
-                              onChange={(e) => setRescheduleReason(e.target.value)} 
-                              className="w-full border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white" 
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <button 
-                            onClick={() => {
-                              if (!rescheduleReason.trim()) {
-                                alert("Please enter a reason for rescheduling.");
-                                return;
-                              }
-                              onCompleteAction({ type: 'reschedule_task', project: task, newDate: rescheduleDate, reason: rescheduleReason });
-                              setReschedulingProjectId(null);
-                              setRescheduleReason("");
-                            }}
-                            className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs transition-colors"
-                          >
-                            Submit
-                          </button>
-                          <button 
-                            onClick={() => setReschedulingProjectId(null)}
-                            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+               </div>
           </div>
         )}
 
@@ -4964,271 +4863,6 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
         )}
       </div>
 
-      {/* Delegate Task Modal */}
-      {showDelegateModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <GitBranch className="h-5 w-5 text-teal-600" /> Delegate Task
-              </h3>
-              <button onClick={() => setShowDelegateModal(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Assign To</label>
-                <select 
-                  value={taskAssignee} 
-                  onChange={(e) => setTaskAssignee(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold bg-white"
-                >
-                  {assigneeOptions.map(m => (
-                    <option key={m.name} value={m.name}>{m.name} ({m.teamName || 'Team'})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Task Title</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Design Onam Banner" 
-                  value={taskTitle} 
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Target Date</label>
-                  <input 
-                    type="date" 
-                    value={taskTargetDate} 
-                    onChange={(e) => setTaskTargetDate(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                  />
-                </div>
-                <div className="relative">
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Linked KPI (Optional)</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search all KPIs..."
-                      value={kpiSearchQuery}
-                      onFocus={() => setShowKpiDropdown(true)}
-                      onChange={(e) => {
-                        setKpiSearchQuery(e.target.value);
-                        setShowKpiDropdown(true);
-                      }}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white"
-                    />
-                    {taskKpiId && (
-                      <span className="absolute right-8 top-2 bg-teal-50 text-teal-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                        Linked
-                      </span>
-                    )}
-                    {(kpiSearchQuery || showKpiDropdown) ? (
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setTaskKpiId("");
-                          setKpiSearchQuery("");
-                          setShowKpiDropdown(false);
-                        }}
-                        className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
-
-                  {showKpiDropdown && (
-                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-50">
-                      <div 
-                        onClick={() => {
-                          setTaskKpiId("");
-                          setKpiSearchQuery("None (Independent Task)");
-                          setShowKpiDropdown(false);
-                        }}
-                        className="px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 cursor-pointer font-semibold border-b border-slate-100"
-                      >
-                        None (Independent Task)
-                      </div>
-                      {kpis
-                        .filter(k => k.name.toLowerCase().includes(kpiSearchQuery.toLowerCase()) || (k.owner && k.owner.toLowerCase().includes(kpiSearchQuery.toLowerCase())))
-                        .map(k => (
-                          <div
-                            key={k.id}
-                            onClick={() => {
-                              setTaskKpiId(k.id);
-                              setKpiSearchQuery(k.name);
-                              setShowKpiDropdown(false);
-                            }}
-                            className={`px-3 py-2 text-xs hover:bg-slate-50 cursor-pointer flex flex-col gap-0.5 border-b border-slate-50 ${String(taskKpiId) === String(k.id) ? 'bg-teal-50/50' : ''}`}
-                          >
-                            <span className="font-bold text-slate-800">{k.name}</span>
-                            <span className="text-[10px] text-slate-400 font-semibold">{k.owner} · {k.team}</span>
-                          </div>
-                        ))}
-                      {kpis.filter(k => k.name.toLowerCase().includes(kpiSearchQuery.toLowerCase())).length === 0 && (
-                        <div className="px-3 py-4 text-xs text-slate-400 italic text-center">No matching KPIs found</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Objective of the Task</label>
-                <textarea 
-                  placeholder="Explain why this task is needed..." 
-                  value={taskObjective} 
-                  onChange={(e) => setTaskObjective(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                  rows={2}
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Expected Outcome</label>
-                <textarea 
-                  placeholder="What is the expected deliverable/result?" 
-                  value={taskOutcome} 
-                  onChange={(e) => setTaskOutcome(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                  rows={2}
-                />
-                {/* Repetitive Task Configuration */}
-              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 space-y-3 mt-3">
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="isRepetitive" 
-                    checked={isRepetitive}
-                    onChange={(e) => {
-                      setIsRepetitive(e.target.checked);
-                      if (e.target.checked && !repetitiveFrequency) {
-                        setRepetitiveFrequency("daily");
-                      }
-                    }}
-                    className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4"
-                  />
-                  <label htmlFor="isRepetitive" className="text-xs font-bold text-slate-700 cursor-pointer">
-                    Is this a repetitive/recurring task?
-                  </label>
-                </div>
-
-                {isRepetitive && (
-                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-slate-200/60">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Frequency</label>
-                      <select 
-                        value={repetitiveFrequency} 
-                        onChange={(e) => setRepetitiveFrequency(e.target.value)}
-                        className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
-                    </div>
-
-                    {repetitiveFrequency === "weekly" && (
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Select Day of Week</label>
-                        <select 
-                          value={weeklyDay} 
-                          onChange={(e) => setWeeklyDay(e.target.value)}
-                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                        >
-                          <option value="Monday">Monday</option>
-                          <option value="Tuesday">Tuesday</option>
-                          <option value="Wednesday">Wednesday</option>
-                          <option value="Thursday">Thursday</option>
-                          <option value="Friday">Friday</option>
-                          <option value="Saturday">Saturday</option>
-                          <option value="Sunday">Sunday</option>
-                        </select>
-                      </div>
-                    )}
-
-                    {repetitiveFrequency === "monthly" && (
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Select Day of Month</label>
-                        <input 
-                          type="number" 
-                          min="1" 
-                          max="31" 
-                          value={monthlyDate} 
-                          onChange={(e) => setMonthlyDate(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
-                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button 
-                onClick={() => {
-                  setShowDelegateModal(false);
-                  setIsRepetitive(false);
-                  setRepetitiveFrequency("");
-                  setWeeklyDay("Monday");
-                  setMonthlyDate(1);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  if (!taskTitle.trim() || !taskAssignee) {
-                    alert("Please provide a title and assignee.");
-                    return;
-                  }
-                  onCompleteAction({
-                    type: 'create_delegated_task',
-                    taskData: {
-                      title: taskTitle,
-                      assignee: taskAssignee,
-                      targetDate: taskTargetDate,
-                      kpiId: taskKpiId ? Number(taskKpiId) : null,
-                      objective: taskObjective,
-                      outcome: taskOutcome,
-                      creator: user,
-                      isRepetitive,
-                      repetitiveConfig: isRepetitive ? {
-                        frequency: repetitiveFrequency,
-                        weeklyDay: repetitiveFrequency === "weekly" ? weeklyDay : null,
-                        monthlyDate: repetitiveFrequency === "monthly" ? monthlyDate : null
-                      } : null
-                    }
-                  });
-                  setShowDelegateModal(false);
-                  setTaskTitle("");
-                  setTaskObjective("");
-                  setTaskOutcome("");
-                  setKpiSearchQuery("");
-                  setTaskKpiId("");
-                  setIsRepetitive(false);
-                  setRepetitiveFrequency("");
-                  setWeeklyDay("Monday");
-                  setMonthlyDate(1);
-                }}
-                className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm"
-              >
-                Assign Task
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -6604,8 +6238,319 @@ const ADMIN_NAV = [
   { id: "build_projects", label: "Build Projects", icon: FolderGit2 },
   { id: "projects", label: "Projects", icon: FolderGit2 },
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
+  { id: "individual_tasks", label: "Individual Tasks", icon: CheckSquare },
   { id: "settings", label: "Settings", icon: Settings },
 ];
+
+
+function AdminIndividualTasksView({ individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, teams, kpis = [] }) {
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTask, setNewTask] = useState({ 
+    title: "", description: "", team: "", assignee: "", due_date: "", priority: "normal", kpiId: "",
+    is_recurring: false, recurrence_type: "daily", recurrence_value: ""
+  });
+
+  const allMembers = useMemo(() => {
+    return teams.flatMap(t => t.members.map(m => ({ ...m, teamName: t.name }))).sort((a, b) => a.name.localeCompare(b.name));
+  }, [teams]);
+
+  const filteredTasks = useMemo(() => {
+    return individualTasks.filter(t => {
+      const matchPrio = priorityFilter === "All" || t.priority?.toLowerCase() === priorityFilter.toLowerCase();
+      const matchStatus = statusFilter === "All" || t.status?.toLowerCase() === statusFilter.toLowerCase();
+      return matchPrio && matchStatus;
+    });
+  }, [individualTasks, priorityFilter, statusFilter]);
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    if (!newTask.title.trim() || !newTask.assignee) return;
+    const selectedEmp = allMembers.find(m => m.name === newTask.assignee);
+    
+    // Auto-set recurrence value based on type if needed
+    let recVal = newTask.recurrence_value;
+    if (newTask.is_recurring) {
+      if (newTask.recurrence_type === 'weekly' && !recVal) recVal = "Monday";
+      if (newTask.recurrence_type === 'monthly' && !recVal) recVal = "1";
+    } else {
+      recVal = "";
+    }
+
+    onAddIndividualTask({ 
+      ...newTask, 
+      team: selectedEmp ? selectedEmp.teamName : "", 
+      kpiId: newTask.kpiId ? Number(newTask.kpiId) : null,
+      recurrence_value: recVal
+    });
+    setNewTask({ title: "", description: "", team: "", assignee: "", due_date: "", priority: "normal", kpiId: "", is_recurring: false, recurrence_type: "daily", recurrence_value: "" });
+    setShowAddModal(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="appearance-none bg-slate-50 border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-xs text-slate-700 font-bold focus:outline-none">
+              <option value="All">All Priorities</option>
+              <option value="high">High</option>
+              <option value="normal">Normal</option>
+              <option value="low">Low</option>
+            </select>
+            <ChevronDown className="h-3 w-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="appearance-none bg-slate-50 border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-xs text-slate-700 font-bold focus:outline-none">
+              <option value="All">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="done">Completed</option>
+            </select>
+            <ChevronDown className="h-3 w-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+        <button onClick={() => setShowAddModal(true)} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors">
+          <Plus className="h-4 w-4" /> Create Individual Task
+        </button>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Task Name</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Assignee</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Due Date</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Priority</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredTasks.length === 0 ? (
+                <tr><td colSpan="6" className="px-4 py-8 text-center text-xs text-slate-400 font-medium">No individual tasks found matching filters.</td></tr>
+              ) : (
+                filteredTasks.map(task => {
+                  const isOverdue = task.status !== 'done' && task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
+                  const linkedKpi = task.kpiId ? kpis.find(k => Number(k.id) === Number(task.kpiId)) : null;
+                  return (
+                    <tr key={task.id} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-col">
+                          <span className={`text-xs font-semibold text-slate-800 ${task.status === 'done' ? 'line-through text-slate-400' : ''}`}>{task.title}</span>
+                          {task.description && <span className="text-[10px] text-slate-400 mt-0.5">{task.description}</span>}
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            {linkedKpi && <span className="inline-flex items-center gap-1 text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded w-max">🔗 {linkedKpi.name}</span>}
+                            {task.is_recurring && <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded w-max">🔁 Recurring ({task.recurrence_type})</span>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-slate-650 font-medium">{task.assignee} <span className="text-[9px] text-slate-400 block">{task.team}</span></td>
+                      <td className="px-4 py-3.5 text-xs font-medium text-slate-600 font-mono">
+                        {task.due_date ? (<span className={isOverdue ? "text-rose-600 font-bold" : ""}>{new Date(task.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}{isOverdue && " (Overdue)"}</span>) : "—"}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${task.priority === 'high' ? 'bg-rose-50 text-rose-600 border-rose-100' : task.priority === 'low' ? 'bg-slate-50 text-slate-500 border-slate-150' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+                          {task.priority || 'normal'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="relative inline-block">
+                          <select value={task.status || 'pending'} onChange={(e) => onUpdateIndividualTaskStatus(task.id, e.target.value)} className="appearance-none bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none">
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="done">Completed</option>
+                          </select>
+                          <ChevronDown className="h-3 w-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <button onClick={() => onDeleteIndividualTask(task.id)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleAddSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-orange-100">
+            <div className="bg-orange-50 px-5 py-4 border-b border-orange-100 flex items-center justify-between sticky top-0 z-10">
+              <h3 className="font-bold text-slate-800 text-sm">Create Individual Task</h3>
+              <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs font-semibold text-slate-600">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Task Title *</label>
+                <input required type="text" value={newTask.title} onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))} placeholder="E.g., Send follow up email to client" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Description</label>
+                <textarea value={newTask.description} onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))} placeholder="Optional details..." className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none h-16 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Assignee *</label>
+                  <div className="relative">
+                    <select required value={newTask.assignee} onChange={(e) => setNewTask(prev => ({ ...prev, assignee: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                      <option value="">Select Employee</option>
+                      {allMembers.map(m => <option key={m.id} value={m.name}>{m.name} ({m.teamName})</option>)}
+                    </select>
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Priority</label>
+                  <div className="relative">
+                    <select value={newTask.priority} onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                    </select>
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Recurrence Settings */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer w-max">
+                  <input type="checkbox" checked={newTask.is_recurring} onChange={(e) => setNewTask(prev => ({ ...prev, is_recurring: e.target.checked }))} className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4 border-slate-300" />
+                  <span className="text-[11px] font-bold text-slate-700">Make this a recurring task</span>
+                </label>
+
+                {newTask.is_recurring && (
+                  <div className="space-y-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Frequency</label>
+                      <div className="relative">
+                        <select value={newTask.recurrence_type} onChange={(e) => setNewTask(prev => ({ ...prev, recurrence_type: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                        <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {newTask.recurrence_type === 'weekly' && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Day of the Week</label>
+                        <div className="relative">
+                          <select value={newTask.recurrence_value || "Monday"} onChange={(e) => setNewTask(prev => ({ ...prev, recurrence_value: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
+                          </select>
+                          <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                    )}
+
+                    {newTask.recurrence_type === 'monthly' && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Date of the Month</label>
+                        <div className="relative">
+                          <select value={newTask.recurrence_value || "1"} onChange={(e) => setNewTask(prev => ({ ...prev, recurrence_value: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                            {Array.from({length: 31}, (_, i) => i + 1).map(num => (
+                              <option key={num} value={num.toString()}>Date {num}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Due Date {newTask.is_recurring && "(First Occurrence)"}</label>
+                <input type="date" required={!newTask.is_recurring} value={newTask.due_date} onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Linked KPI (Optional)</label>
+                <div className="relative">
+                  <select value={newTask.kpiId} onChange={(e) => setNewTask(prev => ({ ...prev, kpiId: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                    <option value="">No Linked KPI</option>
+                    {kpis.map(k => <option key={k.id} value={k.id}>{k.name} ({k.team})</option>)}
+                  </select>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Create Task</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmployeeTasksScreen({ individualTasks, onUpdateIndividualTaskStatus, currentEmployee, kpis = [] }) {
+  const myTasks = useMemo(() => individualTasks.filter(t => t.assignee === currentEmployee), [individualTasks, currentEmployee]);
+  const sortedTasks = useMemo(() => [...myTasks].sort((a, b) => {
+    if (a.status === 'done' && b.status !== 'done') return 1;
+    if (a.status !== 'done' && b.status === 'done') return -1;
+    return new Date(a.due_date || '9999-12-31') - new Date(b.due_date || '9999-12-31');
+  }), [myTasks]);
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+      <div className="flex justify-between items-center pb-2 border-b border-orange-100">
+        <div>
+          <h2 className="text-lg font-bold text-slate-800" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My Tasks</h2>
+          <p className="text-[10px] text-slate-400 mt-0.5">Tasks assigned directly to you by managers</p>
+        </div>
+        <span className="bg-teal-50 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-150">
+          {myTasks.filter(t => t.status !== 'done').length} Pending
+        </span>
+      </div>
+      <div className="space-y-2.5">
+        {sortedTasks.length === 0 ? (
+          <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center shadow-xs">
+            <span className="text-3xl">🎉</span>
+            <p className="text-xs font-semibold text-slate-500 mt-2">All caught up! No tasks assigned to you.</p>
+          </div>
+        ) : (
+          sortedTasks.map(task => {
+            const isCompleted = task.status === 'done';
+            const isOverdue = !isCompleted && task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
+            const linkedKpi = task.kpiId ? kpis.find(k => Number(k.id) === Number(task.kpiId)) : null;
+            return (
+              <div key={task.id} className={`bg-white border rounded-2xl p-4 shadow-sm flex items-start gap-3.5 transition-all ${isCompleted ? 'border-slate-100 bg-slate-50/50 opacity-75' : 'border-slate-200/80 hover:border-slate-350'}`}>
+                <input type="checkbox" checked={isCompleted} onChange={(e) => onUpdateIndividualTaskStatus(task.id, e.target.checked ? 'done' : 'pending')} className="rounded text-teal-650 focus:ring-teal-500 h-5 w-5 shrink-0 cursor-pointer border-slate-300 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h4 className={`text-xs font-bold text-slate-855 leading-snug break-words ${isCompleted ? 'line-through text-slate-400' : ''}`}>{task.title}</h4>
+                  {task.description && <p className={`text-[10px] text-slate-550 mt-1 leading-relaxed ${isCompleted ? 'line-through opacity-50' : ''}`}>{task.description}</p>}
+                  <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                    {task.due_date && <span className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded-full ${isCompleted ? 'bg-slate-100 text-slate-450' : isOverdue ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-slate-100 text-slate-600'}`}>Due: {new Date(task.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}{isOverdue && " (Overdue)"}</span>}
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${task.priority === 'high' ? 'bg-rose-50 text-rose-600 border border-rose-100' : task.priority === 'low' ? 'bg-slate-50 text-slate-500 border-slate-150' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>{task.priority || 'normal'}</span>
+                    {linkedKpi && <span className="text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full truncate max-w-[200px]" title={linkedKpi.name}>🔗 {linkedKpi.name}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
 
 function MorningReviewScreen({ teams, kpis }) {
   const [selectedMember, setSelectedMember] = useState(null);
@@ -6834,7 +6779,7 @@ function MorningReviewScreen({ teams, kpis }) {
 }
 
 
-function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog }) {
+function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask }) {
   const okrsData = [
     { id: 1, objective: "Grow digital presence this quarter", level: "Company", owner: "Digital Marketing", keyResults: [
       { id: 1, name: "Grow website traffic to 50,000 sessions/month", linkedKpiId: 1 },
@@ -7872,6 +7817,15 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                          Plan Not Required
                                        </span>
                                      )}
+                                     {kpi.isInitiatedType && (
+                                       <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider border ${
+                                         kpi.initiatedAt 
+                                           ? 'text-teal-700 bg-teal-50 border-teal-150' 
+                                           : 'text-orange-700 bg-orange-50 border-orange-100'
+                                       }`}>
+                                         {kpi.initiatedAt ? '⚡ Active' : '⏸️ On Hold'}
+                                       </span>
+                                     )}
                                    </div>
                                 
                                     {(() => {
@@ -8623,6 +8577,23 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
             </div>
             );
           })()}
+
+          {screen === "individual_tasks" && (
+            <div className="p-6">
+              <div className="mb-5">
+                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><CheckSquare className="h-6 w-6 text-teal-600" /> Individual Tasks</h2>
+                <p className="text-xs text-slate-500 mt-1">Manage one-off tasks assigned directly to employees, outside of KPI workflows</p>
+              </div>
+              <AdminIndividualTasksView
+                individualTasks={individualTasks}
+                onAddIndividualTask={onAddIndividualTask}
+                onUpdateIndividualTaskStatus={onUpdateIndividualTaskStatus}
+                onDeleteIndividualTask={onDeleteIndividualTask}
+                teams={teams}
+                kpis={kpis}
+              />
+            </div>
+          )}
 
           {screen === "settings" && (() => {
             const allPlayers = teams.flatMap(t => t.members.map(m => ({
@@ -9377,7 +9348,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
       </main>
 
       {detailKpi && (
-        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => { setLoggingId(detailKpi.id); }} />
+        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => { setLoggingId(detailKpi.id); }} onInitiateKpi={onInitiateKpi} loggedInUser={loggedInUser} />
       )}
       {loggingKpi && (
         <LogValueModal kpi={loggingKpi} onClose={() => setLoggingId(null)} onSubmit={onLog} />
@@ -9634,13 +9605,14 @@ const EMP_NAV = [
   { id: "action", icon: ListTodo },
   { id: "mykpis", icon: List },
   { id: "planning", icon: Calendar },
+  { id: "my_tasks", icon: CheckSquare },
   { id: "team", icon: Trophy },
   { id: "profile", icon: User },
 ];
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage }) {
+function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -10602,6 +10574,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     planning: <PlanningScreen />,
     team: <TeamScreen />, 
     action: <ActionScreen kpis={kpis} projects={projects} user={currentEmployee} onCompleteAction={handleCompleteAction} teams={teams} clientProjects={clientProjects} onUpdateClientProjectStage={onUpdateClientProjectStage} />, 
+    my_tasks: <EmployeeTasksScreen individualTasks={individualTasks} onUpdateIndividualTaskStatus={onUpdateIndividualTaskStatus} currentEmployee={currentEmployee} kpis={kpis} />,
     profile: <ProfileScreen /> 
   };
 
@@ -10699,7 +10672,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
       {/* Modals */}
       {detailKpi && (
-        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => setLoggingId(detailKpi.id)} />
+        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => setLoggingId(detailKpi.id)} onInitiateKpi={onInitiateKpi} loggedInUser={loggedInUser} />
       )}
       {loggingKpi && (
         <LogValueModal kpi={loggingKpi} onClose={() => setLoggingId(null)} onSubmit={onLog} />
@@ -10714,19 +10687,34 @@ const computeReportKpis = (rawKpis) => {
   
   // Pre-process activity KPIs: Auto-distribute targets if monthlyAlloc is missing but target > 0
   const processedKpis = rawKpis.map(kpi => {
-    if (kpi.kpiType === 'report') return kpi;
-    const hasAlloc = kpi.monthlyAlloc && Object.values(kpi.monthlyAlloc).some(v => v > 0);
-    if (!hasAlloc && kpi.target > 0) {
-      const base = Math.floor(kpi.target / 12);
-      let remainder = kpi.target % 12;
+    // If Manual Initiation is required but it is not initiated, zero out target values
+    const isOnHold = kpi.isInitiatedType && !kpi.initiatedAt;
+    let target = isOnHold ? 0 : kpi.target;
+    let monthlyAlloc = isOnHold ? {} : (kpi.monthlyAlloc || {});
+    let dailyAlloc = isOnHold ? {} : (kpi.dailyAlloc || {});
+    let weeklyAlloc = isOnHold ? {} : (kpi.weeklyAlloc || {});
+
+    const baseKpi = {
+      ...kpi,
+      target,
+      monthlyAlloc,
+      dailyAlloc,
+      weeklyAlloc
+    };
+
+    if (baseKpi.kpiType === 'report') return baseKpi;
+    const hasAlloc = Object.values(monthlyAlloc).some(v => v > 0);
+    if (!hasAlloc && target > 0) {
+      const base = Math.floor(target / 12);
+      let remainder = target % 12;
       const autoMonthly = {};
       monthsList.forEach(m => {
         autoMonthly[m] = base + (remainder > 0 ? 1 : 0);
         if (remainder > 0) remainder--;
       });
-      return { ...kpi, monthlyAlloc: autoMonthly };
+      return { ...baseKpi, monthlyAlloc: autoMonthly };
     }
-    return kpi;
+    return baseKpi;
   });
 
   const kpiMap = {};
@@ -10824,6 +10812,8 @@ export default function App() {
   const [projects, setProjects] = useState([]);
   const [clientProjects, setClientProjects] = useState([]);
   const [clientProjectLogs, setClientProjectLogs] = useState([]);
+  const [individualTasks, setIndividualTasks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(() => {
     try {
       const saved = localStorage.getItem("persistent_user");
@@ -10844,6 +10834,43 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
+
+      try {
+        const pendingTasks = JSON.parse(localStorage.getItem('pending_sync_individual_tasks') || '[]');
+        if (pendingTasks.length > 0) {
+          for (const task of pendingTasks) {
+            await supabase.from('individual_tasks').insert({
+              title: task.title, description: task.description || "", team: task.team,
+              assignee: task.assignee, due_date: task.due_date || null,
+              status: task.status || 'pending', priority: task.priority || 'normal',
+              kpi_id: task.kpiId || null, completed_at: task.completed_at || null
+            });
+          }
+          localStorage.removeItem('pending_sync_individual_tasks');
+          const resAgain = await safeFetch('individual_tasks');
+          if (!resAgain.offline && resAgain.data) {
+            const mapped = resAgain.data.map(t => ({ ...t, kpiId: t.kpi_id || null }));
+            setIndividualTasks(mapped);
+            localStorage.setItem("backup_individual_tasks", JSON.stringify(mapped));
+          }
+        }
+      } catch(e) {}
+
+      try {
+        const pendingUpdates = JSON.parse(localStorage.getItem('pending_update_individual_tasks') || '[]');
+        if (pendingUpdates.length > 0) {
+          for (const upd of pendingUpdates) {
+            await supabase.from('individual_tasks').update({ status: upd.status, completed_at: upd.completed_at }).eq('id', upd.id);
+          }
+          localStorage.removeItem('pending_update_individual_tasks');
+          const resAgain = await safeFetch('individual_tasks');
+          if (!resAgain.offline && resAgain.data) {
+            const mapped = resAgain.data.map(t => ({ ...t, kpiId: t.kpi_id || null }));
+            setIndividualTasks(mapped);
+            localStorage.setItem("backup_individual_tasks", JSON.stringify(mapped));
+          }
+        }
+      } catch(e) {}
 
       // 1. Fetch Teams
       let dbTeams = null, dbMembers = null;
@@ -11227,6 +11254,37 @@ export default function App() {
         setClientProjectLogs(mappedLogs);
         localStorage.setItem("backup_client_project_logs", JSON.stringify(mappedLogs));
       }
+
+      // 5. Fetch Individual Tasks
+      try {
+        const resTasks = await safeFetch('individual_tasks');
+        if (!resTasks.offline && resTasks.data) {
+          const mapped = resTasks.data.map(t => ({
+            ...t,
+            kpiId: t.kpi_id || null
+          }));
+          setIndividualTasks(mapped);
+          localStorage.setItem("backup_individual_tasks", JSON.stringify(mapped));
+        } else {
+          const cached = localStorage.getItem("backup_individual_tasks");
+          if (cached) {
+            const parsed = JSON.parse(cached).map(t => ({ ...t, kpiId: t.kpi_id || t.kpiId || null }));
+            setIndividualTasks(parsed);
+          }
+        }
+      } catch(e) {}
+
+      // 6. Fetch Notifications
+      try {
+        const resNotif = await safeFetch('notifications');
+        if (!resNotif.offline && resNotif.data) {
+          setNotifications(resNotif.data);
+          localStorage.setItem("backup_notifications", JSON.stringify(resNotif.data));
+        } else {
+          const cached = localStorage.getItem("backup_notifications");
+          if (cached) setNotifications(JSON.parse(cached));
+        }
+      } catch(e) {}
 
       setLoading(false);
     }
@@ -11704,81 +11762,150 @@ export default function App() {
     }
   }
 
+  async function handleInitiateKpi(kpiId, managerName) {
+    const initiatedAt = new Date().toISOString();
+    setKpis(prev => prev.map(k => k.id === kpiId ? { ...k, initiatedAt, initiatedBy: managerName } : k));
+    try {
+      const cached = localStorage.getItem("backup_kpis");
+      if (cached) {
+        const updated = JSON.parse(cached).map(k => k.id === kpiId ? { ...k, initiated_at: initiatedAt, initiated_by: managerName } : k);
+        localStorage.setItem("backup_kpis", JSON.stringify(updated));
+      }
+    } catch(e) {}
+    await supabase.from('kpis').update({ initiated_at: initiatedAt, initiated_by: managerName }).eq('id', kpiId);
+  }
+
+  async function handleMarkNotificationAsRead(id) {
+    const { error } = await supabase.from('notifications').update({ status: 'read' }).eq('id', id);
+    if (!error) {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, status: 'read' } : n));
+      try {
+        const cached = localStorage.getItem("backup_notifications");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          localStorage.setItem("backup_notifications", JSON.stringify(parsed.map(n => n.id === id ? { ...n, status: 'read' } : n)));
+        }
+      } catch (err) {}
+    }
+  }
+
+  async function handleAddIndividualTask(newTask) {
+    const dbPayload = {
+      title: newTask.title, description: newTask.description || "", team: newTask.team,
+      assignee: newTask.assignee, due_date: newTask.due_date || null,
+      status: 'pending', priority: newTask.priority || 'normal',
+      kpi_id: newTask.kpiId || null,
+      is_recurring: newTask.is_recurring || false,
+      recurrence_type: newTask.recurrence_type || null,
+      recurrence_value: newTask.recurrence_value || null
+    };
+    const localId = `local-${Math.floor(1000 + Math.random() * 9000)}`;
+    const tempTask = { ...dbPayload, id: localId, kpiId: newTask.kpiId || null, created_at: new Date().toISOString() };
+    setIndividualTasks(prev => [...prev, tempTask]);
+    try {
+      const { data, error } = await supabase.from('individual_tasks').insert(dbPayload).select().single();
+      if (!error && data) {
+        setIndividualTasks(prev => prev.map(t => t.id === localId ? { ...data, kpiId: data.kpi_id || null } : t));
+        safeFetch('individual_tasks').then(res => {
+          if (res.data) {
+            const mapped = res.data.map(t => ({ ...t, kpiId: t.kpi_id || null }));
+            setIndividualTasks(mapped);
+            localStorage.setItem("backup_individual_tasks", JSON.stringify(mapped));
+          }
+        });
+      } else {
+        const queue = JSON.parse(localStorage.getItem('pending_sync_individual_tasks') || '[]');
+        queue.push(tempTask); localStorage.setItem('pending_sync_individual_tasks', JSON.stringify(queue));
+      }
+    } catch(err) {
+      const queue = JSON.parse(localStorage.getItem('pending_sync_individual_tasks') || '[]');
+      queue.push(tempTask); localStorage.setItem('pending_sync_individual_tasks', JSON.stringify(queue));
+    }
+  }
+
+  async function handleUpdateIndividualTaskStatus(id, newStatus) {
+    const completedAt = newStatus === 'done' ? new Date().toISOString() : null;
+    
+    // Check if this task is recurring and just completed
+    const task = individualTasks.find(t => t.id === id);
+    
+    setIndividualTasks(prev => prev.map(t => t.id === id ? { ...t, status: newStatus, completed_at: completedAt } : t));
+    
+    try {
+      const cached = localStorage.getItem("backup_individual_tasks");
+      if (cached) {
+        const updated = JSON.parse(cached).map(t => t.id === id ? { ...t, status: newStatus, completed_at: completedAt } : t);
+        localStorage.setItem("backup_individual_tasks", JSON.stringify(updated));
+      }
+    } catch(e) {}
+    
+    if (typeof id === 'number' || !String(id).startsWith('local-')) {
+      const { error } = await supabase.from('individual_tasks').update({ status: newStatus, completed_at: completedAt }).eq('id', id);
+      if (error) {
+        const queue = JSON.parse(localStorage.getItem('pending_update_individual_tasks') || '[]');
+        queue.push({ id, status: newStatus, completed_at: completedAt });
+        localStorage.setItem('pending_update_individual_tasks', JSON.stringify(queue));
+      }
+    }
+
+    // Spawn next recurrence if marked done and is recurring
+    if (newStatus === 'done' && task && task.is_recurring) {
+      const currentDue = task.due_date ? new Date(task.due_date) : new Date();
+      let nextDue = new Date(currentDue);
+      
+      if (task.recurrence_type === 'daily') {
+        nextDue.setDate(nextDue.getDate() + 1);
+      } else if (task.recurrence_type === 'weekly') {
+        // Simple approach: advance 1 week
+        nextDue.setDate(nextDue.getDate() + 7);
+      } else if (task.recurrence_type === 'monthly') {
+        // Advance 1 month
+        nextDue.setMonth(nextDue.getMonth() + 1);
+      }
+      
+      const nextDueStr = nextDue.toISOString().split('T')[0];
+      
+      const nextPayload = {
+        title: task.title,
+        description: task.description || "",
+        team: task.team,
+        assignee: task.assignee,
+        due_date: nextDueStr,
+        status: 'pending',
+        priority: task.priority || 'normal',
+        kpi_id: task.kpiId || null,
+        is_recurring: true,
+        recurrence_type: task.recurrence_type,
+        recurrence_value: task.recurrence_value
+      };
+      
+      // Auto-add the next one
+      const localId = `local-${Math.floor(1000 + Math.random() * 9000)}`;
+      const tempTask = { ...nextPayload, id: localId, kpiId: task.kpiId || null, created_at: new Date().toISOString() };
+      setIndividualTasks(prev => [...prev, tempTask]);
+      
+      const { data, error: insertError } = await supabase.from('individual_tasks').insert(nextPayload).select();
+      if (data && data.length > 0) {
+        setIndividualTasks(prev => prev.map(t => t.id === localId ? { ...data[0], kpiId: data[0].kpi_id } : t));
+      }
+    }
+  }
+
+  async function handleDeleteIndividualTask(id) {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      setIndividualTasks(prev => prev.filter(t => t.id !== id));
+      try {
+        const cached = localStorage.getItem("backup_individual_tasks");
+        if (cached) localStorage.setItem("backup_individual_tasks", JSON.stringify(JSON.parse(cached).filter(t => t.id !== id)));
+      } catch(e) {}
+      if (typeof id === 'number' || !String(id).startsWith('local-')) {
+        await supabase.from('individual_tasks').delete().eq('id', id);
+      }
+    }
+  }
+
   
   async function handleCompleteAction(actionData) {
-    if (actionData.type === 'create_delegated_task') {
-      const task = actionData.taskData;
-      let teamName = "Digital Marketing";
-      const assignedMember = teams.flatMap(t => t.members).find(m => m.name === task.assignee);
-      if (assignedMember) {
-        const teamObj = teams.find(t => t.members.some(m => m.name === task.assignee));
-        if (teamObj) teamName = teamObj.name;
-      }
-      const descriptionJson = JSON.stringify({
-        type: "delegated_task",
-        objective: task.objective,
-        expectedOutcome: task.outcome,
-        targetDate: task.targetDate,
-        status: "pending",
-        kpiId: task.kpiId || null,
-        creator: task.creator,
-        rescheduleCount: 0,
-        rescheduleReason: "",
-        assignedTo: task.assignee,
-        isRepetitive: task.isRepetitive || false,
-        repetitiveConfig: task.repetitiveConfig || null
-      });
-      const dbPayload = {
-        name: task.title,
-        description: descriptionJson,
-        team: teamName,
-        lead: task.assignee || ""
-      };
-      const { data, error } = await supabase.from('projects').insert(dbPayload).select().single();
-      if (!error && data) {
-        setProjects(prev => [...prev, {
-          id: data.id,
-          title: data.name,
-          description: data.description,
-          team: data.team,
-          assignedTo: task.assignee,
-          kpiId: task.kpiId || null,
-          targetDate: task.targetDate,
-          status: "pending",
-          createdAt: data.created_at,
-          memberNames: []
-        }]);
-      } else if (error) {
-        console.error("Error creating delegated task:", error);
-      }
-      return;
-    }
-
-    if (actionData.type === 'accept_task') {
-      const p = actionData.project;
-      let meta = {};
-      try { meta = JSON.parse(p.description); } catch(e) {}
-      meta.status = "accepted";
-      const descriptionJson = JSON.stringify(meta);
-      await supabase.from('projects').update({ description: descriptionJson }).eq('id', p.id);
-      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, status: "accepted" } : proj));
-      return;
-    }
-
-    if (actionData.type === 'reschedule_task') {
-      const p = actionData.project;
-      let meta = {};
-      try { meta = JSON.parse(p.description); } catch(e) {}
-      meta.status = "accepted";
-      meta.targetDate = actionData.newDate;
-      meta.rescheduleCount = (meta.rescheduleCount || 0) + 1;
-      meta.rescheduleReason = actionData.reason;
-      const descriptionJson = JSON.stringify(meta);
-      await supabase.from('projects').update({ description: descriptionJson }).eq('id', p.id);
-      setProjects(prev => prev.map(proj => proj.id === p.id ? { ...proj, description: descriptionJson, targetDate: actionData.newDate, status: "accepted" } : proj));
-      return;
-    }
-
     const isPlanItem = actionData.plannedProject?.isPlanItem || actionData.completedProject?.isPlanItem;
 
     if (isPlanItem) {
@@ -12531,6 +12658,13 @@ export default function App() {
             onDeleteClientProject={handleDeleteClientProject}
             clientProjectLogs={clientProjectLogs}
             onAddClientProjectLog={handleAddClientProjectLog}
+            notifications={notifications}
+            onMarkNotificationAsRead={handleMarkNotificationAsRead}
+            individualTasks={individualTasks}
+            onAddIndividualTask={handleAddIndividualTask}
+            onUpdateIndividualTaskStatus={handleUpdateIndividualTaskStatus}
+            onDeleteIndividualTask={handleDeleteIndividualTask}
+            onInitiateKpi={handleInitiateKpi}
           />
         ) : (
           <EmployeeApp 
@@ -12545,6 +12679,13 @@ export default function App() {
             onLogout={() => { setLoggedInUser(null); setLoginForm({ loginId: "", password: "" }); setLoginError(""); localStorage.removeItem("persistent_user"); localStorage.removeItem("persistent_role"); }} 
             clientProjects={clientProjects}
             onUpdateClientProjectStage={handleUpdateClientProjectStage}
+            notifications={notifications}
+            onMarkNotificationAsRead={handleMarkNotificationAsRead}
+            individualTasks={individualTasks}
+            onAddIndividualTask={handleAddIndividualTask}
+            onUpdateIndividualTaskStatus={handleUpdateIndividualTaskStatus}
+            onDeleteIndividualTask={handleDeleteIndividualTask}
+            onInitiateKpi={handleInitiateKpi}
           />
         )}
       </div>

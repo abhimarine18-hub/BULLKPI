@@ -89,3 +89,30 @@ CREATE TABLE IF NOT EXISTS client_project_logs (
     author VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- 7. Notifications Table
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(50) NOT NULL, -- 'date_mismatch', 'reminder'
+    title VARCHAR(100),
+    message TEXT NOT NULL,
+    related_kpi_id INT REFERENCES kpis(id) ON DELETE CASCADE,
+    related_project_id INT REFERENCES projects(id) ON DELETE CASCADE,
+    recipient VARCHAR(100) NOT NULL, -- employee name matching employee's name
+    status VARCHAR(20) DEFAULT 'unread', -- 'unread', 'read'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. Individual Tasks Table
+CREATE TABLE IF NOT EXISTS individual_tasks (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    team VARCHAR(255) NOT NULL,
+    assignee VARCHAR(255) NOT NULL,
+    due_date DATE,
+    status VARCHAR(50) DEFAULT 'pending',
+    priority VARCHAR(20) DEFAULT 'normal',
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
