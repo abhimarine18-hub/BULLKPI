@@ -6728,7 +6728,7 @@ function EmployeeTasksScreen({ individualTasks, onUpdateIndividualTaskStatus, cu
   );
 }
 
-function MorningReviewScreen({ teams, kpis }) {
+function MorningReviewScreen({ teams, kpis, setKpis, loggedInUser }) {
   const [selectedMember, setSelectedMember] = useState(null);
   
   // Flatten members list and sort alphabetically
@@ -6784,6 +6784,66 @@ function MorningReviewScreen({ teams, kpis }) {
     localStorage.setItem('morning_review_notes', JSON.stringify(newNotes));
   };
 
+  const pendingReviews = useMemo(() => {
+    const items = [];
+    (kpis || []).forEach(k => {
+      const isChecker = k.checker === loggedInUser?.name;
+      const isApprover = k.approver === loggedInUser?.name;
+      if (!isChecker && !isApprover) return;
+
+      (k.history || []).forEach(h => {
+        if (isChecker && h.status === "pending_checker") {
+          items.push({ kpi: k, log: h, role: "Checker" });
+        }
+        if (isApprover && h.status === "pending_approver") {
+          items.push({ kpi: k, log: h, role: "Approver" });
+        }
+      });
+    });
+    return items;
+  }, [kpis, loggedInUser]);
+
+  const handleApprove = async (review) => {
+    if (!setKpis) return;
+    const { kpi, log, role } = review;
+    const newStatus = role === "Checker" ? "pending_approver" : "approved";
+    
+    const updatedHistory = kpi.history.map(h => h.id === log.id ? { ...h, status: newStatus } : h);
+    setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, history: updatedHistory } : k));
+    await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpi.id);
+
+    if (newStatus === "pending_approver" && kpi.approver) {
+      supabase.from('notifications').insert({
+        type: 'review_required', title: 'Value Log Review Required',
+        message: `${log.submittedBy || 'Someone'} logged a new value (${log.v} ${kpi.unit}) for KPI "${kpi.name}". It is waiting for your approval as Approver.`,
+        related_kpi_id: kpi.id, recipient: kpi.approver, status: 'unread'
+      }).then(()=>{});
+    } else if (newStatus === "approved") {
+      supabase.from('notifications').insert({
+        type: 'log_approved', title: 'Value Log Approved',
+        message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was approved!`,
+        related_kpi_id: kpi.id, recipient: log.submittedBy || kpi.owner, status: 'unread'
+      }).then(()=>{});
+    }
+  };
+
+  const handleReject = async (review) => {
+    if (!setKpis) return;
+    const reason = window.prompt("Enter reason for rejection:");
+    if (reason === null) return;
+    
+    const { kpi, log, role } = review;
+    const updatedHistory = kpi.history.map(h => h.id === log.id ? { ...h, status: "rejected", checkerNote: role === "Checker" ? reason : h.checkerNote, approverNote: role === "Approver" ? reason : h.approverNote } : h);
+    setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, history: updatedHistory } : k));
+    await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpi.id);
+
+    supabase.from('notifications').insert({
+      type: 'log_rejected', title: 'Value Log Rejected',
+      message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was rejected by ${loggedInUser?.name} (Role: ${role}). Reason: ${reason}`,
+      related_kpi_id: kpi.id, recipient: log.submittedBy || kpi.owner, status: 'unread'
+    }).then(()=>{});
+  };
+
   if (!selectedMember) {
     return (
       <div className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden">
@@ -6794,6 +6854,46 @@ function MorningReviewScreen({ teams, kpis }) {
           </div>
         </div>
         <div className="flex-1 overflow-auto p-6">
+          {pendingReviews.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-rose-500" /> Pending Your Review ({pendingReviews.length})
+              </h2>
+              <div className="grid grid-cols-1 gap-3">
+                {pendingReviews.map((review, i) => (
+                  <div key={`${review.kpi.id}-${review.log.id || i}`} className="bg-white rounded-xl p-4 border border-rose-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm mb-1">{review.kpi.name}</h4>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <span className="bg-slate-100 px-2 py-1 rounded font-semibold text-slate-700">Val: {review.log.v} {review.kpi.unit}</span>
+                        <span>Date: {review.log.d}</span>
+                        <span>By: <strong className="text-slate-700">{review.log.submittedBy || review.kpi.owner}</strong></span>
+                        <span className="text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded border border-rose-100 uppercase text-[9px] tracking-wider">
+                          As {review.role}
+                        </span>
+                      </div>
+                      {(review.log.note || review.log.aiSuggestion) && (
+                        <div className="mt-2 text-[10px] space-y-1">
+                          {review.log.note && <p className="text-slate-600 bg-slate-50 p-1.5 rounded"><strong>Note:</strong> {review.log.note}</p>}
+                          {review.log.aiSuggestion && <p className="text-indigo-700 bg-indigo-50 p-1.5 rounded flex items-center gap-1 border border-indigo-100"><Star className="w-3 h-3 shrink-0"/> {review.log.aiSuggestion}</p>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                      <button onClick={() => handleApprove(review)} className="flex-1 md:flex-none bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-4 py-2 rounded-xl text-xs transition-colors">
+                        Approve
+                      </button>
+                      <button onClick={() => handleReject(review)} className="flex-1 md:flex-none bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-4 py-2 rounded-xl text-xs transition-colors">
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Team Members</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {allMembers.map(m => (
               <button 
@@ -6971,6 +7071,20 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
   const [activeMemberFilter, setActiveMemberFilter] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [addKpiOpen, setAddKpiOpen] = useState(false);
+
+  const pendingReviewCount = useMemo(() => {
+    let count = 0;
+    (kpis || []).forEach(k => {
+      const isChecker = k.checker === loggedInUser?.name;
+      const isApprover = k.approver === loggedInUser?.name;
+      if (!isChecker && !isApprover) return;
+      (k.history || []).forEach(h => {
+        if (isChecker && h.status === "pending_checker") count++;
+        if (isApprover && h.status === "pending_approver") count++;
+      });
+    });
+    return count;
+  }, [kpis, loggedInUser]);
   const [editingProject, setEditingProject] = useState(null);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
   const [projectTab, setProjectTab] = useState("open");
@@ -7437,18 +7551,24 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                 key={item.id}
                 onClick={() => {
                   setScreen(item.id);
-                  setActiveMemberKpis(null); // auto expand if navigating screens
-                  setMobileMenuOpen(false); // auto close mobile menu
+                  setActiveMemberKpis(null);
+                  setMobileMenuOpen(false);
                 }}
                 title={sidebarMinimized ? item.label : ""}
-                className={`w-full flex items-center rounded-xl text-sm font-medium transition-colors ${
+                className={`w-full flex items-center relative rounded-xl text-sm font-medium transition-colors ${
                   sidebarMinimized ? "justify-center p-2" : "gap-2.5 px-3 py-2"
                 } ${
                   isActive ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {!sidebarMinimized && <span className="whitespace-nowrap">{item.label}</span>}
+                {!sidebarMinimized && <span className="whitespace-nowrap flex-1 text-left">{item.label}</span>}
+                {item.id === "review" && pendingReviewCount > 0 && !sidebarMinimized && (
+                  <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{pendingReviewCount}</span>
+                )}
+                {item.id === "review" && pendingReviewCount > 0 && sidebarMinimized && (
+                  <span className="absolute top-1 right-1 bg-rose-500 w-2 h-2 rounded-full"></span>
+                )}
               </button>
             );
           })}
@@ -8371,7 +8491,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
           )}
 
           {screen === "review" && (
-            <MorningReviewScreen teams={teams} kpis={kpis} />
+            <MorningReviewScreen teams={teams} kpis={kpis} setKpis={setKpis} loggedInUser={loggedInUser} />
           )}
 
           {screen === "okrs" && (
