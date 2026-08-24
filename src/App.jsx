@@ -1818,7 +1818,7 @@ function LogValueModal({ kpi, onClose, onSubmit }) {
 
 /* ---------------- KPI detail drawer (shared) ---------------- */
 
-function KpiDetail({ kpi, allKpis, onClose, onLog, onInitiateKpi, loggedInUser }) {
+function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, loggedInUser }) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const d = new Date();
     const m = d.toLocaleString('en-US', { month: 'short' });
@@ -1849,10 +1849,139 @@ function KpiDetail({ kpi, allKpis, onClose, onLog, onInitiateKpi, loggedInUser }
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X className="h-5 w-5" /></button>
         </div>
         <div className="flex items-center gap-2 mb-4">
-          <StatusBadge status={status} />
-          <span className="text-xs text-slate-400">
-            {kpi.team} · {kpi.owner}
-          </span>
+          <div className="flex items-center gap-2 mb-4">
+            <StatusBadge status={status} />
+            <span className="text-xs text-slate-400">
+              {kpi.team} • {kpi.owner}
+            </span>
+          </div>
+          
+          {/* Roles Status Strip */}
+          {(() => {
+            const latestLog = kpi.history && kpi.history.length > 0 ? kpi.history[kpi.history.length - 1] : null;
+            let doerStatus = "—", checkerStatus = "—", approverStatus = "—";
+            if (latestLog) {
+              if (latestLog.status === "pending_checker") { doerStatus = "✅"; checkerStatus = "⏳"; approverStatus = "—"; }
+              else if (latestLog.status === "pending_approver") { doerStatus = "✅"; checkerStatus = "✅"; approverStatus = "⏳"; }
+              else if (latestLog.status === "approved") { doerStatus = "✅"; checkerStatus = "✅"; approverStatus = "✅"; }
+              else if (latestLog.status === "rejected") { doerStatus = "⏳"; checkerStatus = "—"; approverStatus = "—"; }
+            } else {
+              doerStatus = "⏳"; checkerStatus = "—"; approverStatus = "—";
+            }
+            return (
+              <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 text-xs">
+                <div className="flex flex-col gap-1 items-center w-1/3 text-center border-r border-slate-200 last:border-0">
+                  <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Doer</span>
+                  <span className="font-semibold text-slate-800 flex items-center justify-center gap-1 w-full truncate px-1" title={kpi.owner}>{kpi.owner.split(' ')[0]} <span className="text-[10px]">{doerStatus}</span></span>
+                </div>
+                <div className="flex flex-col gap-1 items-center w-1/3 text-center border-r border-slate-200 last:border-0">
+                  <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Checker</span>
+                  <span className="font-semibold text-slate-800 flex items-center justify-center gap-1 w-full truncate px-1" title={kpi.checker || "None"}>{kpi.checker ? kpi.checker.split(' ')[0] : "None"} <span className="text-[10px]">{kpi.checker ? checkerStatus : ""}</span></span>
+                </div>
+                <div className="flex flex-col gap-1 items-center w-1/3 text-center border-r border-slate-200 last:border-0">
+                  <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Approver</span>
+                  <span className="font-semibold text-slate-800 flex items-center justify-center gap-1 w-full truncate px-1" title={kpi.approver || "None"}>{kpi.approver ? kpi.approver.split(' ')[0] : "None"} <span className="text-[10px]">{kpi.approver ? approverStatus : ""}</span></span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Recent Submissions */}
+          {(() => {
+            const recent = (kpi.history || []).slice(-5).reverse();
+            if (recent.length === 0) return null;
+
+            const handleInlineApprove = async (log, role) => {
+              if (!setKpis) return;
+              const newStatus = role === "Checker" ? "pending_approver" : "approved";
+              const updatedHistory = kpi.history.map(h => h.id === log.id ? { ...h, status: newStatus } : h);
+              setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, history: updatedHistory } : k));
+              await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpi.id);
+          
+              if (newStatus === "pending_approver" && kpi.approver) {
+                supabase.from('notifications').insert({
+                  type: 'review_required', title: 'Value Log Review Required',
+                  message: `${log.submittedBy || 'Someone'} logged a new value (${log.v} ${kpi.unit}) for KPI "${kpi.name}". It is waiting for your approval as Approver.`,
+                  related_kpi_id: kpi.id, recipient: kpi.approver, status: 'unread'
+                }).then(()=>{});
+              } else if (newStatus === "approved") {
+                supabase.from('notifications').insert({
+                  type: 'log_approved', title: 'Value Log Approved',
+                  message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was approved!`,
+                  related_kpi_id: kpi.id, recipient: log.submittedBy || kpi.owner, status: 'unread'
+                }).then(()=>{});
+              }
+            };
+          
+            const handleInlineReject = async (log, role) => {
+              if (!setKpis) return;
+              const reason = window.prompt("Enter reason for rejection:");
+              if (reason === null) return;
+              const updatedHistory = kpi.history.map(h => h.id === log.id ? { ...h, status: "rejected", checkerNote: role === "Checker" ? reason : h.checkerNote, approverNote: role === "Approver" ? reason : h.approverNote } : h);
+              setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, history: updatedHistory } : k));
+              await supabase.from('kpis').update({ history: updatedHistory }).eq('id', kpi.id);
+          
+              supabase.from('notifications').insert({
+                type: 'log_rejected', title: 'Value Log Rejected',
+                message: `Your logged value (${log.v} ${kpi.unit}) for KPI "${kpi.name}" was rejected by ${loggedInUser?.name} (Role: ${role}). Reason: ${reason}`,
+                related_kpi_id: kpi.id, recipient: log.submittedBy || kpi.owner, status: 'unread'
+              }).then(()=>{});
+            };
+
+            return (
+              <div className="mb-6">
+                <h4 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider flex items-center gap-1">
+                  <ClipboardCheck className="w-3 h-3" /> Recent Submissions
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {recent.map((log) => {
+                    const isCheckerPending = log.status === "pending_checker" && loggedInUser?.name === kpi.checker;
+                    const isApproverPending = log.status === "pending_approver" && loggedInUser?.name === kpi.approver;
+                    const canReview = isCheckerPending || isApproverPending;
+                    const role = isCheckerPending ? "Checker" : (isApproverPending ? "Approver" : null);
+                    
+                    let badgeClass = "bg-slate-100 text-slate-600";
+                    let badgeText = log.status || "approved";
+                    if (log.status === "approved") badgeClass = "bg-teal-50 text-teal-700 border-teal-200";
+                    else if (log.status === "rejected") badgeClass = "bg-rose-50 text-rose-700 border-rose-200";
+                    else if (log.status?.startsWith("pending_")) badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+
+                    return (
+                      <div key={log.id || log.d} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm text-xs">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-700">{log.d}</span>
+                            <span className="bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-slate-600">Val: {log.v}</span>
+                          </div>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${badgeClass}`}>
+                            {badgeText.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div className="text-slate-500 text-[10px] mb-2">By: <span className="font-semibold text-slate-700">{log.submittedBy || kpi.owner}</span></div>
+                        
+                        {log.status === "rejected" && (log.checkerNote || log.approverNote) && (
+                          <div className="text-[10px] text-rose-700 bg-rose-50 p-1.5 rounded mb-2 border border-rose-100">
+                            <strong>Reason:</strong> {log.checkerNote || log.approverNote}
+                          </div>
+                        )}
+
+                        {canReview && (
+                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
+                            <button onClick={() => handleInlineApprove(log, role)} className="flex-1 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-3 py-1.5 rounded-lg text-[10px] transition-colors">
+                              Approve
+                            </button>
+                            <button onClick={() => handleInlineReject(log, role)} className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-1.5 rounded-lg text-[10px] transition-colors">
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
         
         {parentKpi && (() => {
@@ -9395,7 +9524,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
       </main>
 
       {detailKpi && (
-        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => { setLoggingId(detailKpi.id); }} onInitiateKpi={onInitiateKpi} loggedInUser={loggedInUser} />
+        <KpiDetail kpi={detailKpi} allKpis={kpis} setKpis={setKpis} onClose={() => setDetailId(null)} onLog={() => { setLoggingId(detailKpi.id); }} onInitiateKpi={onInitiateKpi} loggedInUser={loggedInUser} />
       )}
       {loggingKpi && (
         <LogValueModal kpi={loggingKpi} onClose={() => setLoggingId(null)} onSubmit={onLog} />
@@ -10851,7 +10980,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
       {/* Modals */}
       {detailKpi && (
-        <KpiDetail kpi={detailKpi} allKpis={kpis} onClose={() => setDetailId(null)} onLog={() => setLoggingId(detailKpi.id)} onInitiateKpi={onInitiateKpi} loggedInUser={loggedInUser} />
+        <KpiDetail kpi={detailKpi} allKpis={kpis} setKpis={setKpis} onClose={() => setDetailId(null)} onLog={() => setLoggingId(detailKpi.id)} onInitiateKpi={onInitiateKpi} loggedInUser={loggedInUser} />
       )}
       {loggingKpi && (
         <LogValueModal kpi={loggingKpi} onClose={() => setLoggingId(null)} onSubmit={onLog} />
@@ -11636,7 +11765,9 @@ export default function App() {
         status: newEntryStatus,
         submittedBy: loggedInUser?.name || "Unknown",
         note: note || undefined,
-        aiSuggestion: aiSuggestion || undefined
+        aiSuggestion: aiSuggestion || undefined,
+        checkerNote: "",
+        approverNote: ""
       };
       
       updatedHistory = [...k.history, newEntry];
