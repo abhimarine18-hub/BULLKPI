@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS kpis (
     direction VARCHAR(50) DEFAULT 'higher',
     team VARCHAR(255) NOT NULL,
     owner VARCHAR(255) NOT NULL,
+    checker VARCHAR(255),
+    approver VARCHAR(255),
     drive_by VARCHAR(255) DEFAULT '',
     monitor_by VARCHAR(255) DEFAULT '',
     kra VARCHAR(255),

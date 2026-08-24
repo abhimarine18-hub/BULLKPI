@@ -2881,6 +2881,8 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
   const [direction, setDirection] = useState(kpi.direction);
   const [team, setTeam] = useState(kpi.team);
   const [owner, setOwner] = useState(kpi.owner);
+  const [checker, setChecker] = useState(kpi.checker || "");
+  const [approver, setApprover] = useState(kpi.approver || "");
 
   // Advanced targeting configuration
   const [totalTargetInput, setTotalTargetInput] = useState(kpi.target || 0);
@@ -3313,6 +3315,8 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
       direction,
       team,
       owner,
+      checker,
+      approver,
       driveBy,
       monitorBy,
       weightage,
@@ -3577,6 +3581,22 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                     {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
                   </select>
                 )}
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Checker (Optional)</label>
+                <select value={checker} onChange={(e) => setChecker(e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                  <option value="">Select Checker...</option>
+                  {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 mb-1 block uppercase tracking-wider">Approver (Optional)</label>
+                <select value={approver} onChange={(e) => setApprover(e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 font-semibold">
+                  <option value="">Select Approver...</option>
+                  {ownerOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                </select>
               </div>
 
               <div>
@@ -11085,6 +11105,8 @@ export default function App() {
           direction: k.direction,
           team: k.team,
           owner: k.owner,
+          checker: k.checker || "",
+          approver: k.approver || "",
           driveBy: k.drive_by || "",
           monitorBy: k.monitor_by || "",
           description: k.description || "",
@@ -11787,6 +11809,8 @@ export default function App() {
         direction: updatedKpi.direction,
         team: updatedKpi.team,
         owner: updatedKpi.owner,
+        checker: updatedKpi.checker || "",
+        approver: updatedKpi.approver || "",
         drive_by: updatedKpi.driveBy || "",
         monitor_by: updatedKpi.monitorBy || "",
         description: updatedKpi.description || "",
@@ -11825,6 +11849,8 @@ export default function App() {
         direction: safeStr(updatedKpi.direction),
         team: safeStr(updatedKpi.team),
         owner: safeStr(updatedKpi.owner),
+        checker: safeStr(updatedKpi.checker),
+        approver: safeStr(updatedKpi.approver),
         drive_by: safeStr(updatedKpi.driveBy),
         monitor_by: safeStr(updatedKpi.monitorBy),
         description: safeStr(updatedKpi.description),
