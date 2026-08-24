@@ -10615,6 +10615,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
                 </>
               )}
             </div>
+            <NotificationBell notifications={notifications} onMarkAsRead={onMarkNotificationAsRead} loggedInUser={loggedInUser} />
           </div>
         </div>
       </aside>
@@ -10641,6 +10642,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
                 ))}
               </select>
             )}
+            <NotificationBell notifications={notifications} onMarkAsRead={onMarkNotificationAsRead} loggedInUser={loggedInUser} />
             <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-700 shrink-0">
               {currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}
             </div>
@@ -10804,6 +10806,90 @@ const computeReportKpis = (rawKpis) => {
 };
 
 /* ==================== ROOT APP ==================== */
+
+function NotificationBell({ notifications, onMarkAsRead, loggedInUser }) {
+  const [open, setOpen] = useState(false);
+  
+  if (!loggedInUser) return null;
+  
+  const myUnread = notifications.filter(n => n.recipient === loggedInUser.name && n.status === 'unread');
+  
+  return (
+    <div className="relative z-50">
+      <button onClick={() => setOpen(!open)} className="relative p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
+        <Bell className="h-4 w-4" />
+        {myUnread.length > 0 && (
+          <span className="absolute top-0 right-0 h-4 w-4 bg-rose-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center border-2 border-white">
+            {myUnread.length}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 max-h-96 overflow-y-auto">
+          <div className="p-2 border-b border-slate-50 flex justify-between items-center sticky top-0 bg-white z-10">
+            <h4 className="text-xs font-bold text-slate-800">Notifications</h4>
+          </div>
+          {myUnread.length === 0 ? (
+            <div className="p-6 text-center text-xs text-slate-500 font-medium">No new notifications</div>
+          ) : (
+            <div className="flex flex-col gap-1 mt-1">
+              {myUnread.map(n => (
+                <div key={n.id} className="p-3 bg-slate-50 rounded-xl flex flex-col gap-1.5 border border-slate-100">
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="text-[11px] font-bold text-slate-800 leading-tight">{n.title}</span>
+                    <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">
+                      {new Date(n.created_at).toLocaleDateString('en-IN')}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-600 leading-snug">{n.message}</span>
+                  <div className="flex justify-end mt-1">
+                    <button onClick={() => { onMarkAsRead(n.id); if (myUnread.length === 1) setOpen(false); }} className="text-[9px] font-bold text-teal-600 hover:text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg transition-colors border border-teal-100">
+                      Mark as read
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function checkParentChildDateMismatch(parentKpi, childProject) {
+  const cAt = childProject.createdAt || childProject.created_at;
+  if (!parentKpi || !childProject || !cAt) return null;
+  
+  const actionTime = new Date(cAt);
+  let computedTarget = actionTime.toISOString().split('T')[0];
+  
+  if (parentKpi.reportConfig?.handoffEnabled) {
+    const cutoffStr = parentKpi.reportConfig.cutoffTime || "17:30";
+    const bufferMins = Number(parentKpi.reportConfig.bufferMinutes || 30);
+    const [cutoffHours, cutoffMinutes] = cutoffStr.split(':').map(Number);
+    
+    const cutoffDate = new Date(actionTime);
+    cutoffDate.setHours(cutoffHours, cutoffMinutes, 0, 0);
+    const bufferLimitDate = new Date(cutoffDate.getTime() - bufferMins * 60000);
+    
+    if (actionTime.getTime() >= bufferLimitDate.getTime()) {
+      const nextD = new Date(actionTime);
+      nextD.setDate(nextD.getDate() + 1);
+      computedTarget = nextD.toISOString().split('T')[0];
+    }
+  }
+  
+  let storedTarget = childProject.targetDate;
+  if (!storedTarget && childProject.description) {
+    try { storedTarget = JSON.parse(childProject.description).targetDate; } catch(e) {}
+  }
+  
+  if (storedTarget && computedTarget !== storedTarget) {
+    return { computedTarget, storedTarget };
+  }
+  return null;
+}
 
 export default function App() {
   const [kpis, setKpis] = useState([]);
@@ -11286,6 +11372,45 @@ export default function App() {
         }
       } catch(e) {}
 
+      // Check for date mismatches on parent-child KPI actions
+      try {
+        const currentNotifications = JSON.parse(localStorage.getItem("backup_notifications") || "[]");
+        const kpisWithChildren = loadedKpis.filter(k => k.reportConfig?.followUpKpiId);
+        for (const parentKpi of kpisWithChildren) {
+          const childProjects = loadedProjects.filter(p => p.kpiId === parentKpi.reportConfig.followUpKpiId && p.status === 'pending');
+          for (const p of childProjects) {
+            const mismatch = checkParentChildDateMismatch(parentKpi, p);
+            if (mismatch) {
+              const exists = currentNotifications.some(n => 
+                n.type === 'date_mismatch' && 
+                n.status === 'unread' && 
+                String(n.related_kpi_id) === String(parentKpi.id) && 
+                String(n.related_project_id) === String(p.id)
+              );
+              if (!exists) {
+                const payload = {
+                  type: 'date_mismatch',
+                  title: 'Target date changed',
+                  message: `The target date for "${p.title}" changed from ${mismatch.storedTarget} to ${mismatch.computedTarget} (parent KPI cutoff updated).`,
+                  related_kpi_id: parentKpi.id,
+                  related_project_id: p.id,
+                  recipient: p.assignedTo,
+                  status: 'unread'
+                };
+                const { data } = await supabase.from('notifications').insert(payload).select().single();
+                if (data) {
+                  currentNotifications.push(data);
+                  localStorage.setItem("backup_notifications", JSON.stringify(currentNotifications));
+                  setNotifications(prev => [...prev, data]);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Mismatch check error:", err);
+      }
+
       setLoading(false);
     }
 
@@ -11752,6 +11877,35 @@ export default function App() {
         if (!queue.includes(String(updatedKpi.id))) queue.push(String(updatedKpi.id));
         localStorage.setItem('pending_sync_kpis', JSON.stringify(queue));
       } catch(e) {}
+    }
+
+    if (updatedKpi.reportConfig?.followUpKpiId) {
+      const childProjects = projects.filter(p => p.kpiId === updatedKpi.reportConfig.followUpKpiId && p.status === 'pending');
+      for (const p of childProjects) {
+        const mismatch = checkParentChildDateMismatch(updatedKpi, p);
+        if (mismatch) {
+          const exists = notifications.some(n => 
+            n.type === 'date_mismatch' && 
+            n.status === 'unread' && 
+            String(n.related_kpi_id) === String(updatedKpi.id) && 
+            String(n.related_project_id) === String(p.id)
+          );
+          if (!exists) {
+            const payload = {
+              type: 'date_mismatch',
+              title: 'Target date changed',
+              message: `The target date for "${p.title}" changed from ${mismatch.storedTarget} to ${mismatch.computedTarget} (parent KPI cutoff updated).`,
+              related_kpi_id: updatedKpi.id,
+              related_project_id: p.id,
+              recipient: p.assignedTo,
+              status: 'unread'
+            };
+            supabase.from('notifications').insert(payload).select().single().then(({ data }) => {
+              if (data) setNotifications(prev => [...prev, data]);
+            });
+          }
+        }
+      }
     }
   }
 
@@ -12599,6 +12753,7 @@ export default function App() {
       {/* Role switcher (only for admin users) */}
       {loggedInUser.role === "admin" && (
         <div className="absolute top-4 right-4 z-50 hidden sm:flex items-center gap-1 bg-white border border-orange-200 rounded-full p-1 shadow-sm">
+          <NotificationBell notifications={notifications} onMarkAsRead={handleMarkNotificationAsRead} loggedInUser={loggedInUser} />
           <button
             onClick={() => setRole("employee")}
             title="Employee View (Mobile)"
