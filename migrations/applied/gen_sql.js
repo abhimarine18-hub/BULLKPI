@@ -1,3 +1,5 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 
     const fs = require('fs');
     const content = fs.readFileSync('e:\Abhi\KPI app\preview\src\App.jsx', 'utf8');

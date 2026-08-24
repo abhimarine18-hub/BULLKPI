@@ -1,3 +1,5 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = "https://hdelynngavpavndjxyvk.supabase.co";

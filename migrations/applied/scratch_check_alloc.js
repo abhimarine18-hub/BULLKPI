@@ -1,1 +1,3 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 import { supabase } from './src/supabaseClient.js'; async function check() { const {data} = await supabase.from('kpis').select('name, target, monthly_alloc').eq('name', 'Testimonials - Tamil'); console.log(data); } check();

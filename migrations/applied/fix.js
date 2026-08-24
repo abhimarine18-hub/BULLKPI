@@ -1,3 +1,5 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 const fs = require('fs');
 let app = fs.readFileSync('src/App.jsx', 'utf8');
 

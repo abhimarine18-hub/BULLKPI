@@ -1,1 +1,3 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 import { supabase } from './src/supabaseClient.js'; async function test() { const {data: kpis} = await supabase.from('kpis').select('*').limit(1); if(!kpis[0]) return; const kpi = kpis[0]; console.log('Testing update for KPI', kpi.id); const {data, error} = await supabase.from('kpis').update({kpi_type: 'report', report_config: {type: 'sum', kpiIds: ['1', '2']}}).eq('id', kpi.id).select(); console.log('Result:', data, 'Error:', error); } test();

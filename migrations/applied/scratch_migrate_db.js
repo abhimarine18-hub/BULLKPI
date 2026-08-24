@@ -1,3 +1,5 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 import { supabase } from './src/supabaseClient.js';
 async function migrate() {
   const { data: kpis } = await supabase.from('kpis').select('*');

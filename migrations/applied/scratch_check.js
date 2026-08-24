@@ -1,1 +1,3 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 import { supabase } from './src/supabaseClient.js'; async function check() { const {data, error} = await supabase.from('kpis').select('kpi_type, report_config').limit(1); console.log('Data:', data, 'Error:', error); } check();

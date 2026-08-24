@@ -1,3 +1,5 @@
+// HISTORICAL MIGRATION SCRIPT - Already applied against production.
+
 import { supabase } from './src/supabaseClient.js';
 async function test() {
   const { data, error } = await supabase.from('team_members').select('*').limit(1);
