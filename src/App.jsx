@@ -12657,12 +12657,13 @@ export default function App() {
 
   // Login Screen
   if (!loggedInUser) {
-    const handleLogin = () => {
+    const handleLogin = async () => {
       const { loginId, password } = loginForm;
       if (!loginId.trim() || !password.trim()) {
         setLoginError("Please enter your Login ID and Password.");
         return;
       }
+      
       // Admin shortcut
       if (loginId.trim() === "admin" && password.trim() === "admin123") {
         const u = { name: "Admin", loginId: "admin", role: "admin" };
@@ -12673,21 +12674,33 @@ export default function App() {
         setLoginError("");
         return;
       }
-      // Match against team members
-      const allMembers = teams.flatMap(t => t.members);
-      const match = allMembers.find(m =>
-        (m.loginId || m.employeeId || "").toLowerCase() === loginId.trim().toLowerCase() &&
-        (m.password || "123") === password.trim()
-      );
-      if (match) {
-        const u = { name: match.name, loginId: match.loginId || match.employeeId, role: "employee" };
-        setLoggedInUser(u);
-        setRole("employee");
-        localStorage.setItem("persistent_user", JSON.stringify(u));
-        localStorage.setItem("persistent_role", "employee");
+      
+      try {
         setLoginError("");
-      } else {
-        setLoginError("Invalid Login ID or Password. Please try again.");
+        const { data, error } = await supabase.functions.invoke('login', {
+          body: { loginId: loginId.trim(), password: password.trim() }
+        });
+        
+        if (error) throw error;
+        
+        if (data && data.success) {
+          const match = data.user;
+          const u = { name: match.name, loginId: match.login_id || match.employee_id, role: "employee" };
+          setLoggedInUser(u);
+          setRole("employee");
+          localStorage.setItem("persistent_user", JSON.stringify(u));
+          localStorage.setItem("persistent_role", "employee");
+          
+          if (data.token) {
+            localStorage.setItem("auth_token", data.token);
+          }
+          
+          setLoginError("");
+        } else {
+          setLoginError(data?.error || "Invalid Login ID or Password. Please try again.");
+        }
+      } catch (err) {
+        setLoginError("Login failed: " + (err.message || "Server error"));
       }
     };
 
