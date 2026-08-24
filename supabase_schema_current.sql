@@ -53,7 +53,10 @@ CREATE TABLE IF NOT EXISTS kpis (
     weekly_actual JSONB DEFAULT '{}'::jsonb,
     daily_alloc JSONB DEFAULT '{}'::jsonb,
     kpi_type TEXT DEFAULT 'activity',
-    report_config JSONB DEFAULT '{}'::jsonb
+    report_config JSONB DEFAULT '{}'::jsonb,
+    is_initiated_type BOOLEAN DEFAULT false,
+    initiated_at TIMESTAMPTZ,
+    initiated_by VARCHAR(255)
 );
 
 -- 4. Projects Table
@@ -113,6 +116,10 @@ CREATE TABLE IF NOT EXISTS individual_tasks (
     due_date DATE,
     status VARCHAR(50) DEFAULT 'pending',
     priority VARCHAR(20) DEFAULT 'normal',
+    kpi_id INTEGER REFERENCES kpis(id) ON DELETE SET NULL,
+    is_recurring BOOLEAN DEFAULT false,
+    recurrence_type VARCHAR(50),
+    recurrence_value VARCHAR(50),
     completed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now()
 );
