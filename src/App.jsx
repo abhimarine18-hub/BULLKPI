@@ -9275,6 +9275,220 @@ function EmployeeVideoProductionScreen({ videoProductions = [], onUpdateVideoPro
   );
 }
 
+function EmployeeDashboardScreen({ kpis = [], currentEmployee, projects = [], onCompleteAction, videoProductions = [], onUpdateDailyActual }) {
+  const localDate = new Date();
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, '0');
+  const day = String(localDate.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+
+  const myKpis = useMemo(() => {
+    return kpis.filter(k => k.owner === currentEmployee);
+  }, [kpis, currentEmployee]);
+
+  const stats = useMemo(() => {
+    let onTrack = 0;
+    let atRisk = 0;
+    let offTrack = 0;
+    myKpis.forEach(k => {
+      const s = getStatus(k);
+      if (s === "on-track") onTrack++;
+      else if (s === "at-risk") atRisk++;
+      else offTrack++;
+    });
+
+    const pendingReviewsCount = (videoProductions || []).filter(p => 
+      p.status === 'field_approved_pending' && 
+      (p.field_approver_name === currentEmployee || !p.field_approver_name)
+    ).length;
+
+    return { onTrack, atRisk, offTrack, pendingReviewsCount };
+  }, [myKpis, videoProductions, currentEmployee]);
+
+  const todoItems = useMemo(() => {
+    const list = [];
+    myKpis.forEach(kpi => {
+      const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi);
+      
+      let overdueSum = 0;
+      const startOfMonth = new Date(localDate.getFullYear(), localDate.getMonth(), 1);
+      const tempDate = new Date(startOfMonth);
+      
+      while (tempDate < localDate) {
+        const y = tempDate.getFullYear();
+        const m = String(tempDate.getMonth() + 1).padStart(2, '0');
+        const d = String(tempDate.getDate()).padStart(2, '0');
+        const dKey = `${y}-${m}-${d}`;
+        
+        if (dKey !== todayStr) {
+          const alloc = dailyAllocFallback[dKey] || 0;
+          const actual = kpi.dailyActual?.[dKey] || 0;
+          if (actual < alloc) {
+            overdueSum += (alloc - actual);
+          }
+        }
+        tempDate.setDate(tempDate.getDate() + 1);
+      }
+
+      const dueToday = dailyAllocFallback[todayStr] || 0;
+      const todayActual = kpi.dailyActual?.[todayStr] || 0;
+      const totalNeeded = overdueSum + dueToday;
+      const remains = Math.max(0, totalNeeded - todayActual);
+
+      if (totalNeeded > 0) {
+        list.push({
+          kpi,
+          overdueSum,
+          dueToday,
+          totalNeeded,
+          todayActual,
+          remains
+        });
+      }
+    });
+
+    return list.sort((a, b) => b.overdueSum - a.overdueSum);
+  }, [myKpis, todayStr]);
+
+  const comingUpDays = useMemo(() => {
+    const days = [];
+    for (let i = 1; i <= 7; i++) {
+      const futureDate = new Date(localDate);
+      futureDate.setDate(localDate.getDate() + i);
+      const y = futureDate.getFullYear();
+      const m = String(futureDate.getMonth() + 1).padStart(2, '0');
+      const d = String(futureDate.getDate()).padStart(2, '0');
+      const dKey = `${y}-${m}-${d}`;
+      const dayLabel = futureDate.toLocaleDateString("en-IN", { weekday: 'short', day: 'numeric', month: 'short' });
+      days.push({ dKey, dayLabel });
+    }
+    return days;
+  }, []);
+
+  const [inputVals, setInputVals] = useState({});
+
+  const handleInputChange = (kpiId, val) => {
+    setInputVals(prev => ({ ...prev, [kpiId]: val }));
+  };
+
+  const handleSaveActual = (kpiId) => {
+    const val = inputVals[kpiId];
+    if (val === undefined || val === "" || isNaN(val)) return;
+    onUpdateDailyActual(kpiId, todayStr, parseFloat(val));
+    alert("Saved today's actual!");
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-teal-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] font-bold text-teal-600 uppercase tracking-wider font-semibold">On Track</span>
+          <span className="text-2xl font-black text-slate-800 mt-2">{stats.onTrack}</span>
+        </div>
+        <div className="bg-white border border-orange-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider font-semibold">At Risk</span>
+          <span className="text-2xl font-black text-slate-800 mt-2">{stats.atRisk}</span>
+        </div>
+        <div className="bg-white border border-rose-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider font-semibold">Off Track</span>
+          <span className="text-2xl font-black text-slate-800 mt-2">{stats.offTrack}</span>
+        </div>
+        <div className="bg-white border border-indigo-100 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider font-semibold">Pending Reviews</span>
+          <span className="text-2xl font-black text-slate-800 mt-2">{stats.pendingReviewsCount}</span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">⚡ What To Do Today</h3>
+        
+        <div className="space-y-3">
+          {todoItems.length === 0 ? (
+            <p className="text-xs text-slate-400 italic py-4 bg-white rounded-2xl border border-slate-100 p-4 text-center">
+              No daily target KPIs assigned to you.
+            </p>
+          ) : (
+            todoItems.map(({ kpi, overdueSum, dueToday, totalNeeded, todayActual, remains }) => {
+              const currentInputVal = inputVals[kpi.id] !== undefined ? inputVals[kpi.id] : (todayActual || "");
+              return (
+                <div key={kpi.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+                  <div className="space-y-1 flex-1">
+                    <h4 className="text-sm font-bold text-slate-905">{kpi.name}</h4>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      {overdueSum > 0 ? `${overdueSum} behind + ` : ""}{dueToday} due today = <span className="text-slate-800 font-bold">{totalNeeded} total needed</span>
+                    </p>
+                    {todayActual > 0 && (
+                      <p className="text-[10px] text-teal-650 font-bold">
+                        Logged today: {todayActual}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    {remains === 0 ? (
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 flex items-center gap-1">
+                        ✅ All caught up
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={currentInputVal}
+                          onChange={(e) => handleInputChange(kpi.id, e.target.value)}
+                          placeholder="Log actual"
+                          className="w-24 border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-505 focus:outline-none text-center font-bold"
+                        />
+                        <button
+                          onClick={() => handleSaveActual(kpi.id)}
+                          className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors shadow-2xs"
+                        >
+                          Log
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-4 border-t border-slate-100">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">📅 Coming Up This Week</h3>
+        
+        <div className="bg-white border border-slate-150 rounded-2xl p-4 shadow-xs overflow-x-auto">
+          <div className="min-w-[600px] grid grid-cols-7 gap-3 text-center">
+            {comingUpDays.map(({ dKey, dayLabel }) => (
+              <div key={dKey} className="space-y-2.5">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50 py-1.5 rounded-lg border border-slate-100">
+                  {dayLabel}
+                </div>
+                <div className="space-y-1">
+                  {myKpis.map(kpi => {
+                    const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi);
+                    const target = dailyAllocFallback[dKey] || 0;
+                    if (target === 0) return null;
+                    return (
+                      <div key={kpi.id} className="bg-slate-50/50 border border-slate-100 rounded-lg p-2 text-left space-y-1">
+                        <p className="text-[9px] font-bold text-slate-700 truncate" title={kpi.name}>{kpi.name}</p>
+                        <p className="text-[10px] font-extrabold text-teal-700">Target: {target}</p>
+                      </div>
+                    );
+                  })}
+                  {myKpis.every(kpi => (getKpiDailyAllocWithFallback(kpi)[dKey] || 0) === 0) && (
+                    <p className="text-[9px] text-slate-400 italic py-2">No targets</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
   const pendingReviews = [];
   (kpis || []).forEach(k => {
@@ -10934,7 +11148,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
   };
 
   const screenMap = { 
-    home: <HomeScreen />, 
+    home: <EmployeeDashboardScreen kpis={kpis} currentEmployee={currentEmployee} projects={projects} onCompleteAction={handleCompleteAction} videoProductions={videoProductions} onUpdateDailyActual={onUpdateDailyActual} />, 
     dailyLog: <DailyLogScreen kpis={kpis} currentEmployee={currentEmployee} onUpdateDailyActual={onUpdateDailyActual} logs={logs} onAddLog={onAddLog} />,
     mykpis: <MyKpisScreen />, 
     planning: <PlanningScreen />,
