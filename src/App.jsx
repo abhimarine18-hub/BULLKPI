@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import * as XLSX from "xlsx";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -11620,7 +11620,7 @@ export default function App() {
     <div className="h-screen w-screen bg-orange-50 sm:p-4 flex flex-col overflow-hidden relative" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
       {/* Role switcher (only for admin users) */}
       {loggedInUser.role === "admin" && (
-        <div className="absolute top-4 right-4 z-50 hidden sm:flex items-center gap-1 bg-white border border-orange-200 rounded-full p-1 shadow-sm">
+        <div className="absolute top-4 left-4 md:left-[80px] lg:left-[232px] z-50 hidden sm:flex items-center gap-1 bg-white border border-orange-200 rounded-full p-1 shadow-sm">
           <NotificationBell notifications={notifications} onMarkAsRead={handleMarkNotificationAsRead} loggedInUser={loggedInUser} />
           <button
             onClick={() => setRole("employee")}
