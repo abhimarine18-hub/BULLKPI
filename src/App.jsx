@@ -8609,30 +8609,27 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
 }
 
 
-function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
+  const prefix = logDate.substring(0, 7);
 
-  // We can calculate carryForward dynamically for today!
-  const todayTarget = kpi.dailyAlloc?.[todayStr] || 0;
-  const savedActual = kpi.dailyActual?.[todayStr];
-  const hasLoggedToday = savedActual !== undefined && savedActual !== null && savedActual !== "";
+  const target = kpi.dailyAlloc?.[logDate] || 0;
+  const savedActual = kpi.dailyActual?.[logDate];
+  const hasLogged = savedActual !== undefined && savedActual !== null && savedActual !== "";
 
   const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(hasLoggedToday ? savedActual : "");
+  const [inputValue, setInputValue] = useState(hasLogged ? savedActual : "");
 
-  // Sync state if todayStr changes (e.g. date changes)
+  // Sync state if logDate changes
   useEffect(() => {
-    setInputValue(hasLoggedToday ? savedActual : "");
+    setInputValue(hasLogged ? savedActual : "");
     setIsEditing(false);
-  }, [todayStr, hasLoggedToday, savedActual]);
+  }, [logDate, hasLogged, savedActual]);
 
-  // Calculate carry forward balance up to yesterday
+  // Calculate carry forward balance up to logDate (exclusive)
   const carryForward = useMemo(() => {
     let cf = 0;
     Object.keys(kpi.dailyAlloc || {}).forEach(dateKey => {
-      if (dateKey < todayStr && dateKey.substring(0, 7) === todayStr.substring(0, 7)) {
+      if (dateKey < logDate && dateKey.substring(0, 7) === prefix) {
         const tgt = kpi.dailyAlloc[dateKey] || 0;
         const act = kpi.dailyActual?.[dateKey] || 0;
         const shortfall = Math.max(0, tgt - act);
@@ -8640,16 +8637,15 @@ function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
       }
     });
     return cf;
-  }, [kpi.dailyAlloc, kpi.dailyActual, todayStr]);
+  }, [kpi.dailyAlloc, kpi.dailyActual, logDate, prefix]);
 
-  const effectiveTarget = todayTarget + carryForward;
-  const isCurrentMonth = todayStr.startsWith(prefix);
+  const effectiveTarget = target + carryForward;
 
   const handleSubmit = () => {
     if (inputValue === "") return;
     const num = parseFloat(inputValue);
     if (!isNaN(num)) {
-      onUpdateDailyActual(kpi.id, todayStr, num);
+      onUpdateDailyActual(kpi.id, logDate, num);
       setIsEditing(false);
     }
   };
@@ -8683,6 +8679,8 @@ function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
     return data;
   }, [prefix, kpi.dailyAlloc, kpi.dailyActual]);
 
+  const dateLabel = new Date(logDate).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' });
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
       <div className="border-b border-slate-100 pb-3">
@@ -8713,118 +8711,112 @@ function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
       </div>
 
       {/* Target & Carry Forward Summary */}
-      {isCurrentMonth && (
-        <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 border border-slate-150 rounded-2xl p-2.5">
-          <div>
-            <span className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Today Target</span>
-            <span className="text-xs font-bold text-slate-800">{todayTarget}</span>
-          </div>
-          <div>
-            <span className="block text-[9px] text-orange-400 font-bold uppercase mb-0.5">Carry Forward</span>
-            <span className="text-xs font-bold text-orange-600">+{carryForward}</span>
-          </div>
-          <div>
-            <span className="block text-[9px] text-teal-600 font-bold uppercase mb-0.5">Effective Target</span>
-            <span className="text-xs font-bold text-teal-700">{effectiveTarget}</span>
-          </div>
+      <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 border border-slate-150 rounded-2xl p-2.5">
+        <div>
+          <span className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Target</span>
+          <span className="text-xs font-bold text-slate-800">{target}</span>
         </div>
-      )}
+        <div>
+          <span className="block text-[9px] text-orange-400 font-bold uppercase mb-0.5">Carry Forward</span>
+          <span className="text-xs font-bold text-orange-600">+{carryForward}</span>
+        </div>
+        <div>
+          <span className="block text-[9px] text-teal-600 font-bold uppercase mb-0.5">Effective Target</span>
+          <span className="text-xs font-bold text-teal-700">{effectiveTarget}</span>
+        </div>
+      </div>
 
-      {/* Enter Today's Achievement Button/Form */}
-      {isCurrentMonth ? (
-        <div className="pt-2">
-          {!isEditing ? (
-            <div className="relative w-full">
-              {hasLoggedToday ? (
-                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3 rounded-2xl shadow-xs">
-                  <span className="text-xs font-bold text-emerald-800">
-                    Logged today: <strong>{savedActual} {kpi.unit}</strong>
-                  </span>
-                  <button 
-                    onClick={() => setIsEditing(true)}
-                    className="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200"
-                  >
-                    Edit
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-2xl transition-all shadow-xs text-xs text-center block"
-                  >
-                    Enter Today's Achievement
-                  </button>
-                  <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[8px] font-extrabold px-2 py-0.5 rounded-full border border-white shadow-xs leading-none uppercase tracking-wider">
-                    Pending today's update
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-inner">
-              <div>
-                <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Enter Today's Achievement</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    placeholder="Enter value"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    className="flex-1 text-xs font-bold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-3 py-2 outline-none transition-all shadow-xs"
-                  />
-                  <span className="text-[10px] font-bold text-slate-400">{kpi.unit}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSubmit}
-                  disabled={inputValue === ""}
-                  className={`flex-1 font-bold py-2 rounded-xl text-xs transition-all ${
-                    inputValue === "" 
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
-                      : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
-                  }`}
+      {/* Enter Achievement Button/Form */}
+      <div className="pt-2">
+        {!isEditing ? (
+          <div className="relative w-full">
+            {hasLogged ? (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3 rounded-2xl shadow-xs">
+                <span className="text-xs font-bold text-emerald-800">
+                  Logged: <strong>{savedActual} {kpi.unit}</strong>
+                </span>
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200"
                 >
-                  Submit
-                </button>
-                <button
-                  onClick={() => { setIsEditing(false); setInputValue(hasLoggedToday ? savedActual : ""); }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all"
-                >
-                  Cancel
+                  Edit
                 </button>
               </div>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-2xl transition-all shadow-xs text-xs text-center block text-ellipsis overflow-hidden whitespace-nowrap px-4"
+                >
+                  Enter Achievement for {dateLabel}
+                </button>
+                <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[8px] font-extrabold px-2 py-0.5 rounded-full border border-white shadow-xs leading-none uppercase tracking-wider">
+                  Pending update
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-inner">
+            <div>
+              <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Enter Achievement for {dateLabel}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder="Enter value"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  className="flex-1 text-xs font-bold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-3 py-2 outline-none transition-all shadow-xs"
+                />
+                <span className="text-[10px] font-bold text-slate-400">{kpi.unit}</span>
+              </div>
             </div>
-          )}
-        </div>
-      ) : (
-        <p className="text-center text-[10px] text-slate-400 italic pt-2">Daily logs are only active for the current month.</p>
-      )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleSubmit}
+                disabled={inputValue === ""}
+                className={`flex-1 font-bold py-2 rounded-xl text-xs transition-all ${
+                  inputValue === "" 
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
+                    : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                }`}
+              >
+                Submit
+              </button>
+              <button
+                onClick={() => { setIsEditing(false); setInputValue(hasLogged ? savedActual : ""); }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const d = new Date();
-    const m = d.toLocaleString('en-US', { month: 'short' });
-    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
-    return `${m} ${yr}`;
-  });
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
 
-  const handlePrevMonth = () => {
-    const idx = MONTHS_LIST.indexOf(selectedMonth);
-    if (idx > 0) setSelectedMonth(MONTHS_LIST[idx - 1]);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  const handlePrevDay = () => {
+    const nd = new Date(selectedDate);
+    nd.setDate(nd.getDate() - 1);
+    setSelectedDate(nd.toISOString().split('T')[0]);
   };
 
-  const handleNextMonth = () => {
-    const idx = MONTHS_LIST.indexOf(selectedMonth);
-    if (idx < MONTHS_LIST.length - 1) setSelectedMonth(MONTHS_LIST[idx + 1]);
+  const handleNextDay = () => {
+    const nd = new Date(selectedDate);
+    nd.setDate(nd.getDate() + 1);
+    setSelectedDate(nd.toISOString().split('T')[0]);
   };
 
-  const monthInfo = FY_MONTHS.find(m => m.name === selectedMonth);
-  const yearMonthPrefix = monthInfo ? `${monthInfo.year}-${String(monthInfo.monthIdx + 1).padStart(2, '0')}` : "2026-08";
+  const yearMonthPrefix = selectedDate.substring(0, 7);
 
   // Filter by targets and relations
   const dailyKpis = (kpis || []).filter(k => k.targetType !== "monthly");
@@ -8834,18 +8826,22 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
 
   const hasAnyKpi = doKpis.length > 0 || driveKpis.length > 0 || monitorKpis.length > 0;
 
+  const displayDateLabel = selectedDate === todayStr 
+    ? `Today (${new Date(selectedDate).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })})`
+    : new Date(selectedDate).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' });
+
   return (
     <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-8 bg-slate-50">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <h2 className="text-xl font-bold text-slate-800">Daily Log</h2>
         <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm shrink-0 self-start sm:self-auto">
-          <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+          <button onClick={handlePrevDay} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="text-xs font-black text-teal-700 w-24 text-center">
-            {selectedMonth}
+          <span className="text-xs font-black text-teal-700 w-40 text-center">
+            {displayDateLabel}
           </span>
-          <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+          <button onClick={handleNextDay} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
@@ -8869,7 +8865,7 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
                   <DailyLogCard 
                     key={kpi.id} 
                     kpi={kpi} 
-                    prefix={yearMonthPrefix} 
+                    logDate={selectedDate} 
                     onUpdateDailyActual={onUpdateDailyActual} 
                   />
                 ))}
@@ -8889,7 +8885,7 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
                   <DailyLogCard 
                     key={kpi.id} 
                     kpi={kpi} 
-                    prefix={yearMonthPrefix} 
+                    logDate={selectedDate} 
                     onUpdateDailyActual={onUpdateDailyActual} 
                   />
                 ))}
@@ -8909,7 +8905,7 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
                   <DailyLogCard 
                     key={kpi.id} 
                     kpi={kpi} 
-                    prefix={yearMonthPrefix} 
+                    logDate={selectedDate} 
                     onUpdateDailyActual={onUpdateDailyActual} 
                   />
                 ))}
