@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info, Check
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -10413,13 +10413,17 @@ export default function App() {
 
       // 3. Fetch Projects
       let dbProjects = null;
+      let loadedProjects = [];
       {
         const resProjects = await safeFetch('projects');
         if (!resProjects.offline) {
           dbProjects = resProjects.data;
         } else {
           const cachedProjects = localStorage.getItem("backup_projects");
-          if (cachedProjects) setProjects(JSON.parse(cachedProjects));
+          if (cachedProjects) {
+            setProjects(JSON.parse(cachedProjects));
+            loadedProjects = JSON.parse(cachedProjects) || [];
+          }
         }
       }
 
@@ -10487,6 +10491,7 @@ export default function App() {
         const mappedProjs = dbProjects.map(mapDbProjectToUi);
         setProjects(mappedProjs);
         localStorage.setItem("backup_projects", JSON.stringify(mappedProjs));
+        loadedProjects = mappedProjs;
       }
 
       // 4. Fetch Client Projects
