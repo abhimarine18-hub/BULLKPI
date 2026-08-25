@@ -11,6 +11,67 @@ import {
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
 
+function DailyDistributionTooltip({ kpi, month }) {
+  const mDate = new Date(month + " 1");
+  const yr = mDate.getFullYear();
+  const mo = String(mDate.getMonth() + 1).padStart(2, '0');
+  const prefix = `${yr}-${mo}`;
+  
+  const allocs = Object.entries(kpi.dailyAlloc || {}).filter(([k, v]) => k.startsWith(prefix) && v > 0);
+  
+  if (allocs.length === 0) return null;
+  
+  return (
+    <div className="relative group/tooltip flex items-center h-full">
+      <Info className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700 cursor-pointer drop-shadow-sm" />
+      <div className="absolute bottom-full right-0 mb-1 w-32 max-h-48 overflow-y-auto bg-slate-800 text-white text-[10px] rounded p-2 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-[100] shadow-xl custom-scrollbar border border-slate-700">
+        <div className="font-bold border-b border-slate-600 pb-1 mb-1 text-center sticky top-0 bg-slate-800 z-10">Daily Target</div>
+        <div className="space-y-0.5">
+          {allocs.map(([d, v]) => (
+            <div key={d} className="flex justify-between items-center px-1">
+              <span className="text-slate-300">{d.slice(-2)}:</span>
+              <span className="font-mono font-medium">{new Intl.NumberFormat('en-IN').format(v)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExcelCell({ val, kpi, month, onValueChange }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [localVal, setLocalVal] = useState(val);
+  
+  useEffect(() => { setLocalVal(val); }, [val]);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    if (localVal !== val) {
+      onValueChange(localVal);
+    }
+  };
+
+  const displayVal = isEditing ? localVal : (localVal ? new Intl.NumberFormat('en-IN').format(localVal) : 0);
+
+  return (
+    <div className="relative w-full h-full min-h-[30px] group flex items-center justify-center">
+      <input 
+        type={isEditing ? "number" : "text"}
+        value={displayVal}
+        onFocus={() => setIsEditing(true)}
+        onBlur={handleBlur}
+        onChange={(e) => setLocalVal(e.target.value)}
+        className="absolute inset-0 w-full h-full text-center bg-transparent border-none focus:outline-none focus:ring-[1.5px] focus:ring-teal-500 focus:bg-white text-[11px] font-mono font-medium m-0 z-0 focus:z-10"
+      />
+      <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-auto flex items-center justify-center">
+        <DailyDistributionTooltip kpi={kpi} month={month} />
+      </div>
+    </div>
+  );
+}
+
+
 // Module-level flag: once Supabase fails once, skip all future network calls silently
 let _supabaseOffline = false;
 
@@ -6708,17 +6769,17 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                     const val = kpi.monthlyAlloc?.[m] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
                                     return (
                                       <td key={m} className="border border-slate-300 p-0 relative" onClick={(e) => e.stopPropagation()}>
-                                        <input 
-                                          type="number"
-                                          value={val}
-                                          onChange={(e) => handleExcelTargetChange(kpi, m, e.target.value)}
-                                          className="w-full h-full min-h-[30px] text-center bg-transparent border-none focus:outline-none focus:ring-[1.5px] focus:ring-teal-500 focus:bg-white text-[11px] font-mono font-medium m-0 z-0 focus:z-10 relative inset-0"
+                                        <ExcelCell 
+                                          val={val} 
+                                          kpi={kpi} 
+                                          month={m} 
+                                          onValueChange={(newVal) => handleExcelTargetChange(kpi, m, newVal)} 
                                         />
                                       </td>
                                     );
                                   })}
                                   <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-slate-800 font-mono text-[11px] bg-slate-50/50">
-                                    {totalVal}
+                                    {new Intl.NumberFormat('en-IN').format(totalVal)}
                                     <span className="text-[9px] text-slate-400 block font-normal mt-0">{kpi.unit.trim()}</span>
                                   </td>
                                   <td className="border border-slate-300 px-2 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
