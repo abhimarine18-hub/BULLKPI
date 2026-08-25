@@ -2073,6 +2073,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                     <option value="aggregate">Aggregate other KPIs</option>
                     <option value="leads_funnel">Leads Funnel count</option>
                     <option value="video_pipeline">Video Pipeline count</option>
+                    <option value="leads_sla">Leads SLA metrics</option>
                   </select>
                 </div>
 
@@ -2105,6 +2106,18 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                       <option value="field_approved">Field Approved (Ready to upload)</option>
                       <option value="uploaded">Uploaded (Approved for posting)</option>
                       <option value="posted">Posted (Social links online)</option>
+                    </select>
+                  </div>
+                ) : reportConfig.sourceType === "leads_sla" ? (
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">SLA Metric</label>
+                    <select
+                      value={reportConfig.metric || "breach_pct"}
+                      onChange={(e) => setReportConfig(prev => ({ ...prev, metric: e.target.value }))}
+                      className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold bg-white"
+                    >
+                      <option value="breach_pct">Breach Percentage (&gt;24h)</option>
+                      <option value="avg_response_hours">Average Response Time (Hours)</option>
                     </select>
                   </div>
                 ) : (
@@ -11472,6 +11485,68 @@ const computeReportKpis = (rawKpis, leads = [], videoProductions = []) => {
         weeklyAlloc: {},
         monthlyAlloc: newMonthlyAlloc,
         history: newHistory
+      };
+    }
+
+    if (config.sourceType === 'leads_sla') {
+      const metric = config.metric || "breach_pct";
+      
+      const leadsByMonth = {};
+      (leads || []).forEach(lead => {
+        if (lead.assigned_agent !== kpi.owner) return;
+        if (!lead.created_at) return;
+        
+        const dateObj = new Date(lead.created_at);
+        if (isNaN(dateObj.getTime())) return;
+        
+        const monthName = dateObj.toLocaleString('en-US', { month: 'short' });
+        const yr = ["Jan", "Feb", "Mar"].includes(monthName) ? "2027" : "2026";
+        const monthKey = `${monthName} ${yr}`;
+        
+        if (!leadsByMonth[monthKey]) {
+          leadsByMonth[monthKey] = [];
+        }
+        leadsByMonth[monthKey].push(lead);
+      });
+
+      const monthlyActual = {};
+      Object.entries(leadsByMonth).forEach(([monthKey, monthLeads]) => {
+        if (metric === "breach_pct") {
+          const total = monthLeads.length;
+          const breached = monthLeads.filter(lead => {
+            if (!lead.called_at) return true;
+            const diffMs = new Date(lead.called_at) - new Date(lead.created_at);
+            return diffMs > 24 * 60 * 60 * 1000;
+          }).length;
+          monthlyActual[monthKey] = total === 0 ? 0 : Math.round((breached / total) * 100);
+        } else if (metric === "avg_response_hours") {
+          const respondedLeads = monthLeads.filter(lead => lead.called_at);
+          if (respondedLeads.length === 0) {
+            monthlyActual[monthKey] = 0;
+          } else {
+            const totalHours = respondedLeads.reduce((sum, lead) => {
+              const diffMs = new Date(lead.called_at) - new Date(lead.created_at);
+              return sum + (diffMs / (1000 * 60 * 60));
+            }, 0);
+            monthlyActual[monthKey] = Math.round((totalHours / respondedLeads.length) * 10) / 10;
+          }
+        }
+      });
+
+      const newDailyAlloc = kpi.dailyAlloc || {};
+      const newMonthlyAlloc = kpi.monthlyAlloc || {};
+      const newTarget = kpi.target || 0;
+
+      return {
+        ...kpi,
+        target: newTarget,
+        dailyActual: {},
+        weeklyActual: {},
+        monthlyActual,
+        dailyAlloc: newDailyAlloc,
+        weeklyAlloc: {},
+        monthlyAlloc: newMonthlyAlloc,
+        history: []
       };
     }
     const op = config.type || 'sum';
