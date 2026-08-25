@@ -10942,6 +10942,11 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     reviews: <EmployeeReviewScreen kpis={kpis} setKpis={setKpis} loggedInUser={loggedInUser} />,
     action: <ActionScreen kpis={kpis} projects={projects} user={currentEmployee} onCompleteAction={handleCompleteAction} teams={teams} clientProjects={clientProjects} onUpdateClientProjectStage={onUpdateClientProjectStage} />, 
     my_tasks: <EmployeeTasksScreen individualTasks={individualTasks} onUpdateIndividualTaskStatus={onUpdateIndividualTaskStatus} currentEmployee={currentEmployee} kpis={kpis} />,
+    leads: <EmployeeLeadsScreen leads={leads} onUpdateLeadStatus={onUpdateLeadStatus} loggedInUser={loggedInUser} currentEmployee={currentEmployee} />,
+    video_production: <EmployeeVideoProductionScreen videoProductions={videoProductions} onUpdateVideoProduction={onUpdateVideoProduction} loggedInUser={loggedInUser} />,
+    video_editing: <EmployeeVideoEditingScreen videoProductions={videoProductions} onUpdateVideoProduction={onUpdateVideoProduction} loggedInUser={loggedInUser} />,
+    video_review: <EmployeeVideoReviewScreen videoProductions={videoProductions} onUpdateVideoProduction={onUpdateVideoProduction} loggedInUser={loggedInUser} />,
+    post_to_sm: <EmployeePostToSmScreen videoProductions={videoProductions} onUpdateVideoProduction={onUpdateVideoProduction} loggedInUser={loggedInUser} />,
     profile: <ProfileScreen /> 
   };
 
@@ -13636,8 +13641,10 @@ export default function App() {
             onInitiateKpi={handleInitiateKpi}
             leads={leads}
             onAddLead={handleAddLead}
+            onUpdateLeadStatus={handleUpdateLeadStatus}
             videoProductions={videoProductions}
             onAddVideoProduction={handleAddVideoProduction}
+            onUpdateVideoProduction={handleUpdateVideoProduction}
           />
         )}
       </div>
