@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS video_productions (
   ai_suggestion TEXT,
   ai_flagged_issues TEXT,
   ai_reviewed_at TIMESTAMPTZ,
+  field_approver_name VARCHAR(255),
+  field_approved_at TIMESTAMPTZ,
+  posted_by VARCHAR(255),
+  youtube_link TEXT,
+  posted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE video_productions ENABLE ROW LEVEL SECURITY;

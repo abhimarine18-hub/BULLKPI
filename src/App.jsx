@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, Video, Film, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info, Check
+  LayoutGrid, GitBranch, FolderGit2, Video, Film, Share2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info, Check
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -8805,10 +8805,203 @@ const EMP_NAV = [
   { id: "leads", icon: UserCheck },
   { id: "video_production", icon: Video },
   { id: "video_editing", icon: Film },
+  { id: "video_review", icon: ClipboardCheck },
+  { id: "post_to_sm", icon: Share2 },
   { id: "team", icon: Trophy },
   { id: "reviews", icon: ClipboardCheck },
   { id: "profile", icon: User },
 ];
+
+function EmployeeVideoReviewScreen({ videoProductions = [], onUpdateVideoProduction, loggedInUser }) {
+  const pendingReviews = useMemo(() => {
+    return (videoProductions || []).filter(p => 
+      p.status === 'field_approved_pending' && 
+      (p.field_approver_name === loggedInUser?.name || !p.field_approver_name)
+    );
+  }, [videoProductions, loggedInUser]);
+
+  const handleApprove = (prodId) => {
+    onUpdateVideoProduction(prodId, {
+      status: 'uploaded',
+      field_approved_at: new Date().toISOString(),
+      field_approver_name: loggedInUser?.name
+    });
+  };
+
+  const handleReject = (prodId) => {
+    const reason = window.prompt("Enter rejection feedback for the editor:");
+    if (reason === null) return;
+    onUpdateVideoProduction(prodId, {
+      status: 'editing',
+      ai_suggestion: `Rejected by ${loggedInUser?.name}. Feedback: ${reason}`
+    });
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-4">
+      <div className="flex items-center gap-3 mb-2">
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Video Field Reviews</h2>
+        <span className="ml-auto text-xs text-slate-400 bg-slate-100 rounded-full px-2.5 py-0.5 font-semibold">{pendingReviews.length} Pending</span>
+      </div>
+
+      {pendingReviews.length === 0 ? (
+        <div className="bg-white border border-slate-150 rounded-2xl p-8 text-center shadow-xs">
+          <span className="text-3xl">🎉</span>
+          <p className="text-xs font-semibold text-slate-500 mt-2">No video shoots pending your field approval.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {pendingReviews.map(prod => (
+            <div key={prod.id} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
+              <div className="flex justify-between items-start flex-wrap gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{prod.video_title}</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold mt-1">Editor: {prod.editor_name || "—"} · Videographer: {prod.assigned_agent}</p>
+                </div>
+                {prod.edited_video_drive_link && (
+                  <a href={prod.edited_video_drive_link} target="_blank" rel="noreferrer" className="text-xs font-bold text-teal-655 hover:text-teal-700 bg-teal-50 border border-teal-150 px-3 py-1 rounded-xl transition-colors">
+                    🔗 View Edited Video
+                  </a>
+                )}
+              </div>
+
+              <div className="bg-indigo-50/40 border border-indigo-100/60 rounded-xl p-3.5 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                  <span>🤖</span> AI Review Copilot Suggestions
+                </div>
+                {prod.ai_suggestion && (
+                  <p className="text-[11px] text-slate-700 leading-normal">
+                    <strong>Suggestion:</strong> {prod.ai_suggestion}
+                  </p>
+                )}
+                {prod.ai_flagged_issues && (
+                  <div className="text-[11px] text-slate-600 leading-normal">
+                    <strong>Flagged Issues / Checklist:</strong>
+                    <div className="whitespace-pre-wrap mt-1 text-slate-600 bg-white p-2 rounded-lg border border-slate-100 font-mono text-[10px]">
+                      {prod.ai_flagged_issues}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => handleReject(prod.id)}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-xl text-xs transition-colors"
+                >
+                  Reject & Redo
+                </button>
+                <button
+                  onClick={() => handleApprove(prod.id)}
+                  className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-sm transition-colors"
+                >
+                  Approve Shoot
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmployeePostToSmScreen({ videoProductions = [], onUpdateVideoProduction, loggedInUser }) {
+  const [activeProd, setActiveProd] = useState(null);
+  const [formData, setFormData] = useState({
+    posted_by: loggedInUser?.name || "",
+    youtube_link: ""
+  });
+
+  const uploadProds = useMemo(() => {
+    return (videoProductions || []).filter(p => p.status === 'uploaded');
+  }, [videoProductions]);
+
+  const handleOpenPost = (prod) => {
+    setActiveProd(prod);
+    setFormData({
+      posted_by: loggedInUser?.name || "",
+      youtube_link: ""
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!activeProd || !formData.youtube_link.trim()) return;
+
+    onUpdateVideoProduction(activeProd.id, {
+      status: 'posted',
+      posted_by: formData.posted_by.trim(),
+      youtube_link: formData.youtube_link.trim(),
+      posted_at: new Date().toISOString()
+    });
+
+    setActiveProd(null);
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-4">
+      <div className="flex items-center gap-3 mb-2">
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Post to Social Media</h2>
+        <span className="ml-auto text-xs text-slate-400 bg-slate-100 rounded-full px-2.5 py-0.5 font-semibold">{uploadProds.length} Ready</span>
+      </div>
+
+      {uploadProds.length === 0 ? (
+        <div className="bg-white border border-slate-150 rounded-2xl p-8 text-center shadow-xs">
+          <span className="text-3xl">🎉</span>
+          <p className="text-xs font-semibold text-slate-500 mt-2">No videos pending social media posting.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {uploadProds.map(prod => (
+            <div key={prod.id} className="bg-white border border-slate-150 rounded-2xl p-4 flex flex-col justify-between shadow-xs space-y-3.5">
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-slate-800 leading-snug">{prod.video_title}</h4>
+                <p className="text-[10px] text-slate-500 font-semibold">Editor: {prod.editor_name || "—"}</p>
+                {prod.edited_video_drive_link && (
+                  <a href={prod.edited_video_drive_link} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-650 font-bold hover:underline block mt-1.5">
+                    🔗 Edited Video Link
+                  </a>
+                )}
+              </div>
+              <button
+                onClick={() => handleOpenPost(prod)}
+                className="w-full bg-teal-500 hover:bg-teal-650 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-2xs"
+              >
+                Post to SM
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeProd && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-orange-100">
+            <div className="bg-orange-50 px-5 py-4 border-b border-orange-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm">Post Video to Social Media</h3>
+              <button type="button" onClick={() => setActiveProd(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs font-semibold text-slate-650">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-505 block uppercase tracking-wider">Posted By *</label>
+                <input required type="text" value={formData.posted_by} onChange={(e) => setFormData(prev => ({ ...prev, posted_by: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-550 block uppercase tracking-wider">YouTube / Social Link *</label>
+                <input required type="url" value={formData.youtube_link} onChange={(e) => setFormData(prev => ({ ...prev, youtube_link: e.target.value }))} placeholder="https://youtube.com/watch?v=..." className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none font-mono" />
+              </div>
+            </div>
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setActiveProd(null)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Mark Posted</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EmployeeVideoEditingScreen({ videoProductions = [], onUpdateVideoProduction, loggedInUser }) {
   const [editingProd, setEditingProd] = useState(null);
@@ -10748,8 +10941,10 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
         </div>
         {EMP_NAV.filter(item => {
           if (item.id === "video_editing") {
-            const isVideoStaff = myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
-            return isVideoStaff;
+            return myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
+          }
+          if (item.id === "post_to_sm") {
+            return myTeam?.name === "Digital Marketing" || loggedInUser?.name === "Admin";
           }
           return true;
         }).map(item => <NavItem key={item.id} item={item} />)}
@@ -10820,8 +11015,10 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
         <nav className="md:hidden bg-white border-t border-slate-100 px-2 py-2 flex items-center justify-around shrink-0 safe-area-inset-bottom">
           {EMP_NAV.filter(item => {
             if (item.id === "video_editing") {
-              const isVideoStaff = myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
-              return isVideoStaff;
+              return myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
+            }
+            if (item.id === "post_to_sm") {
+              return myTeam?.name === "Digital Marketing" || loggedInUser?.name === "Admin";
             }
             return true;
           }).map(item => {
