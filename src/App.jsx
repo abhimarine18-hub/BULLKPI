@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -10095,6 +10095,7 @@ export default function App() {
 
       // 2. Fetch KPIs
       let dbKpis = null;
+      let loadedKpis = [];
       {
         const resKpis = await safeFetch('kpis');
         if (!resKpis.offline) {
@@ -10137,11 +10138,12 @@ export default function App() {
             cachedKpis = JSON.stringify(mockKpis);
           }
           setKpis(JSON.parse(cachedKpis));
+          loadedKpis = JSON.parse(cachedKpis) || [];
         }
       }
 
       if (dbKpis) {
-        const loadedKpis = dbKpis.map(k => ({
+        loadedKpis = dbKpis.map(k => ({
           id: k.id,
           name: k.name,
           unit: k.unit,
