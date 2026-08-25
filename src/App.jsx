@@ -162,12 +162,11 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><X className="h-5 w-5" /></button>
         </div>
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <StatusBadge status={status} />
-            <span className="text-xs text-slate-400">
-              {kpi.team} • {kpi.owner}
-            </span>
-          </div>
+          <StatusBadge status={status} />
+          <span className="text-xs text-slate-400">
+            {kpi.team} • {kpi.owner}
+          </span>
+        </div>
           
           {/* Roles Status Strip */}
           {(() => {
@@ -313,7 +312,6 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
               </div>
             );
           })()}
-        </div>
         
         {parentKpi && (() => {
           const parentStatus = getStatus(parentKpi);
