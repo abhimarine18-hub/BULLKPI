@@ -11318,7 +11318,6 @@ function checkParentChildDateMismatch(parentKpi, childProject) {
 
 export default function App() {
   const [kpis, setKpis] = useState([]);
-  const computedKpis = useMemo(() => computeReportKpis(kpis, leads), [kpis, leads]);
   const [teams, setTeams] = useState([]);
   const [projects, setProjects] = useState([]);
   const [clientProjects, setClientProjects] = useState([]);
@@ -11326,6 +11325,8 @@ export default function App() {
   const [individualTasks, setIndividualTasks] = useState([]);
   const [leads, setLeads] = useState([]);
   const [videoProductions, setVideoProductions] = useState([]);
+
+  const computedKpis = useMemo(() => computeReportKpis(kpis, leads), [kpis, leads]);
 
   async function handleUpdateVideoProduction(prodId, updates) {
     if (updates.status === 'ai_review') {
