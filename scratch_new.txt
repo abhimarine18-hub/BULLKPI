@@ -1,0 +1,141 @@
+                            return (
+                              <div
+                                key={cell.dateStr}
+                                className="relative"
+                              >
+                                <div
+                                  onClick={() => {
+                                    if (isTimeKpi) {
+                                      handleDailyChange(cell.dateStr, dayTarget > 0 ? 0 : 1, selectedMonth, r);
+                                    } else {
+                                      setEditingCellData(cell.dateStr);
+                                    }
+                                  }}
+                                  className={order rounded-xl p-1.5 text-center flex flex-col justify-between h-full min-h-[65px]  shadow-sm transition-all hover:border-slate-400 }
+                                >
+                                  {/* View Mode Content */}
+                                  <div className="flex justify-between items-start text-xs px-1 shrink-0">
+                                    <span className={ont-bold }>{cell.dayNum}</span>
+                                    
+                                    <div className="flex gap-1 items-center mt-0.5">
+                                      {/* Indicator Dots */}
+                                      {check.isHoliday && <div className="w-1.5 h-1.5 rounded-full bg-rose-500" title="Holiday" />}
+                                      {(isLeave || isPartialLeave) && !check.isHoliday && <div className="w-1.5 h-1.5 rounded-full bg-orange-500" title="Leave" />}
+                                      {parentKpi && parentTarget > 0 && parentActual < parentTarget && (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Pending Parent" />
+                                      )}
+                                      {dayActual > 0 && (
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 flex items-center justify-center" title="Done">
+                                          <CheckSquare className="w-1.5 h-1.5 text-white" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-col items-center justify-center flex-1 w-full px-0.5 pb-1 mt-1">
+                                    {isTimeKpi ? (
+                                      <span className={	ext-[11px] font-bold }>
+                                        {dayTarget > 0 ? 'Deadline' : ''}
+                                      </span>
+                                    ) : (
+                                      <span className={	ext-sm font-extrabold tracking-tight }>
+                                        {formatIndianNumber(dayTarget) || '0'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* EDIT MODE POPOVER */}
+                                {editingCellData === cell.dateStr && !isTimeKpi && (
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-white border border-slate-200 shadow-2xl rounded-xl p-3 w-48 text-left before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:border-8 before:border-transparent before:border-b-white after:content-[''] after:absolute after:bottom-full after:left-1/2 after:-translate-x-1/2 after:border-8 after:border-transparent after:border-b-slate-200 after:-mt-[1px] after:-z-10">
+                                    {/* Header / Close button */}
+                                    <div className="flex justify-between items-center mb-2 border-b border-slate-100 pb-1.5">
+                                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{cell.dateStr}</span>
+                                      <button onClick={(e) => { e.stopPropagation(); setEditingCellData(null); }} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-1 rounded-full transition-colors"><X className="w-3 h-3" /></button>
+                                    </div>
+
+                                    {/* Fields */}
+                                    <div className="space-y-2.5">
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-bold text-slate-600">Target</label>
+                                        <input
+                                          type="text"
+                                          value={formatIndianNumber(dayTarget)}
+                                          onChange={(e) => handleDailyChange(cell.dateStr, parseIndianNumber(e.target.value), selectedMonth, r)}
+                                          className="w-20 text-right text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-teal-400 font-bold text-teal-700 shadow-inner"
+                                          autoFocus
+                                        />
+                                      </div>
+
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-bold text-slate-500">Actual</label>
+                                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-1 rounded border border-emerald-100 w-20 text-right">
+                                          {formatIndianNumber(dayActual) || '0'}
+                                        </span>
+                                      </div>
+
+                                      {dayRevised !== dayTarget && (
+                                        <div className="flex items-center justify-between">
+                                          <label className="text-[10px] font-bold text-slate-500">Revised</label>
+                                          <span className="text-xs font-bold text-teal-700 bg-teal-50 px-1.5 py-1 rounded border border-teal-100 w-20 text-right">
+                                            {formatIndianNumber(dayRevised)}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {parentKpi && (
+                                        <>
+                                          <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 mt-1.5">
+                                            <label className="text-[10px] font-bold text-amber-700">P. Target</label>
+                                            <span className="text-xs font-bold text-amber-700">{formatIndianNumber(parentTarget) || '0'}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-bold text-slate-500">P. Actual</label>
+                                            <span className="text-xs font-bold text-slate-500">{formatIndianNumber(parentActual) || '0'}</span>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      <div className="pt-2 border-t border-slate-100 mt-2">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleAdminHoliday(cell.dateStr);
+                                          }}
+                                          className={w-full py-1.5 text-[10px] font-bold rounded transition-colors }
+                                        >
+                                          {check.isHoliday ? 'Remove Holiday' : 'Mark as Holiday'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* 8th Column: Weekly Total */}
+                          <div className={order rounded-xl p-1.5 text-center flex flex-col justify-between h-auto min-h-[65px] pb-1 shadow-sm transition-all }>
+                            <span className={	ext-[9px] font-bold block uppercase tracking-wider font-mono shrink-0 }>W{r + 1} Total</span>
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              {isTimeKpi ? (
+                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                  <span className={	ext-[11px] font-bold }>{weekVal}</span>
+                                  <span className={	ext-[10px] font-bold }>{weekActVal > 0 ? 'Done' : '0'}</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className={w-full text-center text-sm font-extrabold leading-none mt-1 } title="Weekly Target (Derived)">
+                                    {formatIndianNumber(weekVal) || "0"}
+                                  </div>
+                                  <div className={w-full text-center text-[10px] font-bold leading-none mt-1.5 } title="Weekly Achievement (Read-only)">
+                                    {weekActVal > 0 ? A:  : "A: 0"}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return rows;
