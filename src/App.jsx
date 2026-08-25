@@ -2064,7 +2064,35 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 <h4 className="text-[10px] font-bold text-teal-800 uppercase tracking-wider mb-2">Report Configuration</h4>
                 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Calculation Type</label>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Source Type</label>
+                  <select
+                    value={reportConfig.sourceType || "aggregate"}
+                    onChange={(e) => setReportConfig(prev => ({ ...prev, sourceType: e.target.value }))}
+                    className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold bg-white"
+                  >
+                    <option value="aggregate">Aggregate other KPIs</option>
+                    <option value="leads_funnel">Leads Funnel count</option>
+                  </select>
+                </div>
+
+                {reportConfig.sourceType === "leads_funnel" ? (
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Funnel Stage</label>
+                    <select
+                      value={reportConfig.stage || "given"}
+                      onChange={(e) => setReportConfig(prev => ({ ...prev, stage: e.target.value }))}
+                      className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold bg-white"
+                    >
+                      <option value="given">Given (Total leads assigned)</option>
+                      <option value="called">Called (Leads marked called)</option>
+                      <option value="converted">Converted (Leads converted)</option>
+                      <option value="sold">Sold (Leads sold)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-1">Calculation Type</label>
                   <select
                     value={reportConfig.type}
                     onChange={(e) => setReportConfig(prev => ({ ...prev, type: e.target.value }))}
@@ -2103,6 +2131,8 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                         onChange={(newIds) => setReportConfig(prev => ({ ...prev, denominatorIds: newIds }))}
                       />
                     </div>
+                  </>
+                )}
                   </>
                 )}
               </div>
@@ -10402,7 +10432,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 }
 
 /* ==================== KPI COMPUTATION ENGINE ==================== */
-const computeReportKpis = (rawKpis) => {
+const computeReportKpis = (rawKpis, leads = []) => {
   const monthsList = MONTHS_LIST;
   
   // Pre-process activity KPIs: Auto-distribute targets if monthlyAlloc is missing but target > 0
@@ -10444,6 +10474,66 @@ const computeReportKpis = (rawKpis) => {
     if (kpi.kpiType !== 'report') return kpi;
 
     const config = kpi.reportConfig || {};
+    
+    if (config.sourceType === 'leads_funnel') {
+      const stageOrder = ["given", "called", "converted", "sold"];
+      const getStageVal = (st) => stageOrder.indexOf(st?.toLowerCase());
+      
+      const configuredStage = config.stage || "given";
+      const configuredStageVal = getStageVal(configuredStage);
+
+      const getTimestampField = (lead) => {
+        if (configuredStage === "called") return lead.called_at;
+        if (configuredStage === "converted") return lead.converted_at;
+        if (configuredStage === "sold") return lead.sold_at;
+        return lead.created_at;
+      };
+
+      const matchingLeads = (leads || []).filter(lead => {
+        const isOwner = lead.assigned_agent === kpi.owner;
+        const hasReachedStage = getStageVal(lead.status) >= configuredStageVal;
+        return isOwner && hasReachedStage;
+      });
+
+      const dailyActual = {};
+      const monthlyActual = {};
+      
+      matchingLeads.forEach(lead => {
+        const ts = getTimestampField(lead);
+        if (!ts) return;
+        const dateObj = new Date(ts);
+        if (isNaN(dateObj.getTime())) return;
+        
+        const tzOffset = dateObj.getTimezoneOffset() * 60000;
+        const localIso = (new Date(dateObj.getTime() - tzOffset)).toISOString();
+        const dateStr = localIso.split('T')[0];
+        
+        dailyActual[dateStr] = (dailyActual[dateStr] || 0) + 1;
+        
+        const monthName = dateObj.toLocaleString('en-US', { month: 'short' });
+        const yr = ["Jan", "Feb", "Mar"].includes(monthName) ? "2027" : "2026";
+        const monthKey = `${monthName} ${yr}`;
+        monthlyActual[monthKey] = (monthlyActual[monthKey] || 0) + 1;
+      });
+
+      const newDailyAlloc = kpi.dailyAlloc || {};
+      const newMonthlyAlloc = kpi.monthlyAlloc || {};
+      const newTarget = kpi.target || 0;
+
+      const newHistory = Object.entries(dailyActual).map(([d, v]) => ({ d, v })).sort((a,b) => a.d.localeCompare(b.d));
+
+      return {
+        ...kpi,
+        target: newTarget,
+        dailyActual,
+        weeklyActual: {},
+        monthlyActual,
+        dailyAlloc: newDailyAlloc,
+        weeklyAlloc: {},
+        monthlyAlloc: newMonthlyAlloc,
+        history: newHistory
+      };
+    }
     const op = config.type || 'sum';
 
     const calcCombined = (ids, extractValFn) => {
@@ -10611,7 +10701,7 @@ function checkParentChildDateMismatch(parentKpi, childProject) {
 
 export default function App() {
   const [kpis, setKpis] = useState([]);
-  const computedKpis = useMemo(() => computeReportKpis(kpis), [kpis]);
+  const computedKpis = useMemo(() => computeReportKpis(kpis, leads), [kpis, leads]);
   const [teams, setTeams] = useState([]);
   const [projects, setProjects] = useState([]);
   const [clientProjects, setClientProjects] = useState([]);
