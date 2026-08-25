@@ -6401,19 +6401,19 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                       </div>
                       
                       <div className="overflow-x-auto">
-                        <table className="w-full text-xs min-w-[1000px] border-collapse">
+                        <table className="w-full text-xs min-w-[1000px] border-collapse border border-slate-300 bg-white shadow-sm">
                           <thead>
-                            <tr className="border-b border-orange-50 text-left bg-slate-50/50">
-                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">KPI Title</th>
-                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-1/4">Description</th>
-                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">UOM</th>
-                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Target Type / Value</th>
-                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Owner</th>
-                              <th className="px-5 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
-                              <th className="px-5 py-2.5"></th>
+                            <tr className="bg-slate-100">
+                              <th className="border border-slate-300 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] text-left">KPI Title</th>
+                              <th className="border border-slate-300 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] w-1/4 text-left">Description</th>
+                              <th className="border border-slate-300 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] text-left">UOM</th>
+                              <th className="border border-slate-300 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] text-left">Target Type / Value</th>
+                              <th className="border border-slate-300 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] text-left">Owner</th>
+                              <th className="border border-slate-300 px-4 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] text-left">Status</th>
+                              <th className="border border-slate-300 px-4 py-2 bg-slate-100"></th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-orange-50">
+                          <tbody>
                             {teamKpis.map((kpi) => {
                               let dispTarget = kpi.target;
                               let dispActual = getLatest(kpi);
@@ -6685,43 +6685,43 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                       </div>
                       
                       <div className="overflow-x-auto">
-                        <table className="w-full text-xs min-w-[1400px] border-collapse">
+                        <table className="w-full text-xs min-w-[1400px] border-collapse border border-slate-300 bg-white shadow-sm">
                           <thead>
-                            <tr className="border-b border-orange-50 text-left bg-slate-50/50">
-                              <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-48 sticky left-0 bg-slate-50/50 z-10">KPI Title</th>
-                              <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-24">Do</th>
+                            <tr className="bg-slate-100">
+                              <th className="border border-slate-300 px-3 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] w-56 sticky left-0 bg-slate-100 z-20 text-left">KPI Title</th>
+                              <th className="border border-slate-300 px-3 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] w-24 text-left">Do</th>
                               {MONTHS_LIST.map(m => (
-                                <th key={m} className="px-2 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-center w-16">{m}</th>
+                                <th key={m} className="border border-slate-300 px-2 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] text-center w-16">{m}</th>
                               ))}
-                              <th className="px-3 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-center w-20">Total</th>
-                              <th className="px-3 py-2.5 w-16"></th>
+                              <th className="border border-slate-300 px-3 py-2 font-bold text-slate-700 uppercase tracking-wider text-[10px] text-center w-20">Total</th>
+                              <th className="border border-slate-300 px-3 py-2 w-20 bg-slate-100"></th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-orange-50">
+                          <tbody>
                             {teamKpis.map((kpi) => {
                               const totalVal = Object.values(kpi.monthlyAlloc || {}).reduce((sum, v) => sum + (v || 0), 0) || kpi.target || 0;
                               return (
-                                <tr key={kpi.id} className="hover:bg-orange-50/20 cursor-pointer transition-colors" onClick={() => setDetailId(kpi.id)}>
-                                  <td className="px-3 py-2.5 font-bold text-slate-800 text-xs max-w-xs truncate sticky left-0 bg-white hover:bg-orange-50/20 z-10">{kpi.name}</td>
-                                  <td className="px-3 py-2.5 text-slate-600 font-medium text-[11px] truncate">{kpi.owner}</td>
+                                <tr key={kpi.id} className="hover:bg-blue-50/30 cursor-pointer transition-colors group" onClick={() => setDetailId(kpi.id)}>
+                                  <td className="border border-slate-300 px-3 py-1.5 font-bold text-slate-800 text-[11px] truncate max-w-[224px] sticky left-0 bg-white group-hover:bg-blue-50/30 z-10">{kpi.name}</td>
+                                  <td className="border border-slate-300 px-3 py-1.5 text-slate-600 font-medium text-[11px] truncate">{kpi.owner}</td>
                                   {MONTHS_LIST.map(m => {
                                     const val = kpi.monthlyAlloc?.[m] ?? Math.round(((kpi.target || 0) / 12) * 100) / 100;
                                     return (
-                                      <td key={m} className="px-1.5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                      <td key={m} className="border border-slate-300 p-0 relative" onClick={(e) => e.stopPropagation()}>
                                         <input 
                                           type="number"
                                           value={val}
                                           onChange={(e) => handleExcelTargetChange(kpi, m, e.target.value)}
-                                          className="w-14 text-center border border-orange-100 hover:border-orange-200 focus:border-teal-400 bg-slate-50/50 hover:bg-white focus:bg-white rounded px-1 py-0.5 text-xs focus:outline-none transition-colors font-medium font-mono"
+                                          className="w-full h-full min-h-[30px] text-center bg-transparent border-none focus:outline-none focus:ring-[1.5px] focus:ring-teal-500 focus:bg-white text-[11px] font-mono font-medium m-0 z-0 focus:z-10 relative inset-0"
                                         />
                                       </td>
                                     );
                                   })}
-                                  <td className="px-3 py-2.5 text-center font-bold text-slate-800 font-mono text-[11px]">
+                                  <td className="border border-slate-300 px-2 py-1.5 text-center font-bold text-slate-800 font-mono text-[11px] bg-slate-50/50">
                                     {totalVal}
-                                    <span className="text-[9px] text-slate-400 block font-normal mt-0.5">{kpi.unit.trim()}</span>
+                                    <span className="text-[9px] text-slate-400 block font-normal mt-0">{kpi.unit.trim()}</span>
                                   </td>
-                                  <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                                  <td className="border border-slate-300 px-2 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
                                     <div className="flex justify-end gap-1">
                                       <button 
                                         onClick={() => setEditingKpi(kpi)} 
