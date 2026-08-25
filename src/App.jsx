@@ -8609,158 +8609,180 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
 }
 
 
-function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
-  const todayTarget = kpi.dailyAlloc?.[tStr] || 0;
-  
-  // See if there's already a value logged
-  const savedActual = kpi.dailyActual?.[tStr];
-  const hasSavedActual = savedActual !== undefined && savedActual !== null && savedActual !== "";
+function DailyLedgerRow({ row, kpiId, onUpdateDailyActual }) {
+  const [isEditing, setIsEditing] = useState(!row.hasActual);
+  const [val, setVal] = useState(row.actual);
 
-  // State for the component
-  const [isEditing, setIsEditing] = useState(!hasSavedActual);
-  const [inputValue, setInputValue] = useState("");
-
-  // Keep state in sync if date changes
   useEffect(() => {
-    setIsEditing(!hasSavedActual);
-    setInputValue("");
-  }, [tStr, hasSavedActual]);
-
-  // Calculate Carry Forward Balance up to the selected date
-  let carryForward = 0;
-  Object.keys(kpi.dailyAlloc || {}).forEach(dateKey => {
-    if (dateKey < tStr && dateKey.substring(0, 7) === tStr.substring(0, 7)) {
-      const tgt = kpi.dailyAlloc[dateKey] || 0;
-      const act = kpi.dailyActual?.[dateKey] || 0;
-      const shortfall = Math.max(0, tgt - act);
-      carryForward += shortfall;
-    }
-  });
-
-  const effectiveTarget = todayTarget + carryForward;
+    setIsEditing(!row.hasActual);
+    setVal(row.actual);
+  }, [row.actual, row.hasActual]);
 
   const handleSubmit = () => {
-    if (inputValue === "") return;
-    const val = parseFloat(inputValue);
-    if (!isNaN(val)) {
-      onUpdateDailyActual(kpi.id, tStr, val);
+    if (val === "") return;
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      onUpdateDailyActual(kpiId, row.dateStr, num);
       setIsEditing(false);
-      setInputValue("");
     }
   };
 
-  // Build compound trend graph data (Current Month)
-  const chartData = useMemo(() => {
-    const yearMonth = tStr.substring(0, 7);
-    const [year, month] = yearMonth.split('-');
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const data = [];
-    for (let i = 1; i <= daysInMonth; i++) {
-      const dStr = `${yearMonth}-${String(i).padStart(2, '0')}`;
-      const tgt = kpi.dailyAlloc?.[dStr] || 0;
-      const act = kpi.dailyActual?.[dStr];
-      data.push({
-        date: String(i).padStart(2, '0'),
-        fullDate: dStr,
-        Target: tgt,
-        Actual: act !== undefined && act !== "" ? Number(act) : null
-      });
-    }
-    return data;
-  }, [tStr, kpi.dailyAlloc, kpi.dailyActual]);
-
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
-      <div className="flex justify-between items-start gap-2 border-b border-slate-100 pb-3">
-        <div>
-          <h3 className="font-bold text-slate-800 text-sm leading-snug">{kpi.name}</h3>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">
-            {new Date(tStr).toLocaleDateString("en-IN", { weekday: 'short', month: 'short', day: 'numeric' })}
-          </p>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 px-3 hover:bg-slate-50 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-800">{row.dayNum}</span>
+          <span className="text-[10px] text-slate-400 font-semibold">{new Date(row.dateStr).toLocaleDateString("en-IN", { weekday: 'short' })}</span>
+        </div>
+        <div className="flex gap-3 text-[10px] mt-0.5 text-slate-500 font-medium">
+          <span>Tgt: <strong>{row.target}</strong></span>
+          <span className="text-orange-600">CF: <strong>+{row.carryForward}</strong></span>
+          <span className="text-teal-700">Eff Tgt: <strong>{row.effectiveTarget}</strong></span>
         </div>
       </div>
       
-      <div className="space-y-1.5 px-1">
-        <p className="text-xs font-semibold text-slate-600">
-          Target: <span className="text-slate-800">{todayTarget} {kpi.unit}</span>
-        </p>
-        <p className="text-xs font-semibold text-orange-600">
-          Carry Forward Balance: +{carryForward} {kpi.unit}
-        </p>
-      </div>
-
-      <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
-        <p className="text-sm font-bold text-teal-800 mb-4">
-          Effective Target: {effectiveTarget} {kpi.unit}
-        </p>
-        
+      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
         {!isEditing ? (
-          <div className="flex items-center justify-between bg-white border border-emerald-200 p-3 rounded-xl shadow-sm">
-            <p className="text-sm font-bold text-emerald-700 flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4" /> 
-              Logged: {savedActual} / effective target {effectiveTarget}
-            </p>
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">
+            <span className="text-xs font-black text-emerald-800">Logged: {row.actual}</span>
             <button 
               onClick={() => setIsEditing(true)}
-              className="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-[10px] font-bold text-slate-500 hover:text-slate-700 underline"
             >
               Edit
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[11px] text-slate-500 font-bold uppercase mb-1.5">Enter Achievement</label>
-              <div className="flex items-center gap-2">
-                <input 
-                  type="number"
-                  placeholder="Enter value achieved"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  className="flex-1 text-sm font-semibold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-4 py-2.5 outline-none transition-all shadow-inner"
-                />
-                <span className="text-xs font-bold text-slate-400 shrink-0">{kpi.unit}</span>
-              </div>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              placeholder="Actual"
+              value={val}
+              onChange={(e) => setVal(e.target.value)}
+              className="w-20 text-right text-xs font-bold text-slate-800 bg-white border border-slate-350 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 rounded-lg px-2 py-1 outline-none transition-all"
+            />
             <button
               onClick={handleSubmit}
-              disabled={inputValue === ""}
-              className={`w-full font-bold py-2.5 rounded-xl transition-all ${
-                inputValue === "" 
+              disabled={val === ""}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                val === "" 
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
-                  : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                  : "bg-teal-600 hover:bg-teal-700 text-white"
               }`}
             >
               Submit
             </button>
-            {hasSavedActual && (
-              <div className="text-center">
-                <button onClick={() => { setIsEditing(false); setInputValue(""); }} className="text-xs font-bold text-slate-500 hover:underline">Cancel Edit</button>
-              </div>
-            )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
+  // Build compound trend graph data (Cumulative target and actual for the month)
+  const chartData = useMemo(() => {
+    const [year, month] = prefix.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const data = [];
+    let runningTarget = 0;
+    let runningActual = 0;
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dStr = `${prefix}-${String(i).padStart(2, '0')}`;
+      const tgt = kpi.dailyAlloc?.[dStr] || 0;
+      const act = kpi.dailyActual?.[dStr];
+      
+      runningTarget += tgt;
+      const hasAct = act !== undefined && act !== null && act !== "";
+      if (hasAct) {
+        runningActual += Number(act);
+      }
+      
+      data.push({
+        date: String(i).padStart(2, '0'),
+        fullDate: dStr,
+        Target: runningTarget,
+        Actual: hasAct ? runningActual : null
+      });
+    }
+    return data;
+  }, [prefix, kpi.dailyAlloc, kpi.dailyActual]);
+
+  // Build daily rows ledger with dynamic carry forward accumulation
+  const dailyRows = useMemo(() => {
+    const [year, month] = prefix.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const rows = [];
+    let currentCF = 0;
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dStr = `${prefix}-${String(i).padStart(2, '0')}`;
+      const tgt = kpi.dailyAlloc?.[dStr] || 0;
+      const act = kpi.dailyActual?.[dStr];
+      const hasAct = act !== undefined && act !== null && act !== "";
+      
+      const todayCF = currentCF;
+      const effectiveTarget = tgt + todayCF;
+      
+      const actVal = hasAct ? Number(act) : 0;
+      const shortfall = Math.max(0, effectiveTarget - actVal);
+      currentCF = shortfall;
+      
+      rows.push({
+        dateStr: dStr,
+        dayNum: String(i).padStart(2, '0'),
+        target: tgt,
+        carryForward: todayCF,
+        effectiveTarget,
+        actual: hasAct ? act : "",
+        hasActual: hasAct
+      });
+    }
+    return rows;
+  }, [prefix, kpi.dailyAlloc, kpi.dailyActual]);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+      <div className="border-b border-slate-100 pb-3">
+        <h3 className="font-bold text-slate-800 text-sm leading-snug">{kpi.name}</h3>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{kpi.unit}</p>
+      </div>
       
       {/* Compound Trend Graph */}
-      <div className="mt-4 pt-4 border-t border-slate-100">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Monthly Trend</p>
-        <div className="h-48 w-full">
+      <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Compound Month Trend</p>
+        <div className="h-44 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
-              <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+              <XAxis dataKey="date" tick={{fontSize: 9, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+              <YAxis tick={{fontSize: 9, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
               <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
+                labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '2px' }}
                 labelFormatter={(label, entries) => entries[0]?.payload?.fullDate || label}
               />
-              <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-              <Bar dataKey="Actual" fill="#0d9488" radius={[2, 2, 0, 0]} maxBarSize={20} />
+              <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }} />
+              <Line type="monotone" dataKey="Actual" stroke="#0d9488" strokeWidth={2.5} dot={{ r: 2 }} connectNulls />
               <Line type="monotone" dataKey="Target" stroke="#f97316" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Daily Tasks Ledger */}
+      <div>
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Daily Tasks</p>
+        <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-150 max-h-64 overflow-y-auto">
+          {dailyRows.map(row => (
+            <DailyLedgerRow 
+              key={row.dateStr} 
+              row={row} 
+              kpiId={kpi.id} 
+              onUpdateDailyActual={onUpdateDailyActual} 
+            />
+          ))}
         </div>
       </div>
     </div>
@@ -8768,23 +8790,25 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
 }
 
 function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    const m = d.toLocaleString('en-US', { month: 'short' });
+    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
+    return `${m} ${yr}`;
+  });
 
-  const [selectedDate, setSelectedDate] = useState(todayStr);
-
-  const handlePrevDay = () => {
-    const nd = new Date(selectedDate);
-    nd.setDate(nd.getDate() - 1);
-    setSelectedDate(nd.toISOString().split('T')[0]);
+  const handlePrevMonth = () => {
+    const idx = MONTHS_LIST.indexOf(selectedMonth);
+    if (idx > 0) setSelectedMonth(MONTHS_LIST[idx - 1]);
   };
 
-  const handleNextDay = () => {
-    const nd = new Date(selectedDate);
-    nd.setDate(nd.getDate() + 1);
-    setSelectedDate(nd.toISOString().split('T')[0]);
+  const handleNextMonth = () => {
+    const idx = MONTHS_LIST.indexOf(selectedMonth);
+    if (idx < MONTHS_LIST.length - 1) setSelectedMonth(MONTHS_LIST[idx + 1]);
   };
+
+  const monthInfo = FY_MONTHS.find(m => m.name === selectedMonth);
+  const yearMonthPrefix = monthInfo ? `${monthInfo.year}-${String(monthInfo.monthIdx + 1).padStart(2, '0')}` : "2026-08";
 
   const relevantKpis = (kpis || []).filter(k => k.owner === currentEmployee && k.targetType !== "monthly");
 
@@ -8793,13 +8817,13 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <h2 className="text-xl font-bold text-slate-800">Daily Log</h2>
         <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm shrink-0 self-start sm:self-auto">
-          <button onClick={handlePrevDay} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+          <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <span className="text-xs font-black text-teal-700 w-24 text-center">
-            {selectedDate === todayStr ? "Today" : new Date(selectedDate).toLocaleDateString("en-IN", { month: 'short', day: 'numeric', year: 'numeric' })}
+            {selectedMonth}
           </span>
-          <button onClick={handleNextDay} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+          <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
@@ -8814,7 +8838,7 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
           <DailyLogCard 
             key={kpi.id} 
             kpi={kpi} 
-            tStr={selectedDate} 
+            prefix={yearMonthPrefix} 
             onUpdateDailyActual={onUpdateDailyActual} 
           />
         ))
