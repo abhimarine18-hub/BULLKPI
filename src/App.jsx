@@ -8679,11 +8679,9 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
     return data;
   }, [prefix, kpi.dailyAlloc, kpi.dailyActual]);
 
-  const dateLabel = new Date(logDate).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' });
-
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
-      <div className="border-b border-slate-100 pb-3">
+      <div className="border-b border-slate-100 pb-2.5">
         <h3 className="font-bold text-slate-800 text-sm leading-snug">{kpi.name}</h3>
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{kpi.unit}</p>
       </div>
@@ -8710,88 +8708,73 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
         </div>
       </div>
 
-      {/* Target & Carry Forward Summary */}
-      <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 border border-slate-150 rounded-2xl p-2.5">
-        <div>
-          <span className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Target</span>
-          <span className="text-xs font-bold text-slate-800">{target}</span>
+      {/* Target, CF, Eff Target on Left and Enter/Edit button on Right (Single Line Flex) */}
+      <div className="flex items-center justify-between gap-4 pt-1">
+        {/* Left Side Metrics */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 font-bold min-w-0">
+          <div className="truncate">Tgt: <span className="text-slate-800 font-black">{new Intl.NumberFormat('en-IN').format(target)}</span></div>
+          <div className="text-slate-200">|</div>
+          <div className="text-orange-500 truncate">CF: <span>+{new Intl.NumberFormat('en-IN').format(carryForward)}</span></div>
+          <div className="text-slate-200">|</div>
+          <div className="text-teal-700 truncate">Eff: <span className="font-black">{new Intl.NumberFormat('en-IN').format(effectiveTarget)}</span></div>
         </div>
-        <div>
-          <span className="block text-[9px] text-orange-400 font-bold uppercase mb-0.5">Carry Forward</span>
-          <span className="text-xs font-bold text-orange-600">+{carryForward}</span>
-        </div>
-        <div>
-          <span className="block text-[9px] text-teal-600 font-bold uppercase mb-0.5">Effective Target</span>
-          <span className="text-xs font-bold text-teal-700">{effectiveTarget}</span>
-        </div>
-      </div>
 
-      {/* Enter Achievement Button/Form */}
-      <div className="pt-2">
-        {!isEditing ? (
-          <div className="relative w-full">
-            {hasLogged ? (
-              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3 rounded-2xl shadow-xs">
-                <span className="text-xs font-bold text-emerald-800">
-                  Logged: <strong>{savedActual} {kpi.unit}</strong>
-                </span>
-                <button 
-                  onClick={() => setIsEditing(true)}
-                  className="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200"
-                >
-                  Edit
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-2xl transition-all shadow-xs text-xs text-center block text-ellipsis overflow-hidden whitespace-nowrap px-4"
-                >
-                  Enter Achievement for {dateLabel}
-                </button>
-                <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[8px] font-extrabold px-2 py-0.5 rounded-full border border-white shadow-xs leading-none uppercase tracking-wider">
-                  Pending update
-                </span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-inner">
-            <div>
-              <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Enter Achievement for {dateLabel}</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  placeholder="Enter value"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  className="flex-1 text-xs font-bold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-3 py-2 outline-none transition-all shadow-xs"
-                />
-                <span className="text-[10px] font-bold text-slate-400">{kpi.unit}</span>
-              </div>
+        {/* Right Side Logging Controls */}
+        <div className="shrink-0">
+          {!isEditing ? (
+            <div className="relative">
+              {hasLogged ? (
+                <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-xl shadow-xs">
+                  <span className="text-[10px] font-black text-emerald-800 leading-none">
+                    Logged: {new Intl.NumberFormat('en-IN').format(savedActual)}
+                  </span>
+                  <button 
+                    onClick={() => setIsEditing(true)}
+                    className="p-1 hover:bg-emerald-100 text-emerald-700 rounded-lg transition-colors ml-1"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] py-2 px-3 rounded-xl transition-all shadow-xs text-center"
+                  >
+                    Enter - {new Intl.NumberFormat('en-IN').format(effectiveTarget)}
+                  </button>
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleSubmit}
+          ) : (
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded-xl shadow-inner">
+              <input
+                type="number"
+                placeholder="Val"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="w-16 text-right text-[11px] font-bold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-200 rounded-lg px-2 py-1 outline-none"
+              />
+              <button 
+                onClick={handleSubmit} 
                 disabled={inputValue === ""}
-                className={`flex-1 font-bold py-2 rounded-xl text-xs transition-all ${
-                  inputValue === "" 
-                    ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
-                    : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
-                }`}
+                className="p-1 bg-teal-600 text-white rounded-lg disabled:opacity-40"
               >
-                Submit
+                <Check className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={() => { setIsEditing(false); setInputValue(hasLogged ? savedActual : ""); }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all"
+              <button 
+                onClick={() => { setIsEditing(false); setInputValue(hasLogged ? savedActual : ""); }} 
+                className="p-1 bg-slate-200 text-slate-500 rounded-lg"
               >
-                Cancel
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
