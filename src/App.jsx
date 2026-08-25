@@ -8767,7 +8767,7 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
   );
 }
 
-function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
+function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
   const d = new Date();
   const tzOffset = d.getTimezoneOffset() * 60000;
   const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
@@ -8786,7 +8786,7 @@ function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
     setSelectedDate(nd.toISOString().split('T')[0]);
   };
 
-  const relevantKpis = (kpis || []).filter(k => k.owner === loggedInUser?.name && k.targetType !== "monthly");
+  const relevantKpis = (kpis || []).filter(k => k.owner === currentEmployee && k.targetType !== "monthly");
 
   return (
     <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50">
@@ -9783,7 +9783,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
   const screenMap = { 
     home: <HomeScreen />, 
-    dailyLog: <DailyLogScreen kpis={kpis} loggedInUser={loggedInUser} onUpdateDailyActual={onUpdateDailyActual} />,
+    dailyLog: <DailyLogScreen kpis={kpis} currentEmployee={currentEmployee} onUpdateDailyActual={onUpdateDailyActual} />,
     mykpis: <MyKpisScreen />, 
     planning: <PlanningScreen />,
     team: <TeamScreen />, 
