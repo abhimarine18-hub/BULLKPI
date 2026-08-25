@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useMemo, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import * as XLSX from "xlsx";
@@ -154,13 +155,14 @@ function DailyDistributionTooltip({ kpi, month, onSave }) {
         </div>
       )}
 
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <DailyAllocCalendarModal 
           kpi={kpi} 
           month={month} 
           onClose={() => setIsModalOpen(false)} 
           onSave={onSave} 
-        />
+        />,
+        document.body
       )}
     </div>
   );
