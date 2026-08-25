@@ -924,7 +924,7 @@ function AddTeamModal({ teams, onClose, onSubmit }) {
             ) : (
               <select value={form.lead} onChange={set("lead")} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
                 <option value="">Select a lead...</option>
-                {allEmployees.map((m) => <option key={m.id} value={m.name}>{m.name} Â· {m.designation} ({m.team})</option>)}
+                {allEmployees.map((m) => <option key={m.id} value={m.name}>{m.name} · {m.designation} ({m.team})</option>)}
               </select>
             )}
           </div>
@@ -1041,7 +1041,7 @@ function AddProjectModal({ teams, kpis, project, onClose, onSubmit }) {
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Project Lead *</label>
               <select value={leadName} onChange={(e) => { setLeadName(e.target.value); setMemberNames([]); }} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
                 <option value="">Select a lead...</option>
-                {allEmployees.map(m => <option key={m.id} value={m.name}>{m.name} Â· {m.designation}</option>)}
+                {allEmployees.map(m => <option key={m.id} value={m.name}>{m.name} · {m.designation}</option>)}
               </select>
             </div>
             <div>
@@ -6130,7 +6130,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
           <div className="h-8 w-8 rounded-full bg-orange-200 flex items-center justify-center text-xs font-medium text-orange-800 shrink-0">AD</div>
           {!sidebarMinimized && (
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">Admin Â· Ravi</p>
+              <p className="text-sm font-medium text-slate-900 truncate">Admin · Ravi</p>
               <p className="text-xs text-slate-400 truncate">BULL Machines</p>
             </div>
           )}
@@ -6426,7 +6426,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                       )}
                                       <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
                                     </p>
-                                    <p className="text-xs text-slate-400 mt-1">{dispLabel} Â· {kpi.team}</p>
+                                    <p className="text-xs text-slate-400 mt-1">{dispLabel} · {kpi.team}</p>
                                   </button>
                                 );
                               })}
@@ -6513,7 +6513,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                         )}
                                         <span className="text-sm text-slate-400 ml-1">{kpi.unit}</span>
                                       </p>
-                                      <p className="text-xs text-slate-400 mt-1">{dispLabel} Â· {kpi.team}</p>
+                                      <p className="text-xs text-slate-400 mt-1">{dispLabel} · {kpi.team}</p>
                                     </button>
                                   );
                                 })}
@@ -6672,7 +6672,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                            ? 'text-teal-700 bg-teal-50 border-teal-150' 
                                            : 'text-orange-700 bg-orange-50 border-orange-100'
                                        }`}>
-                                         {kpi.initiatedAt ? 'âš¡ Active' : 'â¸ï¸ On Hold'}
+                                         {kpi.initiatedAt ? 'Active' : 'On Hold'}
                                        </span>
                                      )}
                                    </div>
@@ -7086,7 +7086,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
               {campaignsData.map((c) => (
                 <div key={c.id} className="bg-white border border-orange-100 rounded-2xl p-5">
                   <h3 className="font-semibold text-slate-900 mb-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{c.name}</h3>
-                  <p className="text-xs text-slate-400 mb-3">{c.start} â€“ {c.end} Â· {c.owner}</p>
+                  <p className="text-xs text-slate-400 mb-3">{c.start} â€“ {c.end} · {c.owner}</p>
                   <div className="space-y-2">
                     {c.linkedKpiIds.map((id) => {
                       const kpi = kpis.find((k) => k.id === id);
@@ -9066,7 +9066,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
               </p>
               
               <p className="text-[10px] text-slate-400 font-medium mt-1">
-                Daily Target Â· {kpi.team}
+                Daily Target · {kpi.team}
               </p>
             </div>
 
@@ -9149,8 +9149,8 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
         <div className="relative flex justify-between items-start gap-4">
           <div>
             <p className="text-sm font-medium text-orange-900/70" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Hello {currentEmployee.split(" ")[0]}!</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-orange-950 mt-0.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Have a great shift! ðŸ‘‹</h1>
-            <p className="text-xs text-orange-800/60 mt-1">{myTeam?.name} Â· {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-orange-950 mt-0.5" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>Have a great shift! 👋</h1>
+            <p className="text-xs text-orange-800/60 mt-1">{myTeam?.name} · {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
@@ -9339,7 +9339,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
                 <p className="text-sm font-semibold text-slate-900 line-clamp-2">{kpi.name}</p>
                 <StatusBadge status={getStatus(kpi)} />
               </div>
-              <p className="text-xs text-slate-400">{kpi.owner}{member?.reportingManager ? ` Â· ${member.reportingManager}` : ""}</p>
+              <p className="text-xs text-slate-400">{kpi.owner}{member?.reportingManager ? ` · ${member.reportingManager}` : ""}</p>
             </button>
           );
         })}
@@ -9365,7 +9365,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
           {currentEmployee.charAt(0)}{currentEmployee.split(" ")[1]?.charAt(0) || ""}
         </div>
         <p className="font-bold text-lg text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{currentEmployee}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{myTeam?.name} Â· BULL Machines</p>
+        <p className="text-xs text-slate-400 mt-0.5">{myTeam?.name} · BULL Machines</p>
       </div>
       <div className="space-y-2 mb-6">
         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Assigned KPIs</p>
@@ -12090,7 +12090,7 @@ export default function App() {
               Contact your admin if you have forgotten your login ID or password.
             </p>
           </div>
-          <p className="text-center text-[10px] text-slate-400 mt-4">BULL Machines Â· PulseKPI v1.0</p>
+          <p className="text-center text-[10px] text-slate-400 mt-4">BULL Machines · PulseKPI v1.0</p>
         </div>
       </div>
     );
