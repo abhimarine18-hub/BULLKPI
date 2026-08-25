@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info, Check
+  LayoutGrid, GitBranch, FolderGit2, Video, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info, Check
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -4961,9 +4961,147 @@ const ADMIN_NAV = [
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "individual_tasks", label: "Individual Tasks", icon: CheckSquare },
   { id: "leads", label: "Leads", icon: UserCheck },
+  { id: "video_production", label: "Video Production", icon: Video },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
+
+function AdminVideoProductionView({ videoProductions = [], onAddVideoProduction, teams }) {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newShoot, setNewShoot] = useState({
+    title: "",
+    initiated_by: "",
+    planned_date: "",
+    expected_customer_count: ""
+  });
+
+  const allMembers = useMemo(() => {
+    return teams.flatMap(t => t.members.map(m => ({ ...m, teamName: t.name }))).sort((a, b) => a.name.localeCompare(b.name));
+  }, [teams]);
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    if (!newShoot.title.trim() || !newShoot.initiated_by || !newShoot.planned_date) return;
+    
+    onAddVideoProduction({
+      video_title: newShoot.title.trim(),
+      assigned_agent: newShoot.initiated_by,
+      shot_at: new Date(newShoot.planned_date).toISOString(),
+      views: newShoot.expected_customer_count ? parseInt(newShoot.expected_customer_count) : null,
+      status: 'planned'
+    });
+    
+    setNewShoot({
+      title: "",
+      initiated_by: "",
+      planned_date: "",
+      expected_customer_count: ""
+    });
+    setShowAddModal(false);
+  };
+
+  const columns = [
+    { id: "planned", title: "Planned", bg: "bg-slate-50/50 border-slate-200 text-slate-700" },
+    { id: "shot", title: "Shot", bg: "bg-blue-50/50 border-blue-200 text-blue-700" },
+    { id: "editing", title: "Editing", bg: "bg-amber-50/50 border-amber-200 text-amber-800" },
+    { id: "ai_review", title: "AI Review", bg: "bg-purple-50/50 border-purple-200 text-purple-700" },
+    { id: "field_approved", title: "Field Approved", bg: "bg-teal-50/50 border-teal-200 text-teal-800" },
+    { id: "uploaded", title: "Uploaded", bg: "bg-indigo-50/50 border-indigo-200 text-indigo-800" },
+    { id: "posted", title: "Posted", bg: "bg-emerald-50/50 border-emerald-200 text-emerald-800" }
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+        <div>
+          <h3 className="font-bold text-slate-800 text-sm">Video Shoots</h3>
+          <p className="text-[10px] text-slate-400">Manage shoot planning and content delivery pipelines</p>
+        </div>
+        <button onClick={() => setShowAddModal(true)} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors">
+          <Plus className="h-4 w-4" /> Plan New Shoot
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-start overflow-x-auto pb-4">
+        {columns.map(col => {
+          const colProds = (videoProductions || []).filter(p => p.status === col.id);
+          return (
+            <div key={col.id} className="bg-white border border-slate-200 rounded-2xl p-3 space-y-3 min-w-[200px]">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">{col.title}</span>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{colProds.length}</span>
+              </div>
+
+              <div className="space-y-2">
+                {colProds.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 italic text-center py-6">No videos</p>
+                ) : (
+                  colProds.map(prod => (
+                    <div key={prod.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 shadow-2xs">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 leading-snug">{prod.video_title}</h4>
+                        <p className="text-[10px] text-slate-500 font-semibold mt-1">👤 {prod.assigned_agent}</p>
+                        {prod.shot_at && (
+                          <p className="text-[9px] text-slate-400 font-mono mt-0.5">
+                            📅 {new Date(prod.shot_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </p>
+                        )}
+                        {prod.views !== null && prod.views !== undefined && (
+                          <p className="text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 rounded px-1.5 py-0.5 mt-1.5 w-max">
+                            👥 Expected: {prod.views}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleAddSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-orange-100">
+            <div className="bg-orange-50 px-5 py-4 border-b border-orange-100 flex items-center justify-between sticky top-0 z-10">
+              <h3 className="font-bold text-slate-800 text-sm">Plan New Shoot</h3>
+              <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs font-semibold text-slate-600">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Video Title *</label>
+                <input required type="text" value={newShoot.title} onChange={(e) => setNewShoot(prev => ({ ...prev, title: e.target.value }))} placeholder="E.g., Customer Testimonial Video" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Initiated By *</label>
+                <div className="relative">
+                  <select required value={newShoot.initiated_by} onChange={(e) => setNewShoot(prev => ({ ...prev, initiated_by: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                    <option value="">Select Member</option>
+                    {allMembers.map(m => <option key={m.id} value={m.name}>{m.name} ({m.teamName})</option>)}
+                  </select>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Planned Date *</label>
+                <input required type="date" value={newShoot.planned_date} onChange={(e) => setNewShoot(prev => ({ ...prev, planned_date: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Expected Customer Count</label>
+                <input type="number" value={newShoot.expected_customer_count} onChange={(e) => setNewShoot(prev => ({ ...prev, expected_customer_count: e.target.value }))} placeholder="E.g., 5" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+            </div>
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Plan Shoot</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AdminLeadsView({ leads = [], onAddLead, teams }) {
   const [statusFilter, setStatusFilter] = useState("All");
@@ -5787,7 +5925,7 @@ function MorningReviewScreen({ teams, kpis, setKpis, loggedInUser }) {
 }
 
 
-function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, leads = [], onAddLead }) {
+function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, leads = [], onAddLead, videoProductions = [], onAddVideoProduction }) {
   const okrsData = [
     { id: 1, objective: "Grow digital presence this quarter", level: "Company", owner: "Digital Marketing", keyResults: [
       { id: 1, name: "Grow website traffic to 50,000 sessions/month", linkedKpiId: 1 },
@@ -7606,6 +7744,20 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
             </div>
             );
           })()}
+
+          {screen === "video_production" && (
+            <div className="p-6">
+              <div className="mb-5">
+                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Video className="h-6 w-6 text-teal-600" /> Video Production</h2>
+                <p className="text-xs text-slate-500 mt-1">Track shoots, raw files, edits, reviews, uploads, and posts</p>
+              </div>
+              <AdminVideoProductionView 
+                videoProductions={videoProductions}
+                onAddVideoProduction={onAddVideoProduction}
+                teams={teams}
+              />
+            </div>
+          )}
 
           {screen === "leads" && (
             <div className="p-6">
@@ -10708,6 +10860,20 @@ export default function App() {
   const [clientProjectLogs, setClientProjectLogs] = useState([]);
   const [individualTasks, setIndividualTasks] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [videoProductions, setVideoProductions] = useState([]);
+
+  async function handleAddVideoProduction(newProd) {
+    try {
+      const { data, error } = await supabase.from('video_productions').insert(newProd).select();
+      if (!error && data) {
+        setVideoProductions(prev => [data[0], ...prev]);
+      } else if (error) {
+        console.error("Error inserting video production:", error);
+      }
+    } catch(e) {
+      console.error("Video production insert catch:", e);
+    }
+  }
 
   async function handleUpdateLeadStatus(leadId, updates) {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updates } : l));
@@ -11244,6 +11410,18 @@ export default function App() {
             const parsed = JSON.parse(cached).map(t => ({ ...t, kpiId: t.kpi_id || t.kpiId || null }));
             setIndividualTasks(parsed);
           }
+        }
+      } catch(e) {}
+
+      // Fetch Video Productions
+      try {
+        const resVideo = await safeFetch('video_productions');
+        if (!resVideo.offline && resVideo.data) {
+          setVideoProductions(resVideo.data);
+          localStorage.setItem("backup_video_productions", JSON.stringify(resVideo.data));
+        } else {
+          const cached = localStorage.getItem("backup_video_productions");
+          if (cached) setVideoProductions(JSON.parse(cached));
         }
       } catch(e) {}
 
@@ -12820,6 +12998,8 @@ export default function App() {
             onInitiateKpi={handleInitiateKpi}
             leads={leads}
             onAddLead={handleAddLead}
+            videoProductions={videoProductions}
+            onAddVideoProduction={handleAddVideoProduction}
           />
         ) : (
           <EmployeeApp 
@@ -12846,6 +13026,8 @@ export default function App() {
             onInitiateKpi={handleInitiateKpi}
             leads={leads}
             onAddLead={handleAddLead}
+            videoProductions={videoProductions}
+            onAddVideoProduction={handleAddVideoProduction}
           />
         )}
       </div>
