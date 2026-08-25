@@ -8807,8 +8807,8 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
 
   const yearMonthPrefix = selectedDate.substring(0, 7);
 
-  // Filter by targets and relations
-  const dailyKpis = (kpis || []).filter(k => k.targetType !== "monthly");
+  // Filter by targets and relations and ensure daily target for selected date is set (> 0)
+  const dailyKpis = (kpis || []).filter(k => k.targetType !== "monthly" && (k.dailyAlloc?.[selectedDate] || 0) > 0);
   const doKpis = dailyKpis.filter(k => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const driveKpis = dailyKpis.filter(k => k.driveBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   const monitorKpis = dailyKpis.filter(k => k.monitorBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
