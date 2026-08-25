@@ -8620,6 +8620,7 @@ const EMP_NAV = [
   { id: "mykpis", icon: List },
   { id: "planning", icon: Calendar },
   { id: "my_tasks", icon: CheckSquare },
+  { id: "leads", icon: UserCheck },
   { id: "team", icon: Trophy },
   { id: "reviews", icon: ClipboardCheck },
   { id: "profile", icon: User },
@@ -9201,9 +9202,133 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual, logs, onAd
   );
 }
 
+function EmployeeLeadsScreen({ leads = [], onUpdateLeadStatus, loggedInUser }) {
+  // Filter leads assigned to the logged-in employee
+  const myLeads = useMemo(() => {
+    return (leads || []).filter(l => l.assigned_agent === loggedInUser?.name);
+  }, [leads, loggedInUser]);
+
+  const columns = [
+    { id: "given", title: "Given", bg: "bg-blue-50/50 border-blue-200/50 text-blue-700" },
+    { id: "called", title: "Called", bg: "bg-yellow-50/50 border-yellow-200/50 text-yellow-700" },
+    { id: "converted", title: "Converted", bg: "bg-teal-50/50 border-teal-200/50 text-teal-800" },
+    { id: "sold", title: "Sold", bg: "bg-emerald-50/50 border-emerald-200/50 text-emerald-800" }
+  ];
+
+  const handleMarkCalled = (leadId) => {
+    const notes = window.prompt("Optional: Enter call notes for this lead:");
+    if (notes === null) return;
+    onUpdateLeadStatus(leadId, {
+      status: 'called',
+      called_at: new Date().toISOString(),
+      call_notes: notes.trim() || null
+    });
+  };
+
+  const handleMarkConverted = (leadId) => {
+    onUpdateLeadStatus(leadId, {
+      status: 'converted',
+      converted_at: new Date().toISOString()
+    });
+  };
+
+  const handleMarkSold = (leadId) => {
+    const val = window.prompt("Enter sale value (numeric):");
+    if (val === null) return;
+    const num = parseFloat(val);
+    if (isNaN(num)) {
+      alert("Please enter a valid number for sale value.");
+      return;
+    }
+    onUpdateLeadStatus(leadId, {
+      status: 'sold',
+      sold_at: new Date().toISOString(),
+      sale_value: num
+    });
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-4">
+      <div className="flex items-center gap-3 mb-2">
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My Leads Kanban</h2>
+        <span className="ml-auto text-xs text-slate-400 bg-slate-100 rounded-full px-2.5 py-0.5 font-semibold">{myLeads.length} Total</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+        {columns.map(col => {
+          const colLeads = myLeads.filter(l => l.status === col.id);
+          return (
+            <div key={col.id} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 min-h-[300px]">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{col.title}</span>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{colLeads.length}</span>
+              </div>
+
+              <div className="space-y-2">
+                {colLeads.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 italic text-center py-6">No leads</p>
+                ) : (
+                  colLeads.map(lead => (
+                    <div key={lead.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 leading-snug">{lead.customer_name}</h4>
+                        {lead.phone && <p className="text-[10px] text-slate-500 font-mono mt-0.5">📞 {lead.phone}</p>}
+                        {lead.lead_source && <p className="text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 rounded px-1.5 py-0.5 mt-1.5 w-max">Source: {lead.lead_source}</p>}
+                      </div>
+
+                      {lead.status === 'called' && lead.call_notes && (
+                        <div className="bg-white border border-slate-100 p-2 rounded-lg text-[9px] text-slate-600 font-medium">
+                          <strong>Call Notes:</strong> {lead.call_notes}
+                        </div>
+                      )}
+                      
+                      {lead.status === 'sold' && lead.sale_value && (
+                        <div className="bg-emerald-50 border border-emerald-100 p-2 rounded-lg text-[10px] font-bold text-emerald-800">
+                          💰 Sale Value: {new Intl.NumberFormat('en-IN').format(lead.sale_value)}
+                        </div>
+                      )}
+
+                      <div className="pt-1.5 border-t border-slate-200/50 flex justify-end">
+                        {lead.status === 'given' && (
+                          <button
+                            onClick={() => handleMarkCalled(lead.id)}
+                            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-lg transition-colors shadow-2xs"
+                          >
+                            Mark Called
+                          </button>
+                        )}
+                        {lead.status === 'called' && (
+                          <button
+                            onClick={() => handleMarkConverted(lead.id)}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-lg transition-colors shadow-2xs"
+                          >
+                            Mark Converted
+                          </button>
+                        )}
+                        {lead.status === 'converted' && (
+                          <button
+                            onClick={() => handleMarkSold(lead.id)}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-lg transition-colors shadow-2xs"
+                          >
+                            Mark Sold
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, onUpdateDailyActual, logs, onAddLog }) {
+function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, onUpdateDailyActual, logs, onAddLog, leads = [], onUpdateLeadStatus }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -10493,6 +10618,14 @@ export default function App() {
   const [clientProjectLogs, setClientProjectLogs] = useState([]);
   const [individualTasks, setIndividualTasks] = useState([]);
   const [leads, setLeads] = useState([]);
+
+  async function handleUpdateLeadStatus(leadId, updates) {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updates } : l));
+    try {
+      const { error } = await supabase.from('leads').update(updates).eq('id', leadId);
+      if (error) console.error("Error updating lead status in Supabase:", error);
+    } catch(e) {}
+  }
 
   async function handleAddLead(newLead) {
     try {
