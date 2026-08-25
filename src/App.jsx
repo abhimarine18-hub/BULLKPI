@@ -11,7 +11,118 @@ import {
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
 
-function DailyDistributionTooltip({ kpi, month }) {
+function DailyAllocCalendarModal({ kpi, month, onClose, onSave }) {
+  const cells = useMemo(() => getCalendarCells(month), [month]);
+  const [localDailyAlloc, setLocalDailyAlloc] = useState({ ...(kpi.dailyAlloc || {}) });
+  
+  const hasChanges = useMemo(() => {
+    return cells.some(cell => {
+      if (!cell || cell.isEmpty) return false;
+      const original = kpi.dailyAlloc?.[cell.dateStr] ?? 0;
+      const current = localDailyAlloc[cell.dateStr] ?? 0;
+      return original !== current;
+    });
+  }, [cells, kpi.dailyAlloc, localDailyAlloc]);
+
+  const handleValueChange = (dateStr, val) => {
+    const num = Math.round(parseFloat(val) || 0);
+    setLocalDailyAlloc(prev => ({
+      ...prev,
+      [dateStr]: num
+    }));
+  };
+
+  const handleSave = () => {
+    const monthCells = cells.filter(c => c && !c.isEmpty);
+    const newMonthTotal = monthCells.reduce((sum, cell) => sum + (localDailyAlloc[cell.dateStr] || 0), 0);
+
+    const nextM = { ...(kpi.monthlyAlloc || {}) };
+    nextM[month] = newMonthTotal;
+
+    const totalTarget = Object.values(nextM).reduce((a, b) => a + b, 0);
+
+    const updatedKpi = {
+      ...kpi,
+      target: totalTarget,
+      monthlyAlloc: nextM,
+      dailyAlloc: localDailyAlloc,
+      targetsList: Object.entries(localDailyAlloc).filter(([_, v]) => v > 0).map(([dStr, v]) => ({ id: dStr, label: dStr, targetValue: v, targetDate: dStr }))
+    };
+    onSave(updatedKpi);
+    onClose();
+  };
+
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[200] p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-150 shrink-0">
+          <div className="pr-4 min-w-0">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider truncate" title={kpi.name}>{kpi.name}</h3>
+            <p className="text-[11px] font-semibold text-teal-600 mt-0.5">Edit Daily Target allocation for {month}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold text-xs shrink-0 bg-slate-100 px-2 py-1 rounded-lg">Close</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto py-4 my-2">
+          <div className="grid grid-cols-7 gap-1.5 mb-2 text-center">
+            {weekdays.map(d => (
+              <span key={d} className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{d}</span>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-7 gap-1.5">
+            {cells.map((cell, idx) => {
+              if (!cell || cell.isEmpty) {
+                return (
+                  <div key={`empty-${idx}`} className="h-10 bg-slate-50/50 border border-slate-100 rounded-lg opacity-30" />
+                );
+              }
+              
+              const val = localDailyAlloc[cell.dateStr] || 0;
+
+              return (
+                <div key={cell.dateStr} className="h-11 border border-slate-200 rounded-lg p-1 flex flex-col justify-between hover:border-slate-300 bg-white relative">
+                  <span className="text-[9px] font-bold text-slate-400 leading-none">{cell.dayNum}</span>
+                  <input
+                    type="number"
+                    value={val === 0 ? "" : val}
+                    placeholder="0"
+                    onChange={(e) => handleValueChange(cell.dateStr, e.target.value)}
+                    className="w-full text-right text-xs font-mono font-bold text-slate-800 bg-transparent border-none outline-none focus:ring-0 p-0 leading-none"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-slate-150 flex items-center justify-between shrink-0">
+          <span className="text-xs font-bold text-slate-500">
+            Month Total: <span className="font-mono text-slate-800">{new Intl.NumberFormat('en-IN').format(
+              cells.filter(c => c && !c.isEmpty).reduce((sum, cell) => sum + (localDailyAlloc[cell.dateStr] || 0), 0)
+            )}</span>
+          </span>
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              hasChanges 
+                ? "bg-teal-600 hover:bg-teal-700 text-white shadow-sm" 
+                : "bg-slate-100 text-slate-400 cursor-not-allowed"
+            }`}
+          >
+            <Check className="w-3.5 h-3.5" /> Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DailyDistributionTooltip({ kpi, month, onSave }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const mDate = new Date(month + " 1");
   const yr = mDate.getFullYear();
   const mo = String(mDate.getMonth() + 1).padStart(2, '0');
@@ -19,27 +130,43 @@ function DailyDistributionTooltip({ kpi, month }) {
   
   const allocs = Object.entries(kpi.dailyAlloc || {}).filter(([k, v]) => k.startsWith(prefix) && v > 0);
   
-  if (allocs.length === 0) return null;
-  
   return (
     <div className="relative group/tooltip flex items-center h-full">
-      <Info className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700 cursor-pointer drop-shadow-sm" />
-      <div className="absolute bottom-full right-0 mb-1 w-32 max-h-48 overflow-y-auto bg-slate-800 text-white text-[10px] rounded p-2 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-[100] shadow-xl custom-scrollbar border border-slate-700">
-        <div className="font-bold border-b border-slate-600 pb-1 mb-1 text-center sticky top-0 bg-slate-800 z-10">Daily Target</div>
-        <div className="space-y-0.5">
-          {allocs.map(([d, v]) => (
-            <div key={d} className="flex justify-between items-center px-1">
-              <span className="text-slate-300">{d.slice(-2)}:</span>
-              <span className="font-mono font-medium">{new Intl.NumberFormat('en-IN').format(v)}</span>
-            </div>
-          ))}
+      <Info 
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsModalOpen(true);
+        }}
+        className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700 cursor-pointer drop-shadow-sm z-30" 
+      />
+      
+      {allocs.length > 0 && (
+        <div className="absolute bottom-full right-0 mb-1 w-32 max-h-48 overflow-y-auto bg-slate-800 text-white text-[10px] rounded p-2 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-[100] shadow-xl custom-scrollbar border border-slate-700 pointer-events-none">
+          <div className="font-bold border-b border-slate-600 pb-1 mb-1 text-center sticky top-0 bg-slate-800 z-10">Daily Target</div>
+          <div className="space-y-0.5">
+            {allocs.map(([d, v]) => (
+              <div key={d} className="flex justify-between items-center px-1">
+                <span className="text-slate-300">{d.slice(-2)}:</span>
+                <span className="font-mono font-medium">{new Intl.NumberFormat('en-IN').format(v)}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {isModalOpen && (
+        <DailyAllocCalendarModal 
+          kpi={kpi} 
+          month={month} 
+          onClose={() => setIsModalOpen(false)} 
+          onSave={onSave} 
+        />
+      )}
     </div>
   );
 }
 
-function ExcelCell({ val, kpi, month, onValueChange }) {
+function ExcelCell({ val, kpi, month, onValueChange, onDailyAllocSave }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localVal, setLocalVal] = useState(val);
   
@@ -65,7 +192,7 @@ function ExcelCell({ val, kpi, month, onValueChange }) {
         className="absolute inset-0 w-full h-full text-center bg-transparent border-none focus:outline-none focus:ring-[1.5px] focus:ring-teal-500 focus:bg-white text-[11px] font-mono font-medium m-0 z-0 focus:z-10"
       />
       <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-auto flex items-center justify-center">
-        <DailyDistributionTooltip kpi={kpi} month={month} />
+        <DailyDistributionTooltip kpi={kpi} month={month} onSave={onDailyAllocSave} />
       </div>
     </div>
   );
@@ -6774,6 +6901,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                           kpi={kpi} 
                                           month={m} 
                                           onValueChange={(newVal) => handleExcelTargetChange(kpi, m, newVal)} 
+                                          onDailyAllocSave={onEditKpi}
                                         />
                                       </td>
                                     );
