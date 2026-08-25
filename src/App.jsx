@@ -2072,6 +2072,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                   >
                     <option value="aggregate">Aggregate other KPIs</option>
                     <option value="leads_funnel">Leads Funnel count</option>
+                    <option value="video_pipeline">Video Pipeline count</option>
                   </select>
                 </div>
 
@@ -2087,6 +2088,23 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                       <option value="called">Called (Leads marked called)</option>
                       <option value="converted">Converted (Leads converted)</option>
                       <option value="sold">Sold (Leads sold)</option>
+                    </select>
+                  </div>
+                ) : reportConfig.sourceType === "video_pipeline" ? (
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Video Stage</label>
+                    <select
+                      value={reportConfig.stage || "planned"}
+                      onChange={(e) => setReportConfig(prev => ({ ...prev, stage: e.target.value }))}
+                      className="w-full border border-teal-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 font-semibold bg-white"
+                    >
+                      <option value="planned">Planned (Planned Shoots)</option>
+                      <option value="shot">Shot (Raw Shoot Uploaded)</option>
+                      <option value="editing">Editing (Editing Started)</option>
+                      <option value="ai_review">AI Review (AI feedback requested)</option>
+                      <option value="field_approved">Field Approved (Ready to upload)</option>
+                      <option value="uploaded">Uploaded (Approved for posting)</option>
+                      <option value="posted">Posted (Social links online)</option>
                     </select>
                   </div>
                 ) : (
@@ -11049,7 +11067,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 }
 
 /* ==================== KPI COMPUTATION ENGINE ==================== */
-const computeReportKpis = (rawKpis, leads = []) => {
+const computeReportKpis = (rawKpis, leads = [], videoProductions = []) => {
   const monthsList = MONTHS_LIST;
   
   // Pre-process activity KPIs: Auto-distribute targets if monthlyAlloc is missing but target > 0
@@ -11117,6 +11135,71 @@ const computeReportKpis = (rawKpis, leads = []) => {
       
       matchingLeads.forEach(lead => {
         const ts = getTimestampField(lead);
+        if (!ts) return;
+        const dateObj = new Date(ts);
+        if (isNaN(dateObj.getTime())) return;
+        
+        const tzOffset = dateObj.getTimezoneOffset() * 60000;
+        const localIso = (new Date(dateObj.getTime() - tzOffset)).toISOString();
+        const dateStr = localIso.split('T')[0];
+        
+        dailyActual[dateStr] = (dailyActual[dateStr] || 0) + 1;
+        
+        const monthName = dateObj.toLocaleString('en-US', { month: 'short' });
+        const yr = ["Jan", "Feb", "Mar"].includes(monthName) ? "2027" : "2026";
+        const monthKey = `${monthName} ${yr}`;
+        monthlyActual[monthKey] = (monthlyActual[monthKey] || 0) + 1;
+      });
+
+      const newDailyAlloc = kpi.dailyAlloc || {};
+      const newMonthlyAlloc = kpi.monthlyAlloc || {};
+      const newTarget = kpi.target || 0;
+
+      const newHistory = Object.entries(dailyActual).map(([d, v]) => ({ d, v })).sort((a,b) => a.d.localeCompare(b.d));
+
+      return {
+        ...kpi,
+        target: newTarget,
+        dailyActual,
+        weeklyActual: {},
+        monthlyActual,
+        dailyAlloc: newDailyAlloc,
+        weeklyAlloc: {},
+        monthlyAlloc: newMonthlyAlloc,
+        history: newHistory
+      };
+    }
+    
+    if (config.sourceType === 'video_pipeline') {
+      const stageOrder = ["planned", "shot", "editing", "ai_review", "field_approved", "uploaded", "posted"];
+      const getStageVal = (st) => {
+        const s = st?.toLowerCase();
+        if (s === "field_approved_pending") return 4;
+        return stageOrder.indexOf(s);
+      };
+      
+      const configuredStage = config.stage || "planned";
+      const configuredStageVal = getStageVal(configuredStage);
+
+      const personField = (configuredStage === "posted") ? "posted_by" : "assigned_agent";
+
+      const getTimestampField = (vid) => {
+        if (configuredStage === "posted") return vid.posted_at;
+        if (configuredStage === "field_approved" || configuredStage === "uploaded") return vid.field_approved_at;
+        return vid.shot_at || vid.created_at;
+      };
+
+      const matchingVideos = (videoProductions || []).filter(vid => {
+        const isOwner = vid[personField] === kpi.owner;
+        const hasReachedStage = getStageVal(vid.status) >= configuredStageVal;
+        return isOwner && hasReachedStage;
+      });
+
+      const dailyActual = {};
+      const monthlyActual = {};
+      
+      matchingVideos.forEach(vid => {
+        const ts = getTimestampField(vid);
         if (!ts) return;
         const dateObj = new Date(ts);
         if (isNaN(dateObj.getTime())) return;
@@ -11326,7 +11409,7 @@ export default function App() {
   const [leads, setLeads] = useState([]);
   const [videoProductions, setVideoProductions] = useState([]);
 
-  const computedKpis = useMemo(() => computeReportKpis(kpis, leads), [kpis, leads]);
+  const computedKpis = useMemo(() => computeReportKpis(kpis, leads, videoProductions), [kpis, leads, videoProductions]);
 
   async function handleUpdateVideoProduction(prodId, updates) {
     if (updates.status === 'ai_review') {
