@@ -4930,9 +4930,178 @@ const ADMIN_NAV = [
   { id: "projects", label: "Projects", icon: FolderGit2 },
   { id: "campaigns", label: "Campaigns", icon: Megaphone },
   { id: "individual_tasks", label: "Individual Tasks", icon: CheckSquare },
+  { id: "leads", label: "Leads", icon: UserCheck },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
+
+function AdminLeadsView({ leads = [], onAddLead, teams }) {
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [agentFilter, setAgentFilter] = useState("All");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newLead, setNewLead] = useState({
+    customer_name: "",
+    phone: "",
+    lead_source: "",
+    assigned_agent: "",
+    status: "given"
+  });
+
+  const allMembers = useMemo(() => {
+    return teams.flatMap(t => t.members.map(m => ({ ...m, teamName: t.name }))).sort((a, b) => a.name.localeCompare(b.name));
+  }, [teams]);
+
+  const uniqueAgents = useMemo(() => {
+    return ["All", ...new Set((leads || []).map(l => l.assigned_agent).filter(Boolean))];
+  }, [leads]);
+
+  const filteredLeads = useMemo(() => {
+    return (leads || []).filter(l => {
+      const matchStatus = statusFilter === "All" || l.status === statusFilter;
+      const matchAgent = agentFilter === "All" || l.assigned_agent === agentFilter;
+      return matchStatus && matchAgent;
+    });
+  }, [leads, statusFilter, agentFilter]);
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault();
+    if (!newLead.customer_name.trim() || !newLead.assigned_agent) return;
+    onAddLead({
+      customer_name: newLead.customer_name.trim(),
+      phone: newLead.phone.trim(),
+      lead_source: newLead.lead_source.trim(),
+      assigned_agent: newLead.assigned_agent,
+      status: newLead.status
+    });
+    setNewLead({
+      customer_name: "",
+      phone: "",
+      lead_source: "",
+      assigned_agent: "",
+      status: "given"
+    });
+    setShowAddModal(false);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'given': return 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'called': return 'bg-yellow-50 text-yellow-600 border-yellow-100';
+      case 'converted': return 'bg-teal-50 text-teal-700 border-teal-150';
+      case 'sold': return 'bg-emerald-50 text-emerald-850 border-emerald-150';
+      default: return 'bg-slate-50 text-slate-500 border-slate-150';
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <select value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)} className="appearance-none bg-slate-50 border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-xs text-slate-700 font-bold focus:outline-none">
+              <option value="All">All Agents</option>
+              {uniqueAgents.filter(a => a !== "All").map(agent => (
+                <option key={agent} value={agent}>{agent}</option>
+              ))}
+            </select>
+            <ChevronDown className="h-3 w-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="appearance-none bg-slate-50 border border-slate-200 rounded-full pl-4 pr-9 py-1.5 text-xs text-slate-700 font-bold focus:outline-none">
+              <option value="All">All Statuses</option>
+              <option value="given">Given</option>
+              <option value="called">Called</option>
+              <option value="converted">Converted</option>
+              <option value="sold">Sold</option>
+            </select>
+            <ChevronDown className="h-3 w-3 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+        <button onClick={() => setShowAddModal(true)} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors">
+          <Plus className="h-4 w-4" /> Add Lead
+        </button>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Customer Name</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Phone</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Lead Source</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Assigned Agent</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Created At</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
+              {filteredLeads.length === 0 ? (
+                <tr><td colSpan="6" className="px-4 py-8 text-center text-xs text-slate-400 font-medium">No leads found.</td></tr>
+              ) : (
+                filteredLeads.map(lead => (
+                  <tr key={lead.id} className="hover:bg-slate-50/50">
+                    <td className="px-4 py-3 text-slate-800 font-bold">{lead.customer_name}</td>
+                    <td className="px-4 py-3 font-mono">{lead.phone || "—"}</td>
+                    <td className="px-4 py-3">{lead.lead_source || "—"}</td>
+                    <td className="px-4 py-3 text-slate-700">{lead.assigned_agent}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadgeClass(lead.status)}`}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 font-mono">
+                      {lead.created_at ? new Date(lead.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleAddSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-orange-100">
+            <div className="bg-orange-50 px-5 py-4 border-b border-orange-100 flex items-center justify-between sticky top-0 z-10">
+              <h3 className="font-bold text-slate-800 text-sm">Add New Lead</h3>
+              <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs font-semibold text-slate-600">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Customer Name *</label>
+                <input required type="text" value={newLead.customer_name} onChange={(e) => setNewLead(prev => ({ ...prev, customer_name: e.target.value }))} placeholder="E.g., John Doe" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Phone</label>
+                <input type="text" value={newLead.phone} onChange={(e) => setNewLead(prev => ({ ...prev, phone: e.target.value }))} placeholder="E.g., 9876543210" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Lead Source</label>
+                <input type="text" value={newLead.lead_source} onChange={(e) => setNewLead(prev => ({ ...prev, lead_source: e.target.value }))} placeholder="E.g., Website, Facebook, Direct Enquiry" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Assigned Agent *</label>
+                <div className="relative">
+                  <select required value={newLead.assigned_agent} onChange={(e) => setNewLead(prev => ({ ...prev, assigned_agent: e.target.value }))} className="w-full border border-orange-200 rounded-xl pl-3 pr-8 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none appearance-none">
+                    <option value="">Select Agent</option>
+                    {allMembers.map(m => <option key={m.id} value={m.name}>{m.name} ({m.teamName})</option>)}
+                  </select>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Add Lead</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AdminIndividualTasksView({ individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, teams, kpis = [] }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
@@ -5588,7 +5757,7 @@ function MorningReviewScreen({ teams, kpis, setKpis, loggedInUser }) {
 }
 
 
-function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask }) {
+function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAddVertical, onDeleteMember, onDeleteTeam, onAddKpi, projects, onAddProject, onUpdateProjectStage, onEditKpi, onDeleteKpi, onDeleteProject, onRestoreProject, onUploadKpis, handleCompleteAction, onUpdateMember, clientProjects, onAddClientProject, onUpdateClientProjectStage, onDeleteClientProject, clientProjectLogs, onAddClientProjectLog, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, leads = [], onAddLead }) {
   const okrsData = [
     { id: 1, objective: "Grow digital presence this quarter", level: "Company", owner: "Digital Marketing", keyResults: [
       { id: 1, name: "Grow website traffic to 50,000 sessions/month", linkedKpiId: 1 },
@@ -7407,6 +7576,20 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
             </div>
             );
           })()}
+
+          {screen === "leads" && (
+            <div className="p-6">
+              <div className="mb-5">
+                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><UserCheck className="h-6 w-6 text-teal-600" /> Leads Management</h2>
+                <p className="text-xs text-slate-500 mt-1">Track and assign customer leads across marketing and sales agents</p>
+              </div>
+              <AdminLeadsView 
+                leads={leads}
+                onAddLead={onAddLead}
+                teams={teams}
+              />
+            </div>
+          )}
 
           {screen === "individual_tasks" && (
             <div className="p-6">
@@ -10309,6 +10492,26 @@ export default function App() {
   const [clientProjects, setClientProjects] = useState([]);
   const [clientProjectLogs, setClientProjectLogs] = useState([]);
   const [individualTasks, setIndividualTasks] = useState([]);
+  const [leads, setLeads] = useState([]);
+
+  async function handleAddLead(newLead) {
+    try {
+      const { data, error } = await supabase.from('leads').insert({
+        customer_name: newLead.customer_name,
+        phone: newLead.phone || null,
+        lead_source: newLead.lead_source || null,
+        assigned_agent: newLead.assigned_agent,
+        status: newLead.status || 'given'
+      }).select();
+      if (!error && data) {
+        setLeads(prev => [data[0], ...prev]);
+      } else if (error) {
+        console.error("Error inserting lead:", error);
+      }
+    } catch(e) {
+      console.error("Leads insert catch:", e);
+    }
+  }
   const [logs, setLogs] = useState([]);
 
   async function handleAddLog(newLog) {
@@ -10818,6 +11021,18 @@ export default function App() {
             const parsed = JSON.parse(cached).map(t => ({ ...t, kpiId: t.kpi_id || t.kpiId || null }));
             setIndividualTasks(parsed);
           }
+        }
+      } catch(e) {}
+
+      // Fetch Leads
+      try {
+        const resLeads = await safeFetch('leads');
+        if (!resLeads.offline && resLeads.data) {
+          setLeads(resLeads.data);
+          localStorage.setItem("backup_leads", JSON.stringify(resLeads.data));
+        } else {
+          const cached = localStorage.getItem("backup_leads");
+          if (cached) setLeads(JSON.parse(cached));
         }
       } catch(e) {}
 
@@ -12380,6 +12595,8 @@ export default function App() {
             onUpdateIndividualTaskStatus={handleUpdateIndividualTaskStatus}
             onDeleteIndividualTask={handleDeleteIndividualTask}
             onInitiateKpi={handleInitiateKpi}
+            leads={leads}
+            onAddLead={handleAddLead}
           />
         ) : (
           <EmployeeApp 
@@ -12404,6 +12621,8 @@ export default function App() {
             onUpdateIndividualTaskStatus={handleUpdateIndividualTaskStatus}
             onDeleteIndividualTask={handleDeleteIndividualTask}
             onInitiateKpi={handleInitiateKpi}
+            leads={leads}
+            onAddLead={handleAddLead}
           />
         )}
       </div>
