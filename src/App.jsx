@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -8240,6 +8240,7 @@ function StatCard({ icon: Icon, iconBg, iconColor, value, label }) {
 
 const EMP_NAV = [
   { id: "home", icon: Home },
+  { id: "dailyLog", icon: FileText },
   { id: "action", icon: ListTodo },
   { id: "mykpis", icon: List },
   { id: "planning", icon: Calendar },
@@ -8395,9 +8396,98 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
   );
 }
 
+
+function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  const tStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+
+  const relevantKpis = (kpis || []).filter(k => k.owner === loggedInUser?.name && k.targetType !== "monthly");
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xl font-bold text-slate-800">Daily Log</h2>
+        <span className="text-[10px] font-bold text-teal-700 bg-teal-100 px-3 py-1.5 rounded-full uppercase tracking-wider">{tStr}</span>
+      </div>
+
+      {relevantKpis.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-200">
+          <p className="text-sm text-slate-500 font-semibold">No daily KPIs assigned to you.</p>
+        </div>
+      ) : (
+        relevantKpis.map(kpi => {
+          const todayTarget = kpi.dailyAlloc?.[tStr] || 0;
+          const currentActual = kpi.dailyActual?.[tStr] || "";
+
+          // Calculate Carry Forward Balance
+          let carryForward = 0;
+          Object.keys(kpi.dailyAlloc || {}).forEach(dateKey => {
+            // Check if dateKey is strictly before today AND in the current month
+            if (dateKey < tStr && dateKey.substring(0, 7) === tStr.substring(0, 7)) {
+              const tgt = kpi.dailyAlloc[dateKey] || 0;
+              const act = kpi.dailyActual?.[dateKey] || 0;
+              // Floor shortfall at 0 per day. 
+              // (Alternative: omit Math.max to let overachievement offset shortfall)
+              const shortfall = Math.max(0, tgt - act);
+              carryForward += shortfall;
+            }
+          });
+
+          const effectiveTarget = todayTarget + carryForward;
+
+          return (
+            <div key={kpi.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5">
+              <div className="flex justify-between items-start gap-2">
+                <h3 className="font-bold text-slate-800 text-sm leading-snug">{kpi.name}</h3>
+                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">{kpi.unit}</span>
+              </div>
+              
+              <div className="flex gap-2">
+                <div className="flex-1 bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                  <span className="block text-[9px] text-slate-400 font-bold uppercase mb-1">Today's Target</span>
+                  <span className="font-bold text-slate-700 text-lg">{todayTarget}</span>
+                </div>
+                <div className="flex-1 bg-orange-50/50 rounded-2xl p-3 border border-orange-100">
+                  <span className="block text-[9px] text-orange-400 font-bold uppercase mb-1">Carry Forward</span>
+                  <span className="font-bold text-orange-600 text-lg">+{carryForward}</span>
+                </div>
+              </div>
+
+              <div className="bg-teal-50/50 border border-teal-200 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <span className="block text-[10px] text-teal-600 font-bold uppercase mb-0.5">Effective Target</span>
+                  <span className="text-2xl font-black text-teal-800">{effectiveTarget}</span>
+                </div>
+                <div className="text-right">
+                  <span className="block text-[10px] text-slate-500 font-bold uppercase mb-1.5">Log Actual</span>
+                  <div className="flex items-center justify-end">
+                    <input 
+                      type="number"
+                      placeholder="0"
+                      defaultValue={currentActual}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val !== currentActual) {
+                          onUpdateDailyActual(kpi.id, tStr, val);
+                        }
+                      }}
+                      className="w-20 text-right font-black text-lg text-emerald-700 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-3 py-1 outline-none transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask }) {
+function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, onUpdateDailyActual }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -9355,6 +9445,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
   const screenMap = { 
     home: <HomeScreen />, 
+    dailyLog: <DailyLogScreen kpis={kpis} loggedInUser={loggedInUser} onUpdateDailyActual={onUpdateDailyActual} />,
     mykpis: <MyKpisScreen />, 
     planning: <PlanningScreen />,
     team: <TeamScreen />, 
@@ -10274,6 +10365,26 @@ export default function App() {
       supabase.from('notifications').insert(payload).select().single().then(({ data }) => {
         if (data) setNotifications(prev => [...prev, data]);
       });
+    }
+  }
+
+  async function handleUpdateDailyActual(kpiId, dStr, newValue) {
+    const kpiToUpdate = kpis.find(k => k.id === kpiId);
+    if (!kpiToUpdate) return;
+    
+    const parsedVal = parseFloat(newValue) || 0;
+    const newDailyActual = { ...(kpiToUpdate.dailyActual || {}), [dStr]: parsedVal };
+    
+    setKpis(prev => prev.map(k => k.id === kpiId ? { ...k, dailyActual: newDailyActual } : k));
+    
+    try {
+      const { error } = await supabase
+        .from('kpis')
+        .update({ daily_actual: newDailyActual })
+        .eq('id', kpiId);
+      if (error) throw error;
+    } catch(err) {
+      console.error("Error updating daily actual:", err);
     }
   }
 
@@ -11693,6 +11804,7 @@ export default function App() {
           <EmployeeApp 
             kpis={kpis} 
             setKpis={setKpis}
+            onUpdateDailyActual={handleUpdateDailyActual}
             onLog={handleLog} 
             teams={teams} 
             projects={projects} 
