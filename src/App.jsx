@@ -12,6 +12,30 @@ import {
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
 
+function DailyAllocInput({ value, onChange }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [localVal, setLocalVal] = useState(value);
+  
+  useEffect(() => { setLocalVal(value); }, [value]);
+  
+  const displayVal = isEditing ? localVal : (localVal ? new Intl.NumberFormat('en-IN').format(localVal) : "");
+  
+  return (
+    <input
+      type={isEditing ? "number" : "text"}
+      value={displayVal}
+      placeholder="0"
+      onFocus={() => setIsEditing(true)}
+      onBlur={() => {
+        setIsEditing(false);
+        onChange(localVal);
+      }}
+      onChange={(e) => setLocalVal(e.target.value)}
+      className="w-full text-right text-xs font-mono font-bold text-slate-800 bg-transparent border-none outline-none focus:ring-0 p-0 leading-none"
+    />
+  );
+}
+
 function DailyAllocCalendarModal({ kpi, month, onClose, onSave }) {
   const cells = useMemo(() => getCalendarCells(month), [month]);
   const [localDailyAlloc, setLocalDailyAlloc] = useState({ ...(kpi.dailyAlloc || {}) });
@@ -57,7 +81,7 @@ function DailyAllocCalendarModal({ kpi, month, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[200] p-4" onClick={(e) => e.stopPropagation()}>
-      <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between pb-3 border-b border-slate-150 shrink-0">
           <div className="pr-4 min-w-0">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider truncate" title={kpi.name}>{kpi.name}</h3>
@@ -86,12 +110,9 @@ function DailyAllocCalendarModal({ kpi, month, onClose, onSave }) {
               return (
                 <div key={cell.dateStr} className="h-11 border border-slate-200 rounded-lg p-1 flex flex-col justify-between hover:border-slate-300 bg-white relative">
                   <span className="text-[9px] font-bold text-slate-400 leading-none">{cell.dayNum}</span>
-                  <input
-                    type="number"
-                    value={val === 0 ? "" : val}
-                    placeholder="0"
-                    onChange={(e) => handleValueChange(cell.dateStr, e.target.value)}
-                    className="w-full text-right text-xs font-mono font-bold text-slate-800 bg-transparent border-none outline-none focus:ring-0 p-0 leading-none"
+                  <DailyAllocInput
+                    value={val}
+                    onChange={(newVal) => handleValueChange(cell.dateStr, newVal)}
                   />
                 </div>
               );
@@ -9650,7 +9671,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
     return (
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+        <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
             <div>
