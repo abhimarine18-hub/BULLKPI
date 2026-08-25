@@ -10957,6 +10957,9 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
           </div>
           <span className="hidden lg:block text-sm font-black text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>BULL KPI</span>
         </div>
+        {/* Section 1: WMS */}
+        <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider px-3 pt-2 pb-1.5 border-b border-slate-50/50 mb-1.5 hidden lg:block" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>WMS — Daily Work</div>
+        <div className="border-t border-slate-100 my-1 lg:hidden" />
         {EMP_NAV.filter(item => {
           if (item.id === "video_editing") {
             return myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
@@ -10965,7 +10968,25 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
             return myTeam?.name === "Digital Marketing" || loggedInUser?.name === "Admin";
           }
           return true;
-        }).map(item => <NavItem key={item.id} item={item} />)}
+        }).filter(item => [
+          "dailyLog", "leads", "video_production", "video_editing", "video_review", "post_to_sm",
+          "my_tasks", "individual_tasks", "action", "projects", "build_projects", "campaigns", "planning", "settings"
+        ].includes(item.id)).map(item => <NavItem key={item.id} item={item} />)}
+
+        {/* Section 2: PMS */}
+        <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-1.5 border-b border-slate-50/50 mb-1.5 mt-2 hidden lg:block" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>PMS — Performance</div>
+        <div className="border-t border-slate-100 my-1 lg:hidden" />
+        {EMP_NAV.filter(item => {
+          if (item.id === "video_editing") {
+            return myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
+          }
+          if (item.id === "post_to_sm") {
+            return myTeam?.name === "Digital Marketing" || loggedInUser?.name === "Admin";
+          }
+          return true;
+        }).filter(item => [
+          "home", "dashboard", "mykpis", "kpis", "okrs", "review", "review_screen", "reviews", "team", "profile"
+        ].includes(item.id)).map(item => <NavItem key={item.id} item={item} />)}
         {/* User at bottom */}
         <div className="mt-auto px-2 pt-4 border-t border-slate-100">
           <div className="flex items-center gap-2">
