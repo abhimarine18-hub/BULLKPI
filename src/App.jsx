@@ -8810,7 +8810,13 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
   const monthInfo = FY_MONTHS.find(m => m.name === selectedMonth);
   const yearMonthPrefix = monthInfo ? `${monthInfo.year}-${String(monthInfo.monthIdx + 1).padStart(2, '0')}` : "2026-08";
 
-  const relevantKpis = (kpis || []).filter(k => k.owner === currentEmployee && k.targetType !== "monthly");
+  // Filter by targets and relations
+  const dailyKpis = (kpis || []).filter(k => k.targetType !== "monthly");
+  const doKpis = dailyKpis.filter(k => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  const driveKpis = dailyKpis.filter(k => k.driveBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  const monitorKpis = dailyKpis.filter(k => k.monitorBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  const hasAnyKpi = doKpis.length > 0 || driveKpis.length > 0 || monitorKpis.length > 0;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50">
@@ -8829,19 +8835,60 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
         </div>
       </div>
 
-      {relevantKpis.length === 0 ? (
+      {!hasAnyKpi ? (
         <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-200">
           <p className="text-sm text-slate-500 font-semibold">No daily KPIs assigned to you.</p>
         </div>
       ) : (
-        relevantKpis.map(kpi => (
-          <DailyLogCard 
-            key={kpi.id} 
-            kpi={kpi} 
-            prefix={yearMonthPrefix} 
-            onUpdateDailyActual={onUpdateDailyActual} 
-          />
-        ))
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* Column 1: DO */}
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">DO (OWNER)</span>
+              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">{doKpis.length}</span>
+            </div>
+            {doKpis.map(kpi => (
+              <DailyLogCard 
+                key={kpi.id} 
+                kpi={kpi} 
+                prefix={yearMonthPrefix} 
+                onUpdateDailyActual={onUpdateDailyActual} 
+              />
+            ))}
+          </div>
+
+          {/* Column 2: DRIVE */}
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">DRIVE</span>
+              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">{driveKpis.length}</span>
+            </div>
+            {driveKpis.map(kpi => (
+              <DailyLogCard 
+                key={kpi.id} 
+                kpi={kpi} 
+                prefix={yearMonthPrefix} 
+                onUpdateDailyActual={onUpdateDailyActual} 
+              />
+            ))}
+          </div>
+
+          {/* Column 3: MONITOR */}
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">MONITOR</span>
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">{monitorKpis.length}</span>
+            </div>
+            {monitorKpis.map(kpi => (
+              <DailyLogCard 
+                key={kpi.id} 
+                kpi={kpi} 
+                prefix={yearMonthPrefix} 
+                onUpdateDailyActual={onUpdateDailyActual} 
+              />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
