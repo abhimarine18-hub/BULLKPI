@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText
+  LayoutGrid, GitBranch, FolderGit2, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -8397,6 +8397,116 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
 }
 
 
+function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
+  const todayTarget = kpi.dailyAlloc?.[tStr] || 0;
+  
+  // See if there's already a value logged
+  const savedActual = kpi.dailyActual?.[tStr];
+  const hasSavedActual = savedActual !== undefined && savedActual !== null && savedActual !== "";
+
+  // State for the component
+  const [isEditing, setIsEditing] = useState(!hasSavedActual);
+  const [inputValue, setInputValue] = useState("");
+
+  // Calculate Carry Forward Balance
+  let carryForward = 0;
+  Object.keys(kpi.dailyAlloc || {}).forEach(dateKey => {
+    // Check if dateKey is strictly before today AND in the current month
+    if (dateKey < tStr && dateKey.substring(0, 7) === tStr.substring(0, 7)) {
+      const tgt = kpi.dailyAlloc[dateKey] || 0;
+      const act = kpi.dailyActual?.[dateKey] || 0;
+      // Floor shortfall at 0 per day before summing
+      const shortfall = Math.max(0, tgt - act);
+      carryForward += shortfall;
+    }
+  });
+
+  const effectiveTarget = todayTarget + carryForward;
+
+  const handleSubmit = () => {
+    if (inputValue === "") return;
+    const val = parseFloat(inputValue);
+    if (!isNaN(val)) {
+      onUpdateDailyActual(kpi.id, tStr, val);
+      setIsEditing(false);
+      setInputValue(""); // clear temporary input
+    }
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+      <div className="flex justify-between items-start gap-2 border-b border-slate-100 pb-3">
+        <div>
+          <h3 className="font-bold text-slate-800 text-sm leading-snug">{kpi.name}</h3>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">{tStr}</p>
+        </div>
+      </div>
+      
+      <div className="space-y-1.5 px-1">
+        <p className="text-xs font-semibold text-slate-600">
+          Target: <span className="text-slate-800">{todayTarget} {kpi.unit}</span>
+        </p>
+        <p className="text-xs font-semibold text-orange-600">
+          Carry Forward Balance: +{carryForward} {kpi.unit}
+        </p>
+      </div>
+
+      <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
+        <p className="text-sm font-bold text-teal-800 mb-4">
+          Today's Effective Target: {effectiveTarget} {kpi.unit}
+        </p>
+        
+        {!isEditing ? (
+          <div className="flex items-center justify-between bg-white border border-emerald-200 p-3 rounded-xl shadow-sm">
+            <p className="text-sm font-bold text-emerald-700 flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4" /> 
+              Logged: {savedActual} / effective target {effectiveTarget}
+            </p>
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Edit
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[11px] text-slate-500 font-bold uppercase mb-1.5">Enter Today's Achievement</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="number"
+                  placeholder="Enter value achieved today"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  className="flex-1 text-sm font-semibold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-4 py-2.5 outline-none transition-all shadow-inner"
+                />
+                <span className="text-xs font-bold text-slate-400 shrink-0">{kpi.unit}</span>
+              </div>
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={inputValue === ""}
+              className={`w-full font-bold py-2.5 rounded-xl transition-all ${
+                inputValue === "" 
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
+                  : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+              }`}
+            >
+              Submit
+            </button>
+            {hasSavedActual && (
+              <div className="text-center">
+                <button onClick={() => { setIsEditing(false); setInputValue(""); }} className="text-xs font-bold text-slate-500 hover:underline">Cancel Edit</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
   const d = new Date();
   const tzOffset = d.getTimezoneOffset() * 60000;
@@ -8408,7 +8518,6 @@ function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
     <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-xl font-bold text-slate-800">Daily Log</h2>
-        <span className="text-[10px] font-bold text-teal-700 bg-teal-100 px-3 py-1.5 rounded-full uppercase tracking-wider">{tStr}</span>
       </div>
 
       {relevantKpis.length === 0 ? (
@@ -8416,70 +8525,14 @@ function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
           <p className="text-sm text-slate-500 font-semibold">No daily KPIs assigned to you.</p>
         </div>
       ) : (
-        relevantKpis.map(kpi => {
-          const todayTarget = kpi.dailyAlloc?.[tStr] || 0;
-          const currentActual = kpi.dailyActual?.[tStr] || "";
-
-          // Calculate Carry Forward Balance
-          let carryForward = 0;
-          Object.keys(kpi.dailyAlloc || {}).forEach(dateKey => {
-            // Check if dateKey is strictly before today AND in the current month
-            if (dateKey < tStr && dateKey.substring(0, 7) === tStr.substring(0, 7)) {
-              const tgt = kpi.dailyAlloc[dateKey] || 0;
-              const act = kpi.dailyActual?.[dateKey] || 0;
-              // Floor shortfall at 0 per day. 
-              // (Alternative: omit Math.max to let overachievement offset shortfall)
-              const shortfall = Math.max(0, tgt - act);
-              carryForward += shortfall;
-            }
-          });
-
-          const effectiveTarget = todayTarget + carryForward;
-
-          return (
-            <div key={kpi.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5">
-              <div className="flex justify-between items-start gap-2">
-                <h3 className="font-bold text-slate-800 text-sm leading-snug">{kpi.name}</h3>
-                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">{kpi.unit}</span>
-              </div>
-              
-              <div className="flex gap-2">
-                <div className="flex-1 bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                  <span className="block text-[9px] text-slate-400 font-bold uppercase mb-1">Today's Target</span>
-                  <span className="font-bold text-slate-700 text-lg">{todayTarget}</span>
-                </div>
-                <div className="flex-1 bg-orange-50/50 rounded-2xl p-3 border border-orange-100">
-                  <span className="block text-[9px] text-orange-400 font-bold uppercase mb-1">Carry Forward</span>
-                  <span className="font-bold text-orange-600 text-lg">+{carryForward}</span>
-                </div>
-              </div>
-
-              <div className="bg-teal-50/50 border border-teal-200 rounded-2xl p-4 flex items-center justify-between">
-                <div>
-                  <span className="block text-[10px] text-teal-600 font-bold uppercase mb-0.5">Effective Target</span>
-                  <span className="text-2xl font-black text-teal-800">{effectiveTarget}</span>
-                </div>
-                <div className="text-right">
-                  <span className="block text-[10px] text-slate-500 font-bold uppercase mb-1.5">Log Actual</span>
-                  <div className="flex items-center justify-end">
-                    <input 
-                      type="number"
-                      placeholder="0"
-                      defaultValue={currentActual}
-                      onBlur={(e) => {
-                        const val = parseFloat(e.target.value);
-                        if (!isNaN(val) && val !== currentActual) {
-                          onUpdateDailyActual(kpi.id, tStr, val);
-                        }
-                      }}
-                      className="w-20 text-right font-black text-lg text-emerald-700 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-3 py-1 outline-none transition-all shadow-inner"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })
+        relevantKpis.map(kpi => (
+          <DailyLogCard 
+            key={kpi.id} 
+            kpi={kpi} 
+            tStr={tStr} 
+            onUpdateDailyActual={onUpdateDailyActual} 
+          />
+        ))
       )}
     </div>
   );
