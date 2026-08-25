@@ -8609,7 +8609,7 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
 }
 
 
-function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
+function DailyLogCard({ kpi, logDate, onUpdateDailyActual, currentEmployee, kpiLogs, onAddLog }) {
   const prefix = logDate.substring(0, 7);
 
   const d = new Date();
@@ -8622,11 +8622,19 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(hasLogged ? savedActual : "");
+  
+  // Shortfall dialog states
+  const [showShortfallPrompt, setShowShortfallPrompt] = useState(false);
+  const [shortfallReason, setShortfallReason] = useState("");
+  const [shortfallAltDate, setShortfallAltDate] = useState("");
 
   // Sync state if logDate changes
   useEffect(() => {
     setInputValue(hasLogged ? savedActual : "");
     setIsEditing(false);
+    setShowShortfallPrompt(false);
+    setShortfallReason("");
+    setShortfallAltDate("");
   }, [logDate, hasLogged, savedActual]);
 
   // Calculate carry forward balance up to logDate (exclusive)
@@ -8645,13 +8653,47 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
 
   const effectiveTarget = target + carryForward;
 
-  const handleSubmit = () => {
+  const handleInitialSubmit = () => {
     if (inputValue === "") return;
     const num = parseFloat(inputValue);
-    if (!isNaN(num)) {
+    if (isNaN(num)) return;
+
+    if (num < effectiveTarget) {
+      // Enter shortfall mode
+      setShowShortfallPrompt(true);
+    } else {
+      // Direct submit
       onUpdateDailyActual(kpi.id, logDate, num);
       setIsEditing(false);
     }
+  };
+
+  const handleConfirmShortfall = () => {
+    const num = parseFloat(inputValue);
+    if (isNaN(num) || !shortfallReason.trim()) return;
+
+    // 1. Submit actual
+    onUpdateDailyActual(kpi.id, logDate, num);
+
+    // 2. Add log entry
+    const logPayload = {
+      kpi_id: kpi.id,
+      log_date: logDate,
+      target: target,
+      carry_forward: carryForward,
+      effective_target: effectiveTarget,
+      actual: num,
+      reason: shortfallReason.trim(),
+      alternate_target_date: shortfallAltDate || null,
+      logged_by: currentEmployee || "Unknown"
+    };
+    onAddLog(logPayload);
+
+    // 3. Close states
+    setIsEditing(false);
+    setShowShortfallPrompt(false);
+    setShortfallReason("");
+    setShortfallAltDate("");
   };
 
   // Build compound trend graph data (Cumulative target and actual for the month)
@@ -8715,6 +8757,31 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
         </div>
       </div>
 
+      {/* Shortfall Logs List Display under chart */}
+      {kpiLogs && kpiLogs.length > 0 && (
+        <div className="bg-slate-50/50 border border-slate-150 rounded-2xl p-3 space-y-2">
+          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Shortfall Logs & Retargets</p>
+          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            {kpiLogs.map((log, idx) => (
+              <div key={idx} className="bg-white border border-slate-200 rounded-xl p-2 shadow-xs text-[10px] space-y-1">
+                <div className="flex justify-between items-center font-bold text-slate-400">
+                  <span>{new Date(log.log_date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' })}</span>
+                  <span className="text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Shortfall: -{new Intl.NumberFormat('en-IN').format(log.effective_target - log.actual)}</span>
+                </div>
+                <div className="text-slate-700">
+                  <strong>Reason:</strong> {log.reason}
+                </div>
+                {log.alternate_target_date && (
+                  <div className="text-teal-700 font-bold">
+                    🎯 Retarget Date: {new Date(log.alternate_target_date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Target, CF, Eff Target on Left and Enter/Edit button on Right (Single Line Flex) */}
       <div className="flex items-center justify-between gap-4 pt-1">
         {/* Left Side Metrics */}
@@ -8766,7 +8833,7 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
                 className="w-16 text-right text-[11px] font-bold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-200 rounded-lg px-2 py-1 outline-none"
               />
               <button 
-                onClick={handleSubmit} 
+                onClick={handleInitialSubmit} 
                 disabled={inputValue === ""}
                 className="p-1 bg-teal-600 text-white rounded-lg disabled:opacity-40"
               >
@@ -8782,11 +8849,66 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
           )}
         </div>
       </div>
+
+      {/* Shortfall Reason & Date Dialog (Inline Panel) */}
+      {showShortfallPrompt && (
+        <div className="bg-rose-50/75 border border-rose-200 rounded-2xl p-3 space-y-2.5 animate-fadeIn shadow-sm">
+          <div className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">
+            ⚠️ Achievement is below effective target ({effectiveTarget}). Please provide shortfall details:
+          </div>
+          
+          <div className="space-y-2">
+            <div>
+              <label className="block text-[9px] text-slate-500 font-bold uppercase mb-0.5">Reason for Shortfall</label>
+              <textarea
+                placeholder="Why was the target not achieved?"
+                value={shortfallReason}
+                onChange={(e) => setShortfallReason(e.target.value)}
+                className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-300 focus:border-rose-400 rounded-lg px-2.5 py-1.5 outline-none h-12 resize-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-[9px] text-slate-500 font-bold uppercase mb-0.5">Alternate Target Date (Retarget)</label>
+              <input
+                type="date"
+                value={shortfallAltDate}
+                onChange={(e) => setShortfallAltDate(e.target.value)}
+                className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 rounded-lg px-2.5 py-1 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleConfirmShortfall}
+              disabled={!shortfallReason.trim()}
+              className={`flex-1 font-bold py-1.5 rounded-lg text-xs transition-all ${
+                !shortfallReason.trim()
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  : "bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+              }`}
+            >
+              Log Shortfall
+            </button>
+            <button
+              onClick={() => {
+                setShowShortfallPrompt(false);
+                setShortfallReason("");
+                setShortfallAltDate("");
+              }}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-lg text-xs font-bold transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
+function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual, logs, onAddLog }) {
   const d = new Date();
   const tzOffset = d.getTimezoneOffset() * 60000;
   const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
@@ -8856,6 +8978,9 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
                     kpi={kpi} 
                     logDate={selectedDate} 
                     onUpdateDailyActual={onUpdateDailyActual} 
+                    currentEmployee={currentEmployee}
+                    kpiLogs={(logs || []).filter(l => l.kpi_id === kpi.id)}
+                    onAddLog={onAddLog}
                   />
                 ))}
               </div>
@@ -8876,6 +9001,9 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
                     kpi={kpi} 
                     logDate={selectedDate} 
                     onUpdateDailyActual={onUpdateDailyActual} 
+                    currentEmployee={currentEmployee}
+                    kpiLogs={(logs || []).filter(l => l.kpi_id === kpi.id)}
+                    onAddLog={onAddLog}
                   />
                 ))}
               </div>
@@ -8896,6 +9024,9 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
                     kpi={kpi} 
                     logDate={selectedDate} 
                     onUpdateDailyActual={onUpdateDailyActual} 
+                    currentEmployee={currentEmployee}
+                    kpiLogs={(logs || []).filter(l => l.kpi_id === kpi.id)}
+                    onAddLog={onAddLog}
                   />
                 ))}
               </div>
@@ -8909,7 +9040,7 @@ function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, onUpdateDailyActual }) {
+function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, onUpdateDailyActual, logs, onAddLog }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -9867,7 +9998,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
   const screenMap = { 
     home: <HomeScreen />, 
-    dailyLog: <DailyLogScreen kpis={kpis} currentEmployee={currentEmployee} onUpdateDailyActual={onUpdateDailyActual} />,
+    dailyLog: <DailyLogScreen kpis={kpis} currentEmployee={currentEmployee} onUpdateDailyActual={onUpdateDailyActual} logs={logs} onAddLog={onAddLog} />,
     mykpis: <MyKpisScreen />, 
     planning: <PlanningScreen />,
     team: <TeamScreen />, 
@@ -10198,6 +10329,31 @@ export default function App() {
   const [clientProjects, setClientProjects] = useState([]);
   const [clientProjectLogs, setClientProjectLogs] = useState([]);
   const [individualTasks, setIndividualTasks] = useState([]);
+  const [logs, setLogs] = useState([]);
+
+  async function handleAddLog(newLog) {
+    setLogs(prev => [...prev, newLog]);
+    try {
+      const stored = JSON.parse(localStorage.getItem('backup_logs') || '[]');
+      stored.push(newLog);
+      localStorage.setItem('backup_logs', JSON.stringify(stored));
+    } catch(e) {}
+
+    try {
+      const { error } = await supabase.from('logs').insert({
+        kpi_id: newLog.kpi_id,
+        log_date: newLog.log_date,
+        target: newLog.target,
+        carry_forward: newLog.carry_forward,
+        effective_target: newLog.effective_target,
+        actual: newLog.actual,
+        reason: newLog.reason,
+        alternate_target_date: newLog.alternate_target_date || null,
+        logged_by: newLog.logged_by
+      });
+      if (error) console.error("Error inserting log into Supabase:", error);
+    } catch(e) {}
+  }
   const [notifications, setNotifications] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(() => {
     try {
@@ -10516,6 +10672,22 @@ export default function App() {
             localStorage.removeItem('pending_sync_kpis');
           }
         } catch(syncErr) { /* silent */ }
+      }
+
+      // Fetch Logs
+      let dbLogs = null;
+      try {
+        const resLogs = await safeFetch('logs');
+        if (!resLogs.offline) {
+          dbLogs = resLogs.data;
+        } else {
+          const cachedLogs = localStorage.getItem("backup_logs");
+          if (cachedLogs) setLogs(JSON.parse(cachedLogs));
+        }
+      } catch(e) {}
+      if (dbLogs) {
+        setLogs(dbLogs);
+        localStorage.setItem("backup_logs", JSON.stringify(dbLogs));
       }
 
       // 3. Fetch Projects
@@ -12234,6 +12406,8 @@ export default function App() {
             kpis={kpis} 
             setKpis={setKpis}
             onUpdateDailyActual={handleUpdateDailyActual}
+            logs={logs}
+            onAddLog={handleAddLog}
             onLog={handleLog} 
             teams={teams} 
             projects={projects} 
