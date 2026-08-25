@@ -2424,13 +2424,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                       >
                         Clear Targets
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleAutoDistribute}
-                        className="text-xs font-bold px-2 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded hover:bg-teal-100 transition-colors"
-                      >
-                        Auto Distribute
-                      </button>
+
                       <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-600 select-none">
                         <input 
                           type="checkbox" 
