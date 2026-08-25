@@ -8612,6 +8612,10 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
 function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
   const prefix = logDate.substring(0, 7);
 
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+
   const target = kpi.dailyAlloc?.[logDate] || 0;
   const savedActual = kpi.dailyActual?.[logDate];
   const hasLogged = savedActual !== undefined && savedActual !== null && savedActual !== "";
@@ -8679,6 +8683,9 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
     return data;
   }, [prefix, kpi.dailyAlloc, kpi.dailyActual]);
 
+  const dateLabel = new Date(logDate).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' });
+  const isToday = logDate === todayStr;
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
       <div className="border-b border-slate-100 pb-2.5">
@@ -8741,11 +8748,10 @@ function DailyLogCard({ kpi, logDate, onUpdateDailyActual }) {
                     onClick={() => setIsEditing(true)}
                     className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] py-2 px-3 rounded-xl transition-all shadow-xs text-center"
                   >
-                    Enter - {new Intl.NumberFormat('en-IN').format(effectiveTarget)}
+                    Enter for {dateLabel}
                   </button>
-                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                  <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full border border-white shadow-xs leading-none uppercase tracking-wider whitespace-nowrap">
+                    {isToday ? "Today Pending" : "Pending"}
                   </span>
                 </div>
               )}
