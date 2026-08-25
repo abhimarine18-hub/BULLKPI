@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS video_productions (
   edited_at TIMESTAMPTZ,
   published_at TIMESTAMPTZ,
   views NUMERIC,
+  actual_customer_count INTEGER,
+  customer_info TEXT,
+  district VARCHAR(255),
+  state VARCHAR(255),
+  raw_footage_drive_link TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE video_productions ENABLE ROW LEVEL SECURITY;

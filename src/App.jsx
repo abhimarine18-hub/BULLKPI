@@ -8803,10 +8803,137 @@ const EMP_NAV = [
   { id: "planning", icon: Calendar },
   { id: "my_tasks", icon: CheckSquare },
   { id: "leads", icon: UserCheck },
+  { id: "video_production", icon: Video },
   { id: "team", icon: Trophy },
   { id: "reviews", icon: ClipboardCheck },
   { id: "profile", icon: User },
 ];
+
+function EmployeeVideoProductionScreen({ videoProductions = [], onUpdateVideoProduction, loggedInUser }) {
+  const [editingProd, setEditingProd] = useState(null);
+  const [formData, setFormData] = useState({
+    actual_customer_count: "",
+    customer_info: "",
+    district: "",
+    state: "",
+    raw_footage_drive_link: ""
+  });
+
+  const myPlannedProds = useMemo(() => {
+    return (videoProductions || []).filter(p => p.assigned_agent === loggedInUser?.name && p.status === 'planned');
+  }, [videoProductions, loggedInUser]);
+
+  const handleOpenUpload = (prod) => {
+    setEditingProd(prod);
+    setFormData({
+      actual_customer_count: "",
+      customer_info: "",
+      district: "",
+      state: "",
+      raw_footage_drive_link: ""
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!editingProd) return;
+    
+    onUpdateVideoProduction(editingProd.id, {
+      status: 'shot',
+      actual_customer_count: formData.actual_customer_count ? parseInt(formData.actual_customer_count) : null,
+      customer_info: formData.customer_info.trim() || null,
+      district: formData.district.trim() || null,
+      state: formData.state.trim() || null,
+      raw_footage_drive_link: formData.raw_footage_drive_link.trim() || null,
+      shot_at: new Date().toISOString()
+    });
+    
+    setEditingProd(null);
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-4">
+      <div className="flex items-center gap-3 mb-2">
+        <h2 className="text-xl font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>My Video Shoots</h2>
+        <span className="ml-auto text-xs text-slate-400 bg-slate-100 rounded-full px-2.5 py-0.5 font-semibold">
+          {myPlannedProds.length} Planned
+        </span>
+      </div>
+
+      {myPlannedProds.length === 0 ? (
+        <div className="bg-white border border-slate-150 rounded-2xl p-8 text-center shadow-xs">
+          <span className="text-3xl">🎉</span>
+          <p className="text-xs font-semibold text-slate-500 mt-2">No planned shoots assigned to you.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {myPlannedProds.map(prod => (
+            <div key={prod.id} className="bg-white border border-slate-150 rounded-2xl p-4 flex flex-col justify-between shadow-xs space-y-3.5">
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-slate-800 leading-snug">{prod.video_title}</h4>
+                {prod.shot_at && (
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Scheduled Date: {new Date(prod.shot_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                )}
+                {prod.views !== null && prod.views !== undefined && (
+                  <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                    👥 Expected Customers: {prod.views}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => handleOpenUpload(prod)}
+                className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-2xs"
+              >
+                Upload Shoot Details
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editingProd && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-orange-100">
+            <div className="bg-orange-50 px-5 py-4 border-b border-orange-100 flex items-center justify-between sticky top-0 z-10">
+              <h3 className="font-bold text-slate-800 text-sm">Upload Shoot Details</h3>
+              <button type="button" onClick={() => setEditingProd(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs font-semibold text-slate-650">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-505 block uppercase tracking-wider">Actual Customer Count</label>
+                <input type="number" value={formData.actual_customer_count} onChange={(e) => setFormData(prev => ({ ...prev, actual_customer_count: e.target.value }))} placeholder="E.g., 4" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-505 block uppercase tracking-wider">Customer Info / Feedback</label>
+                <textarea value={formData.customer_info} onChange={(e) => setFormData(prev => ({ ...prev, customer_info: e.target.value }))} placeholder="Customer response, testimonial feedback, or interview notes..." className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none h-16 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-505 block uppercase tracking-wider">District</label>
+                  <input type="text" value={formData.district} onChange={(e) => setFormData(prev => ({ ...prev, district: e.target.value }))} placeholder="E.g., Madurai" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-505 block uppercase tracking-wider">State</label>
+                  <input type="text" value={formData.state} onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))} placeholder="E.g., Tamil Nadu" className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-505 block uppercase tracking-wider">Raw Footage Google Drive Link</label>
+                <input type="url" value={formData.raw_footage_drive_link} onChange={(e) => setFormData(prev => ({ ...prev, raw_footage_drive_link: e.target.value }))} placeholder="https://drive.google.com/..." className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none font-mono" />
+              </div>
+            </div>
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingProd(null)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Submit Details</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
   const pendingReviews = [];
@@ -9510,7 +9637,7 @@ function EmployeeLeadsScreen({ leads = [], onUpdateLeadStatus, loggedInUser }) {
 
 const CURRENT_EMPLOYEE = "Anand Kumar";
 
-function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, onUpdateDailyActual, logs, onAddLog, leads = [], onUpdateLeadStatus }) {
+function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handleCompleteAction, loggedInUser, onLogout, clientProjects, onUpdateClientProjectStage, onInitiateKpi, notifications, onMarkNotificationAsRead, individualTasks, onAddIndividualTask, onUpdateIndividualTaskStatus, onDeleteIndividualTask, onUpdateDailyActual, logs, onAddLog, leads = [], onUpdateLeadStatus, videoProductions = [], onUpdateVideoProduction }) {
   const [screen, setScreen] = useState("home");
   const [detailId, setDetailId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -10861,6 +10988,14 @@ export default function App() {
   const [individualTasks, setIndividualTasks] = useState([]);
   const [leads, setLeads] = useState([]);
   const [videoProductions, setVideoProductions] = useState([]);
+
+  async function handleUpdateVideoProduction(prodId, updates) {
+    setVideoProductions(prev => prev.map(p => p.id === prodId ? { ...p, ...updates } : p));
+    try {
+      const { error } = await supabase.from('video_productions').update(updates).eq('id', prodId);
+      if (error) console.error("Error updating video production:", error);
+    } catch(e) {}
+  }
 
   async function handleAddVideoProduction(newProd) {
     try {
