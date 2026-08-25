@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
   Star, Mountain, UserCheck, Play, Home, List, Trophy, User, X, Smartphone, Monitor,
-  LayoutGrid, GitBranch, FolderGit2, Video, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info, Check
+  LayoutGrid, GitBranch, FolderGit2, Video, Film, CalendarRange, ListTodo, Clock, Pencil, Menu, Trash2, Table, Download, Copy, Coffee, LogOut, Calendar, CheckSquare, Bell, ClipboardCheck, FileText, CheckCircle, Info, Check
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Apr 2026", "May 2026", "Jun 2026", "Jul 2026", "Aug 2026", "Sep 2026", "Oct 2026", "Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"];
@@ -8804,10 +8804,139 @@ const EMP_NAV = [
   { id: "my_tasks", icon: CheckSquare },
   { id: "leads", icon: UserCheck },
   { id: "video_production", icon: Video },
+  { id: "video_editing", icon: Film },
   { id: "team", icon: Trophy },
   { id: "reviews", icon: ClipboardCheck },
   { id: "profile", icon: User },
 ];
+
+function EmployeeVideoEditingScreen({ videoProductions = [], onUpdateVideoProduction, loggedInUser }) {
+  const [editingProd, setEditingProd] = useState(null);
+  const [editedLink, setEditedLink] = useState("");
+
+  const shotProds = useMemo(() => {
+    return (videoProductions || []).filter(p => p.status === 'shot');
+  }, [videoProductions]);
+
+  const myEditingProds = useMemo(() => {
+    return (videoProductions || []).filter(p => p.status === 'editing' && p.editor_name === loggedInUser?.name);
+  }, [videoProductions, loggedInUser]);
+
+  const handleStartEditing = (prodId) => {
+    onUpdateVideoProduction(prodId, {
+      status: 'editing',
+      editor_name: loggedInUser?.name
+    });
+  };
+
+  const handleOpenUpload = (prod) => {
+    setEditingProd(prod);
+    setEditedLink("");
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!editingProd || !editedLink.trim()) return;
+    
+    onUpdateVideoProduction(editingProd.id, {
+      status: 'ai_review',
+      edited_video_drive_link: editedLink.trim(),
+      edited_at: new Date().toISOString()
+    });
+    
+    setEditingProd(null);
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6 space-y-6">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Available for Editing</h2>
+          <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{shotProds.length}</span>
+        </div>
+        
+        {shotProds.length === 0 ? (
+          <p className="text-xs text-slate-400 italic py-4">No video shoots waiting for edits.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {shotProds.map(prod => (
+              <div key={prod.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs space-y-3">
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 leading-snug">{prod.video_title}</h4>
+                  <p className="text-[10px] text-slate-500 font-semibold mt-1">Videographer: {prod.assigned_agent}</p>
+                  {prod.raw_footage_drive_link && (
+                    <a href={prod.raw_footage_drive_link} target="_blank" rel="noreferrer" className="text-[10px] text-teal-600 font-bold hover:underline block mt-2">
+                      🔗 Raw Footage Link
+                    </a>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleStartEditing(prod.id)}
+                  className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-2xs"
+                >
+                  Start Editing
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">My Editing Work</h2>
+          <span className="text-xs font-bold text-slate-450 bg-slate-100 px-2 py-0.5 rounded-full">{myEditingProds.length}</span>
+        </div>
+
+        {myEditingProds.length === 0 ? (
+          <p className="text-xs text-slate-450 italic py-4">You are not editing any videos right now.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {myEditingProds.map(prod => (
+              <div key={prod.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs space-y-3">
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 leading-snug">{prod.video_title}</h4>
+                  {prod.raw_footage_drive_link && (
+                    <a href={prod.raw_footage_drive_link} target="_blank" rel="noreferrer" className="text-[10px] text-teal-600 font-bold hover:underline block mt-2">
+                      🔗 Raw Footage Link
+                    </a>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleOpenUpload(prod)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-2xs"
+                >
+                  Upload Edited Video
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {editingProd && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-orange-100">
+            <div className="bg-orange-50 px-5 py-4 border-b border-orange-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm">Upload Edited Video</h3>
+              <button type="button" onClick={() => setEditingProd(null)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-5 space-y-4 text-xs font-semibold text-slate-650">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-550 block uppercase tracking-wider">Edited Video Google Drive Link *</label>
+                <input required type="url" value={editedLink} onChange={(e) => setEditedLink(e.target.value)} placeholder="https://drive.google.com/..." className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none font-mono" />
+              </div>
+            </div>
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingProd(null)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Upload & Submit</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EmployeeVideoProductionScreen({ videoProductions = [], onUpdateVideoProduction, loggedInUser }) {
   const [editingProd, setEditingProd] = useState(null);
@@ -10617,7 +10746,13 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
           </div>
           <span className="hidden lg:block text-sm font-black text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>BULL KPI</span>
         </div>
-        {EMP_NAV.map(item => <NavItem key={item.id} item={item} />)}
+        {EMP_NAV.filter(item => {
+          if (item.id === "video_editing") {
+            const isVideoStaff = myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
+            return isVideoStaff;
+          }
+          return true;
+        }).map(item => <NavItem key={item.id} item={item} />)}
         {/* User at bottom */}
         <div className="mt-auto px-2 pt-4 border-t border-slate-100">
           <div className="flex items-center gap-2">
@@ -10683,7 +10818,13 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
 
         {/* ── Bottom nav (mobile only) ── */}
         <nav className="md:hidden bg-white border-t border-slate-100 px-2 py-2 flex items-center justify-around shrink-0 safe-area-inset-bottom">
-          {EMP_NAV.map(item => {
+          {EMP_NAV.filter(item => {
+            if (item.id === "video_editing") {
+              const isVideoStaff = myTeam?.name === "Video Production" || loggedInUser?.name === "Admin";
+              return isVideoStaff;
+            }
+            return true;
+          }).map(item => {
             const Icon = item.icon;
             const active = screen === item.id;
             return (

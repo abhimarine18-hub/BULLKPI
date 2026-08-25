@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS video_productions (
   district VARCHAR(255),
   state VARCHAR(255),
   raw_footage_drive_link TEXT,
+  editor_name VARCHAR(255),
+  edited_video_drive_link TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE video_productions ENABLE ROW LEVEL SECURITY;
