@@ -11131,6 +11131,38 @@ export default function App() {
   const [videoProductions, setVideoProductions] = useState([]);
 
   async function handleUpdateVideoProduction(prodId, updates) {
+    if (updates.status === 'ai_review') {
+      const item = videoProductions.find(p => p.id === prodId) || {};
+      const title = item.video_title || "";
+      const customer_info = item.customer_info || "";
+      const edited_video_drive_link = updates.edited_video_drive_link;
+
+      setVideoProductions(prev => prev.map(p => p.id === prodId ? { ...p, ...updates, status: 'ai_review' } : p));
+
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('ai-review-video', {
+          body: { edited_video_drive_link, title, customer_info }
+        });
+        
+        const now = new Date().toISOString();
+        const aiUpdates = {
+          status: 'field_approved_pending',
+          ai_suggestion: data?.suggestion || "No suggestions.",
+          ai_flagged_issues: data?.flagged_issues || "None.",
+          ai_reviewed_at: now
+        };
+
+        setVideoProductions(prev => prev.map(p => p.id === prodId ? { ...p, ...updates, ...aiUpdates } : p));
+        await supabase.from('video_productions').update({
+          ...updates,
+          ...aiUpdates
+        }).eq('id', prodId);
+        return;
+      } catch (e) {
+        console.error("AI video review invoke error:", e);
+      }
+    }
+
     setVideoProductions(prev => prev.map(p => p.id === prodId ? { ...p, ...updates } : p));
     try {
       const { error } = await supabase.from('video_productions').update(updates).eq('id', prodId);

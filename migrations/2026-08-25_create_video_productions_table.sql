@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS video_productions (
   raw_footage_drive_link TEXT,
   editor_name VARCHAR(255),
   edited_video_drive_link TEXT,
+  ai_suggestion TEXT,
+  ai_flagged_issues TEXT,
+  ai_reviewed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE video_productions ENABLE ROW LEVEL SECURITY;
