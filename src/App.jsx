@@ -8609,77 +8609,51 @@ function EmployeeReviewScreen({ kpis, setKpis, loggedInUser }) {
 }
 
 
-function DailyLedgerRow({ row, kpiId, onUpdateDailyActual }) {
-  const [isEditing, setIsEditing] = useState(!row.hasActual);
-  const [val, setVal] = useState(row.actual);
+function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
 
+  // We can calculate carryForward dynamically for today!
+  const todayTarget = kpi.dailyAlloc?.[todayStr] || 0;
+  const savedActual = kpi.dailyActual?.[todayStr];
+  const hasLoggedToday = savedActual !== undefined && savedActual !== null && savedActual !== "";
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(hasLoggedToday ? savedActual : "");
+
+  // Sync state if todayStr changes (e.g. date changes)
   useEffect(() => {
-    setIsEditing(!row.hasActual);
-    setVal(row.actual);
-  }, [row.actual, row.hasActual]);
+    setInputValue(hasLoggedToday ? savedActual : "");
+    setIsEditing(false);
+  }, [todayStr, hasLoggedToday, savedActual]);
+
+  // Calculate carry forward balance up to yesterday
+  const carryForward = useMemo(() => {
+    let cf = 0;
+    Object.keys(kpi.dailyAlloc || {}).forEach(dateKey => {
+      if (dateKey < todayStr && dateKey.substring(0, 7) === todayStr.substring(0, 7)) {
+        const tgt = kpi.dailyAlloc[dateKey] || 0;
+        const act = kpi.dailyActual?.[dateKey] || 0;
+        const shortfall = Math.max(0, tgt - act);
+        cf += shortfall;
+      }
+    });
+    return cf;
+  }, [kpi.dailyAlloc, kpi.dailyActual, todayStr]);
+
+  const effectiveTarget = todayTarget + carryForward;
+  const isCurrentMonth = todayStr.startsWith(prefix);
 
   const handleSubmit = () => {
-    if (val === "") return;
-    const num = parseFloat(val);
+    if (inputValue === "") return;
+    const num = parseFloat(inputValue);
     if (!isNaN(num)) {
-      onUpdateDailyActual(kpiId, row.dateStr, num);
+      onUpdateDailyActual(kpi.id, todayStr, num);
       setIsEditing(false);
     }
   };
 
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 px-3 hover:bg-slate-50 transition-colors">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-800">{row.dayNum}</span>
-          <span className="text-[10px] text-slate-400 font-semibold">{new Date(row.dateStr).toLocaleDateString("en-IN", { weekday: 'short' })}</span>
-        </div>
-        <div className="flex gap-3 text-[10px] mt-0.5 text-slate-500 font-medium">
-          <span>Tgt: <strong>{row.target}</strong></span>
-          <span className="text-orange-600">CF: <strong>+{row.carryForward}</strong></span>
-          <span className="text-teal-700">Eff Tgt: <strong>{row.effectiveTarget}</strong></span>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-        {!isEditing ? (
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">
-            <span className="text-xs font-black text-emerald-800">Logged: {row.actual}</span>
-            <button 
-              onClick={() => setIsEditing(true)}
-              className="text-[10px] font-bold text-slate-500 hover:text-slate-700 underline"
-            >
-              Edit
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <input
-              type="number"
-              placeholder="Actual"
-              value={val}
-              onChange={(e) => setVal(e.target.value)}
-              className="w-20 text-right text-xs font-bold text-slate-800 bg-white border border-slate-350 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 rounded-lg px-2 py-1 outline-none transition-all"
-            />
-            <button
-              onClick={handleSubmit}
-              disabled={val === ""}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                val === "" 
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
-                  : "bg-teal-600 hover:bg-teal-700 text-white"
-              }`}
-            >
-              Submit
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
   // Build compound trend graph data (Cumulative target and actual for the month)
   const chartData = useMemo(() => {
     const [year, month] = prefix.split('-');
@@ -8707,39 +8681,6 @@ function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
       });
     }
     return data;
-  }, [prefix, kpi.dailyAlloc, kpi.dailyActual]);
-
-  // Build daily rows ledger with dynamic carry forward accumulation
-  const dailyRows = useMemo(() => {
-    const [year, month] = prefix.split('-');
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const rows = [];
-    let currentCF = 0;
-    
-    for (let i = 1; i <= daysInMonth; i++) {
-      const dStr = `${prefix}-${String(i).padStart(2, '0')}`;
-      const tgt = kpi.dailyAlloc?.[dStr] || 0;
-      const act = kpi.dailyActual?.[dStr];
-      const hasAct = act !== undefined && act !== null && act !== "";
-      
-      const todayCF = currentCF;
-      const effectiveTarget = tgt + todayCF;
-      
-      const actVal = hasAct ? Number(act) : 0;
-      const shortfall = Math.max(0, effectiveTarget - actVal);
-      currentCF = shortfall;
-      
-      rows.push({
-        dateStr: dStr,
-        dayNum: String(i).padStart(2, '0'),
-        target: tgt,
-        carryForward: todayCF,
-        effectiveTarget,
-        actual: hasAct ? act : "",
-        hasActual: hasAct
-      });
-    }
-    return rows;
   }, [prefix, kpi.dailyAlloc, kpi.dailyActual]);
 
   return (
@@ -8771,124 +8712,94 @@ function DailyLogCard({ kpi, prefix, onUpdateDailyActual }) {
         </div>
       </div>
 
-      {/* Daily Tasks Ledger */}
-      <div>
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Daily Tasks</p>
-        <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-150 max-h-64 overflow-y-auto">
-          {dailyRows.map(row => (
-            <DailyLedgerRow 
-              key={row.dateStr} 
-              row={row} 
-              kpiId={kpi.id} 
-              onUpdateDailyActual={onUpdateDailyActual} 
-            />
-          ))}
+      {/* Target & Carry Forward Summary */}
+      {isCurrentMonth && (
+        <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 border border-slate-150 rounded-2xl p-2.5">
+          <div>
+            <span className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Today Target</span>
+            <span className="text-xs font-bold text-slate-800">{todayTarget}</span>
+          </div>
+          <div>
+            <span className="block text-[9px] text-orange-400 font-bold uppercase mb-0.5">Carry Forward</span>
+            <span className="text-xs font-bold text-orange-600">+{carryForward}</span>
+          </div>
+          <div>
+            <span className="block text-[9px] text-teal-600 font-bold uppercase mb-0.5">Effective Target</span>
+            <span className="text-xs font-bold text-teal-700">{effectiveTarget}</span>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
+      )}
 
-function DailyLogScreen({ kpis, currentEmployee, onUpdateDailyActual }) {
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const d = new Date();
-    const m = d.toLocaleString('en-US', { month: 'short' });
-    const yr = ["Jan", "Feb", "Mar"].includes(m) ? "2027" : "2026";
-    return `${m} ${yr}`;
-  });
-
-  const handlePrevMonth = () => {
-    const idx = MONTHS_LIST.indexOf(selectedMonth);
-    if (idx > 0) setSelectedMonth(MONTHS_LIST[idx - 1]);
-  };
-
-  const handleNextMonth = () => {
-    const idx = MONTHS_LIST.indexOf(selectedMonth);
-    if (idx < MONTHS_LIST.length - 1) setSelectedMonth(MONTHS_LIST[idx + 1]);
-  };
-
-  const monthInfo = FY_MONTHS.find(m => m.name === selectedMonth);
-  const yearMonthPrefix = monthInfo ? `${monthInfo.year}-${String(monthInfo.monthIdx + 1).padStart(2, '0')}` : "2026-08";
-
-  // Filter by targets and relations
-  const dailyKpis = (kpis || []).filter(k => k.targetType !== "monthly");
-  const doKpis = dailyKpis.filter(k => k.owner === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  const driveKpis = dailyKpis.filter(k => k.driveBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  const monitorKpis = dailyKpis.filter(k => k.monitorBy === currentEmployee).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-
-  const hasAnyKpi = doKpis.length > 0 || driveKpis.length > 0 || monitorKpis.length > 0;
-
-  return (
-    <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-        <h2 className="text-xl font-bold text-slate-800">Daily Log</h2>
-        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm shrink-0 self-start sm:self-auto">
-          <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="text-xs font-black text-teal-700 w-24 text-center">
-            {selectedMonth}
-          </span>
-          <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {!hasAnyKpi ? (
-        <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-200">
-          <p className="text-sm text-slate-500 font-semibold">No daily KPIs assigned to you.</p>
+      {/* Enter Today's Achievement Button/Form */}
+      {isCurrentMonth ? (
+        <div className="pt-2">
+          {!isEditing ? (
+            <div className="relative w-full">
+              {hasLoggedToday ? (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-3 rounded-2xl shadow-xs">
+                  <span className="text-xs font-bold text-emerald-800">
+                    Logged today: <strong>{savedActual} {kpi.unit}</strong>
+                  </span>
+                  <button 
+                    onClick={() => setIsEditing(true)}
+                    className="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors border border-slate-200"
+                  >
+                    Edit
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-2xl transition-all shadow-xs text-xs text-center block"
+                  >
+                    Enter Today's Achievement
+                  </button>
+                  <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[8px] font-extrabold px-2 py-0.5 rounded-full border border-white shadow-xs leading-none uppercase tracking-wider">
+                    Pending today's update
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3 shadow-inner">
+              <div>
+                <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Enter Today's Achievement</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    placeholder="Enter value"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="flex-1 text-xs font-bold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-3 py-2 outline-none transition-all shadow-xs"
+                  />
+                  <span className="text-[10px] font-bold text-slate-400">{kpi.unit}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSubmit}
+                  disabled={inputValue === ""}
+                  className={`flex-1 font-bold py-2 rounded-xl text-xs transition-all ${
+                    inputValue === "" 
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
+                      : "bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                  }`}
+                >
+                  Submit
+                </button>
+                <button
+                  onClick={() => { setIsEditing(false); setInputValue(hasLoggedToday ? savedActual : ""); }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Column 1: DO */}
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">DO (OWNER)</span>
-              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">{doKpis.length}</span>
-            </div>
-            {doKpis.map(kpi => (
-              <DailyLogCard 
-                key={kpi.id} 
-                kpi={kpi} 
-                prefix={yearMonthPrefix} 
-                onUpdateDailyActual={onUpdateDailyActual} 
-              />
-            ))}
-          </div>
-
-          {/* Column 2: DRIVE */}
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">DRIVE</span>
-              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">{driveKpis.length}</span>
-            </div>
-            {driveKpis.map(kpi => (
-              <DailyLogCard 
-                key={kpi.id} 
-                kpi={kpi} 
-                prefix={yearMonthPrefix} 
-                onUpdateDailyActual={onUpdateDailyActual} 
-              />
-            ))}
-          </div>
-
-          {/* Column 3: MONITOR */}
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">MONITOR</span>
-              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">{monitorKpis.length}</span>
-            </div>
-            {monitorKpis.map(kpi => (
-              <DailyLogCard 
-                key={kpi.id} 
-                kpi={kpi} 
-                prefix={yearMonthPrefix} 
-                onUpdateDailyActual={onUpdateDailyActual} 
-              />
-            ))}
-          </div>
-        </div>
+        <p className="text-center text-[10px] text-slate-400 italic pt-2">Daily logs are only active for the current month.</p>
       )}
     </div>
   );
