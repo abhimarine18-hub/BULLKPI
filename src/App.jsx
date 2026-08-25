@@ -145,15 +145,9 @@ function DailyAllocCalendarModal({ kpi, month, onClose, onSave }) {
 
 function DailyDistributionTooltip({ kpi, month, onSave }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const mDate = new Date(month + " 1");
-  const yr = mDate.getFullYear();
-  const mo = String(mDate.getMonth() + 1).padStart(2, '0');
-  const prefix = `${yr}-${mo}`;
-  
-  const allocs = Object.entries(kpi.dailyAlloc || {}).filter(([k, v]) => k.startsWith(prefix) && v > 0);
   
   return (
-    <div className="relative group/tooltip flex items-center h-full">
+    <div className="flex items-center h-full">
       <Info 
         onClick={(e) => {
           e.stopPropagation();
@@ -161,20 +155,6 @@ function DailyDistributionTooltip({ kpi, month, onSave }) {
         }}
         className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700 cursor-pointer drop-shadow-sm z-30" 
       />
-      
-      {allocs.length > 0 && (
-        <div className="absolute bottom-full right-0 mb-1 w-32 max-h-48 overflow-y-auto bg-slate-800 text-white text-[10px] rounded p-2 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-[100] shadow-xl custom-scrollbar border border-slate-700 pointer-events-none">
-          <div className="font-bold border-b border-slate-600 pb-1 mb-1 text-center sticky top-0 bg-slate-800 z-10">Daily Target</div>
-          <div className="space-y-0.5">
-            {allocs.map(([d, v]) => (
-              <div key={d} className="flex justify-between items-center px-1">
-                <span className="text-slate-300">{d.slice(-2)}:</span>
-                <span className="font-mono font-medium">{new Intl.NumberFormat('en-IN').format(v)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {isModalOpen && createPortal(
         <DailyAllocCalendarModal 
