@@ -375,21 +375,21 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
         <div className="flex items-center gap-2 mb-4">
           <StatusBadge status={status} />
           <span className="text-xs text-slate-400">
-            {kpi.team} â€¢ {kpi.owner}
+            {kpi.team} • {kpi.owner}
           </span>
         </div>
           
           {/* Roles Status Strip */}
           {(() => {
             const latestLog = kpi.history && kpi.history.length > 0 ? kpi.history[kpi.history.length - 1] : null;
-            let doerStatus = "â€”", checkerStatus = "â€”", approverStatus = "â€”";
+            let doerStatus = "—", checkerStatus = "—", approverStatus = "—";
             if (latestLog) {
-              if (latestLog.status === "pending_checker") { doerStatus = "âœ…"; checkerStatus = "â³"; approverStatus = "â€”"; }
-              else if (latestLog.status === "pending_approver") { doerStatus = "âœ…"; checkerStatus = "âœ…"; approverStatus = "â³"; }
-              else if (latestLog.status === "approved") { doerStatus = "âœ…"; checkerStatus = "âœ…"; approverStatus = "âœ…"; }
-              else if (latestLog.status === "rejected") { doerStatus = "â³"; checkerStatus = "â€”"; approverStatus = "â€”"; }
+              if (latestLog.status === "pending_checker") { doerStatus = "✅"; checkerStatus = "⏳"; approverStatus = "—"; }
+              else if (latestLog.status === "pending_approver") { doerStatus = "✅"; checkerStatus = "✅"; approverStatus = "⏳"; }
+              else if (latestLog.status === "approved") { doerStatus = "✅"; checkerStatus = "✅"; approverStatus = "✅"; }
+              else if (latestLog.status === "rejected") { doerStatus = "⏳"; checkerStatus = "—"; approverStatus = "—"; }
             } else {
-              doerStatus = "â³"; checkerStatus = "â€”"; approverStatus = "â€”";
+              doerStatus = "⏳"; checkerStatus = "—"; approverStatus = "—";
             }
             return (
               <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 text-xs">
@@ -547,7 +547,7 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
                 </span>
                 {isParentPending && (
                   <span className="text-[11px] font-bold text-rose-600 animate-pulse flex items-center gap-1">
-                     âš ï¸ Raise for Followup!
+                     ⚠️ Raise for Followup!
                   </span>
                 )}
               </div>
@@ -646,7 +646,7 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
         {kpi.isInitiatedType && (
           <div className="mb-4 p-3.5 rounded-xl border border-orange-100 bg-orange-50/40 text-xs font-semibold text-slate-700">
             <p className="font-bold flex items-center gap-1.5 text-slate-800">
-              âš¡ Manual Release Status
+              ⚡ Manual Release Status
             </p>
             {kpi.initiatedAt ? (
               <p className="text-[10px] text-teal-700 mt-1 font-semibold">
@@ -655,7 +655,7 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
             ) : (
               <div className="mt-2.5 flex flex-col gap-2">
                 <span className="text-[10px] text-amber-600 font-bold block">
-                  âš ï¸ Target schedule is currently ON HOLD. Releases require manager initiation.
+                  ⚠️ Target schedule is currently ON HOLD. Releases require manager initiation.
                 </span>
                 {loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.designation?.toLowerCase().includes('lead') || loggedInUser.designation?.toLowerCase().includes('manager')) && (
                   <button
@@ -666,7 +666,7 @@ function KpiDetail({ kpi, allKpis, setKpis, onClose, onLog, onInitiateKpi, logge
                     }}
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors shadow-sm"
                   >
-                    ðŸš€ Initiate KPI target schedule now
+                    🚀 Initiate KPI target schedule now
                   </button>
                 )}
               </div>
@@ -737,7 +737,7 @@ function ExcelColumnMapModal({ modal, onClose, onConfirm }) {
   const [colMap, setColMap] = useState(initMap);
   const setCol = (key) => (e) => setColMap(prev => ({ ...prev, [key]: e.target.value }));
 
-  const optionList = [<option key="" value="">â€” Not mapped â€”</option>, ...allHeaders.map((h, i) => (
+  const optionList = [<option key="" value="">— Not mapped —</option>, ...allHeaders.map((h, i) => (
     h.trim() !== "" ? <option key={i} value={String(i)}>{h}</option> : null
   ))];
 
@@ -803,7 +803,7 @@ function ExcelColumnMapModal({ modal, onClose, onConfirm }) {
               }}
               className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-500 hover:bg-teal-600 text-white transition-colors shadow-sm"
             >
-              Import KPIs â†’
+              Import KPIs →
             </button>
           </div>
         </div>
@@ -1373,7 +1373,7 @@ const distributeMonthToSubperiods = (monthName, monthVal, currentDaily, currentW
 
   // Evenly space the remainder days across the month:
   // Pick indices at regular intervals so no day is more than 1 apart from others.
-  // e.g. remDay=10 out of 26 working days â†’ every ~2.6th day gets +1
+  // e.g. remDay=10 out of 26 working days → every ~2.6th day gets +1
   const extraSet = new Set();
   if (remDay > 0) {
     const step = totalWorkingDays / remDay;
@@ -1513,7 +1513,7 @@ const KpiCheckboxList = ({ kpis, selectedIds, onChange }) => {
             />
             <div className="flex-1 min-w-0">
               <div className="text-[11px] font-bold text-slate-700 truncate leading-tight">{k.name}</div>
-              <div className="text-[9px] text-slate-400 truncate mt-0.5">{k.team} â€¢ {k.owner}</div>
+              <div className="text-[9px] text-slate-400 truncate mt-0.5">{k.team} • {k.owner}</div>
             </div>
           </label>
         ))}
@@ -1633,7 +1633,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
     const effHolidays = overrides.customHolidays !== undefined ? overrides.customHolidays : customHolidays;
     const effExclude = overrides.excludeSundays !== undefined ? overrides.excludeSundays : excludeSundays;
 
-    // Only distribute the selected month â€” leave other months intact
+    // Only distribute the selected month — leave other months intact
     const val = monthlyAlloc[selectedMonth] || 0;
     let nextW = { ...weeklyAlloc };
     let nextD = { ...dailyAlloc };
@@ -2344,16 +2344,16 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                 <label className="text-[10px] font-bold text-slate-500 flex items-center gap-1 uppercase tracking-wider">
                   <GitBranch className="h-3 w-3" /> KPI Link
                 </label>
-                {/* Toggle: PARENT â†” CHILD */}
+                {/* Toggle: PARENT ↔ CHILD */}
                 <div className="flex rounded-lg overflow-hidden border border-slate-200 text-[10px] font-bold">
                   <button type="button"
                     onClick={() => setLinkMode('parent')}
                     className={`px-2.5 py-1 transition-colors ${linkMode === 'parent' ? 'bg-teal-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-                  >â†“ PARENT</button>
+                  >↓ PARENT</button>
                   <button type="button"
                     onClick={() => setLinkMode('child')}
                     className={`px-2.5 py-1 transition-colors ${linkMode === 'child' ? 'bg-amber-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-                  >â†‘ CHILD</button>
+                  >↑ CHILD</button>
                 </div>
               </div>
 
@@ -2380,7 +2380,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                     <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-teal-700 font-semibold bg-teal-50 rounded-lg px-2 py-1 border border-teal-100">
                       <GitBranch className="h-3 w-3" />
                       Child: {allKpis.find(k => String(k.id) === String(reportConfig.followUpKpiId))?.name || 'Unknown KPI'}
-                      <button type="button" onClick={() => setReportConfig(prev => ({ ...prev, followUpKpiId: '' }))} className="ml-auto text-red-400 hover:text-red-600 font-bold">âœ•</button>
+                      <button type="button" onClick={() => setReportConfig(prev => ({ ...prev, followUpKpiId: '' }))} className="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
                     </div>
                   )}
                 </div>
@@ -2415,7 +2415,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                           if (!String(kpi.id).startsWith('temp-')) {
                             onSetParent && onSetParent(kpi.id, '', currentParent.id);
                           }
-                        }} className="ml-auto text-red-400 hover:text-red-600 font-bold">âœ•</button>
+                        }} className="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
                       </div>
                     )}
                   </div>
@@ -2720,7 +2720,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                         <p className="text-xs text-slate-500">Allocated Daily Sum: <span className="font-bold text-slate-700">{formatIndianNumber(monthDailySum) || "0"}</span> {unit}</p>
                         {!isTimeKpi && monthMismatch !== 0 && (
                           <span className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-md animate-pulse">
-                            âš  Mismatch: {monthMismatch > 0 ? `+${formatIndianNumber(monthMismatch) || "0"}` : (formatIndianNumber(monthMismatch) || "0")} {unit}
+                            ⚠️ Mismatch: {monthMismatch > 0 ? `+${formatIndianNumber(monthMismatch) || "0"}` : (formatIndianNumber(monthMismatch) || "0")} {unit}
                           </span>
                         )}
                       </div>
@@ -2833,7 +2833,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                 </div>
                                 <div className="flex flex-col gap-[2px] mt-0.5 w-full px-0.5">
 
-                                  {/* Line 1: T (Target) â€” always shown */}
+                                  {/* Line 1: T (Target) — always shown */}
                                   <div className="flex items-center justify-between w-full leading-none">
                                     <span className="text-[9px] font-bold text-slate-400">T:</span>
                                     {isTimeKpi ? (
@@ -2859,7 +2859,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                     )}
                                   </div>
 
-                                  {/* Line 2: A (Actual) â€” always shown */}
+                                  {/* Line 2: A (Actual) — always shown */}
                                   <div className="flex items-center justify-between w-full leading-none">
                                     <span className="text-[9px] font-bold text-slate-400">A:</span>
                                     {isTimeKpi ? (
@@ -2873,7 +2873,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                     )}
                                   </div>
 
-                                  {/* Line 3: PT (Parent Target) â€” only if parentKpi exists */}
+                                  {/* Line 3: PT (Parent Target) — only if parentKpi exists */}
                                   {parentKpi && (
                                     <div className="flex items-center justify-between w-full leading-none">
                                       <span className="text-[9px] font-bold text-amber-600">PT:</span>
@@ -2883,7 +2883,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                     </div>
                                   )}
 
-                                  {/* Line 4: PS (Parent Status) â€” only if parentKpi exists */}
+                                  {/* Line 4: PS (Parent Status) — only if parentKpi exists */}
                                   {parentKpi && (
                                     <div className="flex items-center justify-between w-full leading-none">
                                       <span className="text-[9px] font-bold text-slate-400">PS:</span>
@@ -2892,7 +2892,7 @@ function EditKpiModal({ kpi, allKpis, teams, onClose, onSubmit, onAddVertical, o
                                             ? <span className="text-[9px] font-bold text-emerald-600">Done</span>
                                             : <span className="text-[9px] font-bold text-rose-500 animate-pulse">Pend</span>
                                           )
-                                        : <span className="text-[9px] text-slate-300">â€”</span>
+                                        : <span className="text-[9px] text-slate-300">—</span>
                                       }
                                     </div>
                                   )}
@@ -3118,7 +3118,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                                             }}
                                             className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4 shrink-0 cursor-pointer" 
                                           />
-                                          <span className={`font-semibold text-slate-700 truncate ${isSubCompleted ? "line-through text-slate-400" : ""}`}>â†³ {sub.name}</span>
+                                          <span className={`font-semibold text-slate-700 truncate ${isSubCompleted ? "line-through text-slate-400" : ""}`}>↳ {sub.name}</span>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0 text-[10px]">
                                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${isSubCompleted ? "bg-teal-50 text-teal-600" : isSubCurrent ? "bg-orange-50 text-orange-650" : "bg-slate-100 text-slate-500"}`}>
@@ -3147,7 +3147,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                                                     }}
                                                     className="rounded text-teal-500 focus:ring-teal-500 h-3.5 w-3.5 shrink-0 cursor-pointer" 
                                                   />
-                                                  <span className={`truncate ${isSubSubCompleted ? "line-through text-slate-400" : ""}`}>â†³ {ss.name}</span>
+                                                  <span className={`truncate ${isSubSubCompleted ? "line-through text-slate-400" : ""}`}>↳ {ss.name}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5 text-[9px] shrink-0">
                                                   <span className={`px-1 py-0.2 rounded text-[8px] uppercase tracking-wider font-bold ${isSubSubCompleted ? "bg-teal-50 text-teal-500" : isSubSubCurrent ? "bg-orange-50 text-orange-600" : "bg-slate-100 text-slate-400"}`}>
@@ -3248,7 +3248,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
               {filteredPastPending.length > 0 && (
                 <div className="bg-rose-50/20 border border-rose-100/50 rounded-3xl p-5 space-y-3 mb-4 shadow-sm">
                   <h3 className="text-sm font-bold text-rose-800 flex items-center gap-1.5 uppercase tracking-wider">
-                    âš ï¸ Past Pending Work (Needs Attention)
+                    ⚠️ Past Pending Work (Needs Attention)
                   </h3>
                   <div className="space-y-3">
                     {filteredPastPending.map(slot => {
@@ -3277,7 +3277,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                       
                       {isChildHandoff && parentDelayed && (
                         <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl text-xs font-semibold">
-                          âš ï¸ Parent Delivery Delayed: {parentDelayReason}
+                          ⚠️ Parent Delivery Delayed: {parentDelayReason}
                         </div>
                       )}
 
@@ -3434,7 +3434,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                   
                   {isChildHandoff && parentDelayed && (
                     <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl text-xs font-semibold animate-pulse">
-                      âš ï¸ Parent Delivery Delayed: {parentDelayReason}
+                      ⚠️ Parent Delivery Delayed: {parentDelayReason}
                     </div>
                   )}
 
@@ -3529,7 +3529,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{slot.kpiName}</span>
                     {slot.type === 'pending' && <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex items-center gap-1"><GitBranch className="h-3 w-3" /> Handoff</span>}
-                    {!isCompleted && slot.plannedProject && <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded flex items-center gap-1">ðŸŒ¿ Planned</span>}
+                    {!isCompleted && slot.plannedProject && <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded flex items-center gap-1">🌿 Planned</span>}
                   </div>
                   <h3 className={`text-base font-bold truncate ${isCompleted ? 'text-teal-800' : 'text-slate-800'}`}>
                     {isCompleted ? slot.completedProject.title : slot.type === 'pending' ? slot.pendingProject.title : (slot.plannedProject ? slot.plannedProject.title : `Pending Action ${slot.slotIndex + 1}`)}
@@ -3547,7 +3547,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                         )}
                         {meta.isDelayed && (
                           <div className="text-xs text-rose-600 mt-1 font-semibold">
-                            âš ï¸ Delayed: {meta.delayReason}
+                            ⚠️ Delayed: {meta.delayReason}
                           </div>
                         )}
                       </div>
@@ -3567,7 +3567,7 @@ function ActionScreen({ kpis, projects, user, onCompleteAction, teams, clientPro
                     Start Action
                   </button>
                 )}
-                {isCompleted && <div className="text-teal-600 font-bold text-sm bg-teal-100/50 px-3 py-1.5 rounded-xl shrink-0">âœ“ Completed</div>}
+                {isCompleted && <div className="text-teal-600 font-bold text-sm bg-teal-100/50 px-3 py-1.5 rounded-xl shrink-0">✓ Completed</div>}
               </div>
             );
           })
@@ -3873,7 +3873,7 @@ function AddClientProjectModal({ teams, project, onClose, onSubmit }) {
                           onClick={() => removeSubStage(stage.id, sub.id)}
                           className="absolute top-2 right-2 text-rose-500 hover:text-rose-700 text-[9px]"
                         >
-                          âœ•
+                          ✕
                         </button>
                         
                         <div className="grid grid-cols-12 gap-2 items-center">
@@ -3948,7 +3948,7 @@ function AddClientProjectModal({ teams, project, onClose, onSubmit }) {
                                 onClick={() => removeSubSubStage(stage.id, sub.id, ss.id)}
                                 className="absolute right-1.5 text-rose-500 hover:text-rose-700 font-bold text-[9px]"
                               >
-                                âœ•
+                                ✕
                               </button>
                             </div>
                           ))}
@@ -4112,10 +4112,10 @@ function ClientProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
                   : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
             >
-              {tab === "overview" && "ðŸ“‹ Project Details"}
-              {tab === "stages" && "ðŸ“ˆ Objective Stages"}
-              {tab === "daily_logs" && "ðŸ“° Daily Log"}
-              {tab === "ai_chamber" && "ðŸ¤– AI Debate chamber"}
+              {tab === "overview" && "📋 Project Details"}
+              {tab === "stages" && "📈 Objective Stages"}
+              {tab === "daily_logs" && "📰 Daily Log"}
+              {tab === "ai_chamber" && "🤖 AI Debate chamber"}
             </button>
           ))}
         </div>
@@ -4188,7 +4188,7 @@ function ClientProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
                 <div className="divide-y divide-slate-100">
                   {(project.attachments || []).map((attach, idx) => (
                     <div key={idx} className="flex items-center justify-between py-2 text-xs">
-                      <span className="font-semibold text-slate-700">ðŸ“‚ {attach.name}</span>
+                      <span className="font-semibold text-slate-700">📂 {attach.name}</span>
                       <span className="text-[10px] text-slate-400">{attach.date}</span>
                     </div>
                   ))}
@@ -4258,7 +4258,7 @@ function ClientProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
                                 : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                           }`}
                         >
-                          {isCompleted ? "Completed âœ“" : isCurrent ? "Active Stage" : "Set Active"}
+                          {isCompleted ? "Completed ✓" : isCurrent ? "Active Stage" : "Set Active"}
                         </button>
                       </div>
 
@@ -4280,7 +4280,7 @@ function ClientProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
                                 <div className="pl-4 border-l border-dashed border-slate-250 space-y-1.5 pt-1">
                                   {sub.subSubStages.map((ss, ssIdx) => (
                                     <div key={ss.id || ssIdx} className="flex justify-between items-center text-[10px] bg-slate-50/50 px-2.5 py-1.5 rounded border border-slate-100">
-                                      <span className="font-semibold text-slate-600">â†³ {ss.name}</span>
+                                      <span className="font-semibold text-slate-600">↳ {ss.name}</span>
                                       <div className="flex gap-2">
                                         {ss.targetDate && <span className="text-slate-400">Target: {ss.targetDate}</span>}
                                         {ss.responsible && <span className="text-teal-600 font-bold">Resp: {ss.responsible}</span>}
@@ -4349,7 +4349,7 @@ function ClientProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-teal-500/5 to-purple-500/5 border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>ðŸ¤– LLM Collaboration panel</h3>
+                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>🤖 LLM Collaboration panel</h3>
                   <p className="text-xs text-slate-500 mt-1">Prompt Claude, Gemini, and OpenAI to debate and synthesize the ideal outcome for your active milestone bottleneck.</p>
                 </div>
 
@@ -4562,10 +4562,10 @@ function ActiveProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
                   : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
             >
-              {tab === "overview" && "ðŸ“‹ Project Details"}
-              {tab === "stages" && "ðŸ“ˆ Objective Stages"}
-              {tab === "daily_logs" && "ðŸ“° Daily Log"}
-              {tab === "ai_chamber" && "ðŸ¤– AI Debate chamber"}
+              {tab === "overview" && "📋 Project Details"}
+              {tab === "stages" && "📈 Objective Stages"}
+              {tab === "daily_logs" && "📰 Daily Log"}
+              {tab === "ai_chamber" && "🤖 AI Debate chamber"}
             </button>
           ))}
         </div>
@@ -4638,7 +4638,7 @@ function ActiveProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
                 <div className="divide-y divide-slate-100">
                   {(project.attachments || []).map((attach, idx) => (
                     <div key={idx} className="flex items-center justify-between py-2 text-xs">
-                      <span className="font-semibold text-slate-700">ðŸ“‚ {attach.name}</span>
+                      <span className="font-semibold text-slate-700">📂 {attach.name}</span>
                       <span className="text-[10px] text-slate-400">{attach.date}</span>
                     </div>
                   ))}
@@ -4707,7 +4707,7 @@ function ActiveProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
                               : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                         }`}
                       >
-                        {isCompleted ? "Completed âœ“" : isCurrent ? "Active Stage" : "Set Active"}
+                        {isCompleted ? "Completed ✓" : isCurrent ? "Active Stage" : "Set Active"}
                       </button>
                     </div>
                   );
@@ -4765,7 +4765,7 @@ function ActiveProjectWorkspaceModal({ project, kpis, teams, onClose, onUpdatePr
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-teal-500/5 to-purple-500/5 border border-slate-150 rounded-2xl p-5 shadow-sm space-y-4">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>ðŸ¤– LLM Collaboration panel</h3>
+                  <h3 className="text-sm font-bold text-slate-900" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>🤖 LLM Collaboration panel</h3>
                   <p className="text-xs text-slate-500 mt-1">Prompt Claude, Gemini, and OpenAI to debate and synthesize the ideal outcome for your active milestone bottleneck.</p>
                 </div>
 
@@ -5054,14 +5054,14 @@ function AdminIndividualTasksView({ individualTasks, onAddIndividualTask, onUpda
                           <span className={`text-xs font-semibold text-slate-800 ${task.status === 'done' ? 'line-through text-slate-400' : ''}`}>{task.title}</span>
                           {task.description && <span className="text-[10px] text-slate-400 mt-0.5">{task.description}</span>}
                           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            {linkedKpi && <span className="inline-flex items-center gap-1 text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded w-max">ðŸ”— {linkedKpi.name}</span>}
-                            {task.is_recurring && <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded w-max">ðŸ” Recurring ({task.recurrence_type})</span>}
+                            {linkedKpi && <span className="inline-flex items-center gap-1 text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded w-max">🔗 {linkedKpi.name}</span>}
+                            {task.is_recurring && <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded w-max">🔄 Recurring ({task.recurrence_type})</span>}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3.5 text-xs text-slate-650 font-medium">{task.assignee} <span className="text-[9px] text-slate-400 block">{task.team}</span></td>
                       <td className="px-4 py-3.5 text-xs font-medium text-slate-600 font-mono">
-                        {task.due_date ? (<span className={isOverdue ? "text-rose-600 font-bold" : ""}>{new Date(task.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}{isOverdue && " (Overdue)"}</span>) : "â€”"}
+                        {task.due_date ? (<span className={isOverdue ? "text-rose-600 font-bold" : ""}>{new Date(task.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}{isOverdue && " (Overdue)"}</span>) : "—"}
                       </td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${task.priority === 'high' ? 'bg-rose-50 text-rose-600 border-rose-100' : task.priority === 'low' ? 'bg-slate-50 text-slate-500 border-slate-150' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
@@ -5234,7 +5234,7 @@ function EmployeeTasksScreen({ individualTasks, onUpdateIndividualTaskStatus, cu
       <div className="space-y-2.5">
         {sortedTasks.length === 0 ? (
           <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center shadow-xs">
-            <span className="text-3xl">ðŸŽ‰</span>
+            <span className="text-3xl">🎉</span>
             <p className="text-xs font-semibold text-slate-500 mt-2">All caught up! No tasks assigned to you.</p>
           </div>
         ) : (
@@ -5251,7 +5251,7 @@ function EmployeeTasksScreen({ individualTasks, onUpdateIndividualTaskStatus, cu
                   <div className="mt-2.5 flex items-center gap-2 flex-wrap">
                     {task.due_date && <span className={`text-[9px] font-bold font-mono px-2 py-0.5 rounded-full ${isCompleted ? 'bg-slate-100 text-slate-450' : isOverdue ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-slate-100 text-slate-600'}`}>Due: {new Date(task.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}{isOverdue && " (Overdue)"}</span>}
                     <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${task.priority === 'high' ? 'bg-rose-50 text-rose-600 border border-rose-100' : task.priority === 'low' ? 'bg-slate-50 text-slate-500 border-slate-150' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>{task.priority || 'normal'}</span>
-                    {linkedKpi && <span className="text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full truncate max-w-[200px]" title={linkedKpi.name}>ðŸ”— {linkedKpi.name}</span>}
+                    {linkedKpi && <span className="text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-full truncate max-w-[200px]" title={linkedKpi.name}>🔗 {linkedKpi.name}</span>}
                   </div>
                 </div>
               </div>
@@ -6171,11 +6171,11 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                 value={activeMemberFilter ? activeMemberFilter.name : "admin"}
                 className="appearance-none bg-orange-50 border border-orange-100 hover:border-orange-200 rounded-full pl-4 pr-9 py-1.5 text-xs text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-teal-300 cursor-pointer"
               >
-                <option value="admin">ðŸ’» Admin (Desktop View)</option>
+                <option value="admin">💻 Admin (Desktop View)</option>
                 {teams.map(t => 
                   t.members.map(m => (
                     <option key={m.id || m.name} value={m.name}>
-                      ðŸ‘¤ {m.name} ({t.name})
+                      👤 {m.name} ({t.name})
                     </option>
                   ))
                 )}
@@ -7086,7 +7086,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
               {campaignsData.map((c) => (
                 <div key={c.id} className="bg-white border border-orange-100 rounded-2xl p-5">
                   <h3 className="font-semibold text-slate-900 mb-1" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{c.name}</h3>
-                  <p className="text-xs text-slate-400 mb-3">{c.start} â€“ {c.end} · {c.owner}</p>
+                  <p className="text-xs text-slate-400 mb-3">{c.start} – {c.end} · {c.owner}</p>
                   <div className="space-y-2">
                     {c.linkedKpiIds.map((id) => {
                       const kpi = kpis.find((k) => k.id === id);
@@ -7186,7 +7186,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                             ? "text-teal-650" 
                                             : "text-slate-650"
                                       }`}>
-                                        {isComp ? "âœ“" : isActive ? "â—" : "â—‹"} {stg.name}
+                                        {isComp ? "✓" : isActive ? "●" : "○"} {stg.name}
                                       </span>
                                       
                                       <span className={`font-bold px-1 py-0.2 rounded uppercase tracking-wider text-[8px] shrink-0 ${
@@ -7214,7 +7214,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                     <div className="pl-2 border-l border-slate-200 space-y-0.5 mt-1 text-[9px] text-slate-500">
                                       {stg.subStages.map((sub, subIdx) => (
                                         <div key={sub.id || subIdx} className="flex justify-between items-center">
-                                          <span className="truncate max-w-[130px]">â†³ {sub.name}</span>
+                                          <span className="truncate max-w-[130px]">↳ {sub.name}</span>
                                           {sub.responsible && <span className="text-[7.5px] bg-slate-100 text-slate-600 px-1 rounded truncate max-w-[50px]">{sub.responsible}</span>}
                                         </div>
                                       ))}
@@ -7406,7 +7406,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                           : "bg-white border-orange-200 text-slate-400 hover:border-orange-300"
                                     }`}
                                   >
-                                    {isCompleted ? "âœ“" : idx + 1}
+                                    {isCompleted ? "✓" : idx + 1}
                                   </button>
                                   <div className="text-left sm:text-center">
                                     <p className={`text-xs font-semibold ${isCurrent ? "text-orange-600" : isCompleted ? "text-teal-700" : "text-slate-500"}`}>{stage.name}</p>
@@ -7465,7 +7465,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                         : "border-transparent text-slate-400 hover:text-slate-600"
                     }`}
                   >
-                    ðŸ“Š KPI Grid Spreadsheet
+                    📊 KPI Grid Spreadsheet
                   </button>
                   <button
                     onClick={() => setSettingsTab("teams")}
@@ -7475,7 +7475,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                         : "border-transparent text-slate-400 hover:text-slate-600"
                     }`}
                   >
-                    ðŸ‘¥ Teams & Players
+                    👥 Teams & Players
                   </button>
                   <button
                     onClick={() => setSettingsTab("utilities")}
@@ -7485,7 +7485,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                         : "border-transparent text-slate-400 hover:text-slate-600"
                     }`}
                   >
-                    âš™ï¸ Org & Utilities
+                    ⚙️ Org & Utilities
                   </button>
                   <button
                     onClick={() => setSettingsTab("credentials")}
@@ -7495,7 +7495,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                         : "border-transparent text-slate-400 hover:text-slate-600"
                     }`}
                   >
-                    ðŸ” User Credentials
+                    🔐 User Credentials
                   </button>
                 </div>
 
@@ -7606,7 +7606,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                           <div key={t.id} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/20 flex flex-col justify-between">
                             <div>
                               <div className="flex justify-between items-start border-b border-slate-150 pb-2 mb-2">
-                                <span className="font-bold text-slate-800 text-sm">ðŸ“‚ {t.name}</span>
+                                <span className="font-bold text-slate-800 text-sm">📂 {t.name}</span>
                                 <button
                                   onClick={() => onDeleteTeam(t.id)}
                                   className="text-[10px] text-rose-500 hover:text-rose-600 font-bold hover:underline"
@@ -7678,7 +7678,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                 >
                                   {/* Indent line indicator */}
                                   {level > 0 && (
-                                    <span className="text-slate-300 font-mono text-xs select-none">â””â”€</span>
+                                    <span className="text-slate-300 font-mono text-xs select-none">└─</span>
                                   )}
                                   
                                   {/* Team Lead Radio Button */}
@@ -7691,7 +7691,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                       className="h-3.5 w-3.5 text-teal-600 focus:ring-teal-400 border-slate-300 cursor-pointer"
                                     />
                                     {t.lead === member.name && (
-                                      <span className="text-[11px]" title="Team Lead">ðŸ‘‘</span>
+                                      <span className="text-[11px]" title="Team Lead">👑</span>
                                     )}
                                   </div>
 
@@ -7826,7 +7826,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                       )}
                                       {member.loginId && (
                                         <span className="text-[10px] text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded font-mono" title="Login ID">
-                                          ðŸ”‘ {member.loginId}
+                                          🔑 {member.loginId}
                                         </span>
                                       )}
                                       {member.description && (
@@ -7852,7 +7852,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                             <div key={t.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/10 space-y-3">
                               <div className="flex items-center justify-between border-b border-orange-50 pb-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-extrabold text-slate-800 text-sm">ðŸ“‚ {t.name}</span>
+                                  <span className="font-extrabold text-slate-800 text-sm">📂 {t.name}</span>
                                   <span className="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold">
                                     {teamMembers.length} Players
                                   </span>
@@ -8093,7 +8093,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                 {settingsTab === "credentials" && (
                   <div className="bg-white border border-orange-100 rounded-2xl p-5 shadow-sm space-y-4">
                     <div>
-                      <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>ðŸ” User Credentials</h3>
+                      <h3 className="font-semibold text-slate-900 text-base" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>🔐 User Credentials</h3>
                       <p className="text-xs text-slate-400 mt-0.5">Manage login IDs and passwords for each team member. These are used to log in to the Employee view.</p>
                     </div>
                     <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -8122,7 +8122,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                   </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-xs text-slate-500">{player.teamName}</td>
-                                <td className="px-4 py-2.5 text-xs font-mono text-slate-500">{player.employeeId || "â€”"}</td>
+                                <td className="px-4 py-2.5 text-xs font-mono text-slate-500">{player.employeeId || "—"}</td>
                                 <td className="px-4 py-2.5">
                                   {isEditingCred ? (
                                     <input
@@ -8132,7 +8132,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                       className="w-full border border-teal-300 rounded-lg px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-teal-300"
                                     />
                                   ) : (
-                                    <span className="text-xs font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">{player.loginId || player.employeeId || "â€”"}</span>
+                                    <span className="text-xs font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">{player.loginId || player.employeeId || "—"}</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-2.5">
@@ -8144,7 +8144,7 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
                                       className="w-full border border-teal-300 rounded-lg px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-teal-300"
                                     />
                                   ) : (
-                                    <span className="text-xs font-mono text-slate-400">â€¢â€¢â€¢â€¢â€¢â€¢</span>
+                                    <span className="text-xs font-mono text-slate-400">••••••</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-2.5">
@@ -9153,11 +9153,11 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     setSelectedMonth(list[nextIdx]);
   };
 
-  /* â”€â”€ KPI status helpers â”€â”€ */
+  /* ── KPI status helpers ── */
   const statusColor = (s) => s === "on-track" ? "bg-teal-100 text-teal-800" : s === "at-risk" ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700";
   const barColor   = (s) => s === "on-track" ? "bg-teal-400" : s === "at-risk" ? "bg-orange-400" : "bg-rose-400";
 
-  /* â”€â”€ Sidebar nav item â”€â”€ */
+  /* ── Sidebar nav item ── */
   const NavItem = ({ item }) => {
     const Icon = item.icon;
     const active = screen === item.id;
@@ -9172,7 +9172,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     );
   };
 
-  /* â”€â”€ KPI card (reusable matching user mockup + calendar dots) â”€â”€ */
+  /* ── KPI card (reusable matching user mockup + calendar dots) ── */
   const KpiCard = ({ kpi, onClick, relationType }) => {
     const status = getStatus(kpi);
     const dailyAllocFallback = getKpiDailyAllocWithFallback(kpi);
@@ -9327,7 +9327,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     );
   };
 
-  /* â”€â”€ Home screen â”€â”€ */
+  /* ── Home screen ── */
   const HomeScreen = () => (
     <div className="flex-1 overflow-y-auto">
       {/* Hero header */}
@@ -9386,7 +9386,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
       {unplannedKpisCount > 0 && (
         <div className="mx-5 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-4 shadow-sm animate-pulse relative z-10">
           <div className="flex items-start gap-3">
-            <span className="text-lg">âš ï¸</span>
+            <span className="text-lg">⚠️</span>
             <div>
               <p className="text-xs font-bold text-amber-900">Planning Action Required</p>
               <p className="text-[10px] text-amber-700/80 font-semibold mt-0.5">
@@ -9489,7 +9489,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     </div>
   );
 
-  /* â”€â”€ My KPIs screen â”€â”€ */
+  /* ── My KPIs screen ── */
   const MyKpisScreen = () => (
     <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
       <div className="flex items-center gap-3 mb-5">
@@ -9512,7 +9512,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     </div>
   );
 
-  /* â”€â”€ Team screen â”€â”€ */
+  /* ── Team screen ── */
   const TeamScreen = () => (
     <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
       <div className="flex items-center gap-3 mb-2">
@@ -9544,7 +9544,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     </div>
   );
 
-  /* â”€â”€ Profile screen â”€â”€ */
+  /* ── Profile screen ── */
   const ProfileScreen = () => (
     <div className="flex-1 overflow-y-auto px-5 pt-6 pb-6">
       <div className="flex items-center gap-3 mb-6 lg:hidden">
@@ -9576,7 +9576,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     </div>
   );
 
-  /* â”€â”€ Monthly Plan screen â”€â”€ */
+  /* ── Monthly Plan screen ── */
   const PlanningScreen = () => {
     const [expandedKpiId, setExpandedKpiId] = useState(null);
     const [selectedDateForPlan, setSelectedDateForPlan] = useState(null);
@@ -9696,7 +9696,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
                   )}
 
                   <div className="w-full text-right leading-none text-[8px] font-bold">
-                    {isPlanned ? "âœ…" : "âš ï¸"}
+                    {isPlanned ? "✅" : "⚠️"}
                   </div>
                 </div>
               );
@@ -9726,7 +9726,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
         {/* Global Planning Alert / Status Indicator */}
         {allPlannedCount > 0 ? (
           <div className={`p-4 rounded-2xl border ${planningCompleted ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-amber-50 border-amber-200 text-amber-800'} flex items-start gap-3`}>
-            <span className="text-lg">{planningCompleted ? "âœ…" : "âš ï¸"}</span>
+            <span className="text-lg">{planningCompleted ? "✅" : "⚠️"}</span>
             <div className="flex-1">
               <p className="text-sm font-bold">{planningCompleted ? "Planning Complete!" : "Planning Required"}</p>
               <p className="text-xs font-medium mt-0.5">
@@ -9798,7 +9798,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
     );
   };
 
-  /* â”€â”€ Plan details popup modal â”€â”€ */
+  /* ── Plan details popup modal ── */
   const PlanModal = ({ kpi, dateStr, onClose }) => {
     const kpiPlanned = (kpi.reportConfig?.plans || []).filter(p => p.targetDate === dateStr && p.status === "planned");
 
@@ -9987,7 +9987,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
               </div>
             ) : (
               <div className="bg-teal-50 border border-teal-150 rounded-2xl p-3 text-center text-xs font-semibold text-teal-850 shrink-0">
-                ðŸŽ‰ All target deliverables for this date have been planned!
+                🎉 All target deliverables for this date have been planned!
               </div>
             )}
           </div>
@@ -10011,7 +10011,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
   return (
     <div className="flex h-full w-full bg-slate-50">
 
-      {/* â”€â”€ Sidebar nav (md+) â”€â”€ */}
+      {/* ── Sidebar nav (md+) ── */}
       <aside className="hidden md:flex flex-col shrink-0 w-14 lg:w-52 bg-white border-r border-slate-100 py-5 px-2 lg:px-3 gap-1">
         {/* Logo / brand */}
         <div className="flex items-center gap-2 px-2 mb-6">
@@ -10050,7 +10050,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
         </div>
       </aside>
 
-      {/* â”€â”€ Main content â”€â”€ */}
+      {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100 shrink-0">
@@ -10084,7 +10084,7 @@ function EmployeeApp({ kpis, setKpis, onLog, teams, projects, setProjects, handl
           {screenMap[screen] || <HomeScreen />}
         </div>
 
-        {/* â”€â”€ Bottom nav (mobile only) â”€â”€ */}
+        {/* ── Bottom nav (mobile only) ── */}
         <nav className="md:hidden bg-white border-t border-slate-100 px-2 py-2 flex items-center justify-around shrink-0 safe-area-inset-bottom">
           {EMP_NAV.map(item => {
             const Icon = item.icon;
@@ -10644,7 +10644,7 @@ export default function App() {
         setKpis(loadedKpis);
         localStorage.setItem("backup_kpis", JSON.stringify(loadedKpis));
 
-        // Flush pending sync queue â€” push any offline edits to Supabase now that we're online
+        // Flush pending sync queue — push any offline edits to Supabase now that we're online
         try {
           const queue = JSON.parse(localStorage.getItem('pending_sync_kpis') || '[]');
           if (queue.length > 0) {
@@ -11299,7 +11299,7 @@ export default function App() {
         }
       }
     } catch(err) {
-      // Offline â€” save to localStorage with a stable local id
+      // Offline — save to localStorage with a stable local id
       const localId = `local-${Date.now()}`;
       const localKpi = {
         ...newKpi,
@@ -11379,7 +11379,7 @@ export default function App() {
 
     // 3. Attempt Supabase save
     try {
-      if (!updatedKpi.id) throw new Error("KPI id is missing â€” cannot update.");
+      if (!updatedKpi.id) throw new Error("KPI id is missing — cannot update.");
       const safeNum = (v) => (v === undefined || v === null || isNaN(Number(v))) ? 0 : Number(v);
       const safeStr = (v) => (v === undefined || v === null) ? "" : String(v);
       const payload = {
@@ -11430,7 +11430,7 @@ export default function App() {
           alert("Failed to save KPI to database: " + error.message);
         }
       } else {
-        // Successful â€” remove from pending queue if it was there
+        // Successful — remove from pending queue if it was there
         try {
           const queue = JSON.parse(localStorage.getItem('pending_sync_kpis') || '[]');
           const filtered = queue.filter(id => String(id) !== String(updatedKpi.id));
@@ -11438,7 +11438,7 @@ export default function App() {
         } catch(e) {}
       }
     } catch (err) {
-      // Network completely down â€” queue for later sync
+      // Network completely down — queue for later sync
       try {
         const queue = JSON.parse(localStorage.getItem('pending_sync_kpis') || '[]');
         if (!queue.includes(String(updatedKpi.id))) queue.push(String(updatedKpi.id));
