@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import * as XLSX from "xlsx";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar, Legend } from "recharts";
 import {
   LayoutDashboard, Target, TrendingUp, Users, Megaphone, Settings,
   Search, Plus, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, MoreHorizontal, Circle,
@@ -8408,14 +8408,18 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
   const [isEditing, setIsEditing] = useState(!hasSavedActual);
   const [inputValue, setInputValue] = useState("");
 
-  // Calculate Carry Forward Balance
+  // Keep state in sync if date changes
+  useEffect(() => {
+    setIsEditing(!hasSavedActual);
+    setInputValue("");
+  }, [tStr, hasSavedActual]);
+
+  // Calculate Carry Forward Balance up to the selected date
   let carryForward = 0;
   Object.keys(kpi.dailyAlloc || {}).forEach(dateKey => {
-    // Check if dateKey is strictly before today AND in the current month
     if (dateKey < tStr && dateKey.substring(0, 7) === tStr.substring(0, 7)) {
       const tgt = kpi.dailyAlloc[dateKey] || 0;
       const act = kpi.dailyActual?.[dateKey] || 0;
-      // Floor shortfall at 0 per day before summing
       const shortfall = Math.max(0, tgt - act);
       carryForward += shortfall;
     }
@@ -8429,16 +8433,38 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
     if (!isNaN(val)) {
       onUpdateDailyActual(kpi.id, tStr, val);
       setIsEditing(false);
-      setInputValue(""); // clear temporary input
+      setInputValue("");
     }
   };
+
+  // Build compound trend graph data (Current Month)
+  const chartData = useMemo(() => {
+    const yearMonth = tStr.substring(0, 7);
+    const [year, month] = yearMonth.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const data = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dStr = `${yearMonth}-${String(i).padStart(2, '0')}`;
+      const tgt = kpi.dailyAlloc?.[dStr] || 0;
+      const act = kpi.dailyActual?.[dStr];
+      data.push({
+        date: String(i).padStart(2, '0'),
+        fullDate: dStr,
+        Target: tgt,
+        Actual: act !== undefined && act !== "" ? Number(act) : null
+      });
+    }
+    return data;
+  }, [tStr, kpi.dailyAlloc, kpi.dailyActual]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
       <div className="flex justify-between items-start gap-2 border-b border-slate-100 pb-3">
         <div>
           <h3 className="font-bold text-slate-800 text-sm leading-snug">{kpi.name}</h3>
-          <p className="text-xs font-semibold text-slate-500 mt-0.5">{tStr}</p>
+          <p className="text-xs font-semibold text-slate-500 mt-0.5">
+            {new Date(tStr).toLocaleDateString("en-IN", { weekday: 'short', month: 'short', day: 'numeric' })}
+          </p>
         </div>
       </div>
       
@@ -8453,7 +8479,7 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
 
       <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
         <p className="text-sm font-bold text-teal-800 mb-4">
-          Today's Effective Target: {effectiveTarget} {kpi.unit}
+          Effective Target: {effectiveTarget} {kpi.unit}
         </p>
         
         {!isEditing ? (
@@ -8472,11 +8498,11 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
         ) : (
           <div className="space-y-3">
             <div>
-              <label className="block text-[11px] text-slate-500 font-bold uppercase mb-1.5">Enter Today's Achievement</label>
+              <label className="block text-[11px] text-slate-500 font-bold uppercase mb-1.5">Enter Achievement</label>
               <div className="flex items-center gap-2">
                 <input 
                   type="number"
-                  placeholder="Enter value achieved today"
+                  placeholder="Enter value achieved"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   className="flex-1 text-sm font-semibold text-slate-800 bg-white border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl px-4 py-2.5 outline-none transition-all shadow-inner"
@@ -8503,6 +8529,28 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
           </div>
         )}
       </div>
+      
+      {/* Compound Trend Graph */}
+      <div className="mt-4 pt-4 border-t border-slate-100">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Monthly Trend</p>
+        <div className="h-48 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+              <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                labelStyle={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}
+                labelFormatter={(label, entries) => entries[0]?.payload?.fullDate || label}
+              />
+              <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+              <Bar dataKey="Actual" fill="#0d9488" radius={[2, 2, 0, 0]} maxBarSize={20} />
+              <Line type="monotone" dataKey="Target" stroke="#f97316" strokeWidth={2} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 }
@@ -8510,14 +8558,39 @@ function DailyLogCard({ kpi, tStr, onUpdateDailyActual }) {
 function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
   const d = new Date();
   const tzOffset = d.getTimezoneOffset() * 60000;
-  const tStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+  const todayStr = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  const handlePrevDay = () => {
+    const nd = new Date(selectedDate);
+    nd.setDate(nd.getDate() - 1);
+    setSelectedDate(nd.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    const nd = new Date(selectedDate);
+    nd.setDate(nd.getDate() + 1);
+    setSelectedDate(nd.toISOString().split('T')[0]);
+  };
 
   const relevantKpis = (kpis || []).filter(k => k.owner === loggedInUser?.name && k.targetType !== "monthly");
 
   return (
     <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <h2 className="text-xl font-bold text-slate-800">Daily Log</h2>
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm shrink-0 self-start sm:self-auto">
+          <button onClick={handlePrevDay} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-xs font-black text-teal-700 w-24 text-center">
+            {selectedDate === todayStr ? "Today" : new Date(selectedDate).toLocaleDateString("en-IN", { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
+          <button onClick={handleNextDay} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {relevantKpis.length === 0 ? (
@@ -8529,7 +8602,7 @@ function DailyLogScreen({ kpis, loggedInUser, onUpdateDailyActual }) {
           <DailyLogCard 
             key={kpi.id} 
             kpi={kpi} 
-            tStr={tStr} 
+            tStr={selectedDate} 
             onUpdateDailyActual={onUpdateDailyActual} 
           />
         ))
