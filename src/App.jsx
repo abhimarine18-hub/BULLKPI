@@ -11968,37 +11968,7 @@ export default function App() {
         } else {
           let cachedKpis = localStorage.getItem("backup_kpis");
           if (!cachedKpis) {
-            const mockKpis = [
-              {
-                id: 1,
-                name: "No of digital enquiry resulted in sales - Domestic",
-                unit: " Nos",
-                target: 400.0,
-                direction: "higher",
-                team: "Digital Marketing",
-                owner: "Anand Kumar",
-                driveBy: "Aditi Rao",
-                monitorBy: "Ravi",
-                description: "Domestic Enquiry conversion",
-                kra: "Marketing",
-                history: [{ d: "W1", v: 10 }, { d: "W2", v: 25 }],
-                dailyActual: { "2026-08-22": 5, "2026-08-23": 8 },
-                revisedAlloc: {},
-                customHolidays: {},
-                holidaysEnabled: true,
-                targetType: "monthly",
-                targetsList: [
-                  { id: "Aug 2026", label: "Aug 2026", targetValue: 35, targetDate: "2026-08-31" }
-                ],
-                monthlyAlloc: { "Aug 2026": 35 },
-                monthlyActual: { "Aug 2026": 13 },
-                weeklyAlloc: {},
-                weeklyActual: {},
-                dailyAlloc: {},
-                kpiType: "activity",
-                reportConfig: {}
-              }
-            ];
+            const mockKpis = [];
             localStorage.setItem("backup_kpis", JSON.stringify(mockKpis));
             cachedKpis = JSON.stringify(mockKpis);
           }
