@@ -1,10 +1,228 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./supabaseClient";
 import {
-  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search
+  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function KpiModal({ kpi, isOpen, onClose, onSave }) {
+  const isEdit = !!kpi;
+  const [formData, setFormData] = useState({
+    name: "",
+    team: "Digital Marketing",
+    market: "Common",
+    unit: "Nos",
+    direction: "higher",
+    cy_target: "",
+    do_person: "",
+    drive_person: "",
+    monitor_person: "",
+    checker: "",
+    approver: "",
+    monthly_target: {},
+    monthly_actual: {}
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEdit) {
+        setFormData({
+          name: kpi.name || "",
+          team: kpi.team || "Digital Marketing",
+          market: kpi.market || "Common",
+          unit: kpi.unit || "Nos",
+          direction: kpi.direction || "higher",
+          cy_target: kpi.cy_target !== null ? String(kpi.cy_target) : "",
+          do_person: kpi.do_person || "",
+          drive_person: kpi.drive_person || "",
+          monitor_person: kpi.monitor_person || "",
+          checker: kpi.checker || "",
+          approver: kpi.approver || "",
+          monthly_target: kpi.monthly_target || {},
+          monthly_actual: kpi.monthly_actual || {}
+        });
+      } else {
+        setFormData({
+          name: "",
+          team: "Digital Marketing",
+          market: "Common",
+          unit: "Nos",
+          direction: "higher",
+          cy_target: "",
+          do_person: "",
+          drive_person: "",
+          monitor_person: "",
+          checker: "",
+          approver: "",
+          monthly_target: {},
+          monthly_actual: {}
+        });
+      }
+    }
+  }, [isOpen, kpi, isEdit]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({
+      ...formData,
+      cy_target: formData.cy_target.trim() ? parseFloat(formData.cy_target) : null
+    });
+  };
+
+  const handleMonthTargetChange = (m, val) => {
+    setFormData(prev => ({
+      ...prev,
+      monthly_target: {
+        ...prev.monthly_target,
+        [m]: val.trim() ? parseFloat(val) : null
+      }
+    }));
+  };
+
+  const handleMonthActualChange = (m, val) => {
+    setFormData(prev => ({
+      ...prev,
+      monthly_actual: {
+        ...prev.monthly_actual,
+        [m]: val.trim() ? parseFloat(val) : null
+      }
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-orange-100 flex flex-col">
+        <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between sticky top-0 z-10">
+          <h3 className="font-black text-slate-800 text-sm">{isEdit ? "Edit KPI details" : "Create new KPI"}</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5 text-xs font-semibold text-slate-650 flex-1 overflow-y-auto">
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">KPI Name</label>
+              <input required type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Team</label>
+              <select value={formData.team} onChange={e => setFormData(prev => ({ ...prev, team: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="Digital Marketing">Digital Marketing</option>
+                <option value="Video Production">Video Production</option>
+                <option value="Graphic Designing">Graphic Designing</option>
+                <option value="Enquiry Management">Enquiry Management</option>
+                <option value="CRM and Coordinator">CRM and Coordinator</option>
+                <option value="Expo and Events">Expo and Events</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Market</label>
+              <select value={formData.market} onChange={e => setFormData(prev => ({ ...prev, market: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="Domestic">Domestic</option>
+                <option value="International">International</option>
+                <option value="Common">Common</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Unit (UOM)</label>
+              <input required type="text" value={formData.unit} onChange={e => setFormData(prev => ({ ...prev, unit: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Direction</label>
+              <select value={formData.direction} onChange={e => setFormData(prev => ({ ...prev, direction: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="higher">higher</option>
+                <option value="lower">lower</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">CY Target</label>
+              <input type="number" step="any" value={formData.cy_target} onChange={e => setFormData(prev => ({ ...prev, cy_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Do Person</label>
+              <input type="text" value={formData.do_person} onChange={e => setFormData(prev => ({ ...prev, do_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Drive Person</label>
+              <input type="text" value={formData.drive_person} onChange={e => setFormData(prev => ({ ...prev, drive_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Monitor Person</label>
+              <input type="text" value={formData.monitor_person} onChange={e => setFormData(prev => ({ ...prev, monitor_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Checker</label>
+              <input type="text" value={formData.checker} onChange={e => setFormData(prev => ({ ...prev, checker: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Approver</label>
+              <input type="text" value={formData.approver} onChange={e => setFormData(prev => ({ ...prev, approver: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+          </div>
+
+          <hr className="border-orange-100" />
+
+          {/* Monthly Targets */}
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Monthly Targets</h4>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {MONTHS_LIST.map(m => {
+                const val = formData.monthly_target?.[m] ?? "";
+                return (
+                  <div key={m} className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider text-center">{m}</label>
+                    <input type="number" step="any" value={val} onChange={e => handleMonthTargetChange(m, e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <hr className="border-orange-100" />
+
+          {/* Monthly Actuals */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Monthly Actuals</h4>
+              <span className="text-[9px] bg-amber-50 text-amber-700 font-black px-2 py-0.5 rounded-full border border-amber-100">Manual override (temporary)</span>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {MONTHS_LIST.map(m => {
+                const val = formData.monthly_actual?.[m] ?? "";
+                return (
+                  <div key={m} className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider text-center">{m}</label>
+                    <input type="number" step="any" value={val} onChange={e => handleMonthActualChange(m, e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2 sticky bottom-0 z-10 rounded-b-3xl">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+          <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 export default function App() {
   const [loggedInUser, setLoggedInUser] = useState(null);
@@ -19,6 +237,9 @@ export default function App() {
   const [teamInfo, setTeamInfo] = useState(null);
   const [screen, setScreen] = useState("kpis");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [selectedKpi, setSelectedKpi] = useState(null);
+  const [isKpiModalOpen, setIsKpiModalOpen] = useState(false);
 
   // Restore session
   useEffect(() => {
@@ -160,6 +381,45 @@ export default function App() {
     localStorage.removeItem("persistent_user");
     localStorage.removeItem("persistent_role");
     localStorage.removeItem("auth_token");
+  };
+
+  const handleSaveKpi = async (payload) => {
+    try {
+      if (selectedKpi) {
+        // Update
+        const { data, error } = await supabase
+          .from("kpis")
+          .update(payload)
+          .eq("id", selectedKpi.id)
+          .select();
+
+        if (error) {
+          console.error("Error updating KPI:", error.message);
+          alert("Failed to update KPI: " + error.message);
+        } else if (data && data.length > 0) {
+          const updated = data[0];
+          setKpis(prev => prev.map(k => k.id === updated.id ? updated : k));
+          setIsKpiModalOpen(false);
+          setSelectedKpi(null);
+        }
+      } else {
+        // Create
+        const { data, error } = await supabase
+          .from("kpis")
+          .insert(payload)
+          .select();
+
+        if (error) {
+          console.error("Error creating KPI:", error.message);
+          alert("Failed to create KPI: " + error.message);
+        } else if (data && data.length > 0) {
+          setKpis(prev => [...prev, data[0]]);
+          setIsKpiModalOpen(false);
+        }
+      }
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
   };
 
   const currentMonthKey = useMemo(() => {
@@ -304,7 +564,6 @@ export default function App() {
 
           {/* Main Panel */}
           <main className="flex-1 min-w-0 overflow-y-auto flex flex-col bg-white">
-            
             {/* Header */}
             <div className="h-16 border-b border-orange-100 flex items-center justify-between px-4 sm:px-8 shrink-0">
               <div className="flex items-center gap-2">
@@ -316,6 +575,15 @@ export default function App() {
                 </button>
                 <h1 className="text-sm sm:text-base font-black text-slate-800 capitalize">{screen}</h1>
               </div>
+              {screen === "kpis" && role === "admin" && (
+                <button
+                  onClick={() => { setSelectedKpi(null); setIsKpiModalOpen(true); }}
+                  className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add KPI</span>
+                </button>
+              )}
             </div>
 
             {/* Screen Content */}
@@ -351,7 +619,11 @@ export default function App() {
                                 const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
                                 const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
                                 return (
-                                  <tr key={k.id} className="hover:bg-slate-50/40 transition-colors">
+                                  <tr
+                                    key={k.id}
+                                    onClick={() => { if (role === "admin") { setSelectedKpi(k); setIsKpiModalOpen(true); } }}
+                                    className={`hover:bg-slate-50/40 transition-colors ${role === "admin" ? "cursor-pointer" : ""}`}
+                                  >
                                     <td className="px-4 py-3 font-bold text-slate-800">{k.name}</td>
                                     <td className="px-4 py-3">{k.market || "-"}</td>
                                     <td className="px-4 py-3 font-mono">{k.do_person || "-"}</td>
@@ -386,6 +658,13 @@ export default function App() {
 
             </div>
           </main>
+          
+          <KpiModal
+            kpi={selectedKpi}
+            isOpen={isKpiModalOpen}
+            onClose={() => { setIsKpiModalOpen(false); setSelectedKpi(null); }}
+            onSave={handleSaveKpi}
+          />
           
         </div>
       </div>
