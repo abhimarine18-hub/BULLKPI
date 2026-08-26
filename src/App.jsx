@@ -4982,8 +4982,6 @@ function getDailyTargetInfo(kpi, selectedDateStr) {
 /* ==================== ADMIN APP ==================== */
 
 const ADMIN_NAV = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "action", label: "Action Screen", icon: ListTodo },
   { id: "kpis", label: "KPIs", icon: Target },
   { id: "review", label: "Morning Review", icon: Coffee },
   { id: "okrs", label: "OKRs", icon: TrendingUp },
@@ -6363,10 +6361,10 @@ function AdminApp({ loggedInUser, kpis, setKpis, onLog, teams, onAddMember, onAd
     });
   }, [ADMIN_NAV, isAuthorizedForBuildProjects]);
 
-  const [screen, setScreenInternal] = useState("dashboard");
+  const [screen, setScreenInternal] = useState("kpis");
   const setScreen = (newScreen) => {
     if (newScreen === "build_projects" && !isAuthorizedForBuildProjects) {
-      setScreenInternal("dashboard");
+      setScreenInternal("kpis");
     } else {
       setScreenInternal(newScreen);
     }
