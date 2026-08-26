@@ -440,8 +440,9 @@ export default function App() {
   const [kpis, setKpis] = useState([]);
   const [projects, setProjects] = useState([]);
   const [teamInfo, setTeamInfo] = useState(null);
-  const [screen, setScreen] = useState("kpis");
+  const [screen, setScreen] = useState("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeDashboardTeam, setActiveDashboardTeam] = useState("CRM and Coordinator");
 
   const [selectedKpi, setSelectedKpi] = useState(null);
   const [isKpiModalOpen, setIsKpiModalOpen] = useState(false);
@@ -458,6 +459,9 @@ export default function App() {
       const u = JSON.parse(cachedUser);
       setLoggedInUser(u);
       setRole(cachedRole || "employee");
+      if (cachedRole !== "admin" && u.team) {
+        setActiveDashboardTeam(u.team);
+      }
       if (u.team) {
         fetchTeamData(u.team);
       }
@@ -568,6 +572,7 @@ export default function App() {
         }
 
         if (match.team) {
+          setActiveDashboardTeam(match.team);
           await fetchTeamData(match.team);
         }
       } else {
@@ -732,6 +737,37 @@ export default function App() {
     return list.sort((a, b) => new Date(a.target_date || 0) - new Date(b.target_date || 0));
   }, [projects, loggedInUser]);
 
+  const dashboardKpis = useMemo(() => {
+    return kpis.filter(k => k.team === activeDashboardTeam);
+  }, [kpis, activeDashboardTeam]);
+
+  const dashboardProjects = useMemo(() => {
+    return projects.filter(p => p.team === activeDashboardTeam);
+  }, [projects, activeDashboardTeam]);
+
+  const dashboardStats = useMemo(() => {
+    let total = dashboardKpis.length;
+    let onTrack = 0;
+    let atRisk = 0;
+    let offTrack = 0;
+    dashboardKpis.forEach(k => {
+      const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+      const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
+      if (targetVal === 0) {
+        onTrack++;
+      } else {
+        if (actualVal >= targetVal) onTrack++;
+        else if (actualVal >= 0.8 * targetVal) atRisk++;
+        else offTrack++;
+      }
+    });
+    return { total, onTrack, atRisk, offTrack };
+  }, [dashboardKpis, currentMonthKey]);
+
+  const personalKpis = useMemo(() => {
+    return kpis.filter(k => k.do_person === loggedInUser?.name);
+  }, [kpis, loggedInUser]);
+
   if (!loggedInUser) {
     return (
       <div className="h-screen w-screen bg-gradient-to-b from-orange-50 to-orange-100 flex items-center justify-center p-4" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
@@ -821,6 +857,16 @@ export default function App() {
             
             <nav className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto">
               <button
+                onClick={() => { setScreen("dashboard"); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                  screen === "dashboard" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                }`}
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span>My Dashboard</span>
+              </button>
+
+              <button
                 onClick={() => { setScreen("kpis"); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
                   screen === "kpis" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
@@ -877,11 +923,242 @@ export default function App() {
                   <span>Add KPI</span>
                 </button>
               )}
+              {screen === "dashboard" && role === "admin" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase text-slate-400">Team Switcher:</span>
+                  <select
+                    value={activeDashboardTeam}
+                    onChange={(e) => setActiveDashboardTeam(e.target.value)}
+                    className="border border-orange-200 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  >
+                    <option value="Digital Marketing">Digital Marketing</option>
+                    <option value="Video Production">Video Production</option>
+                    <option value="Graphic Designing">Graphic Designing</option>
+                    <option value="Enquiry Management">Enquiry Management</option>
+                    <option value="CRM and Coordinator">CRM and Coordinator</option>
+                    <option value="Expo and Events">Expo and Events</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Screen Content */}
             <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-slate-50/50">
               
+              {screen === "dashboard" && (
+                <div className="space-y-6">
+                  {/* Summary Stats Header */}
+                  <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                      <div>
+                        <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                          {activeDashboardTeam} Dashboard
+                        </h2>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Summary performance for the current month</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 text-center">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Total KPIs</span>
+                        <span className="text-xl font-black text-slate-800">{dashboardStats.total}</span>
+                      </div>
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
+                        <span className="text-[10px] font-black text-emerald-600/80 uppercase tracking-wider block mb-1">On Track</span>
+                        <span className="text-xl font-black text-emerald-700">{dashboardStats.onTrack}</span>
+                      </div>
+                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
+                        <span className="text-[10px] font-black text-amber-600/80 uppercase tracking-wider block mb-1">At Risk</span>
+                        <span className="text-xl font-black text-amber-700">{dashboardStats.atRisk}</span>
+                      </div>
+                      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 text-center">
+                        <span className="text-[10px] font-black text-rose-600/80 uppercase tracking-wider block mb-1">Off Track</span>
+                        <span className="text-xl font-black text-rose-700">{dashboardStats.offTrack}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Personal Dashboard Section for non-admin */}
+                  {role !== "admin" && (
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">My Personal Tasks & KPIs</h3>
+                      
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Personal KPIs */}
+                        <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs space-y-3">
+                          <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">My KPIs ({personalKpis.length})</h4>
+                          {personalKpis.length === 0 ? (
+                            <p className="text-[11px] text-slate-400 font-bold py-4 text-center">No KPIs where you are marked as DO person.</p>
+                          ) : (
+                            <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1">
+                              {personalKpis.map(k => {
+                                const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+                                const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
+                                return (
+                                  <div key={k.id} className="py-2.5 flex items-center justify-between gap-4 text-[11px]">
+                                    <span className="font-bold text-slate-800 truncate">{k.name}</span>
+                                    <div className="flex gap-4 shrink-0 font-mono font-bold">
+                                      <div className="text-slate-500">TGT: {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}</div>
+                                      <div className="text-emerald-600">ACT: {actualVal ? new Intl.NumberFormat('en-IN').format(actualVal) : "-"}</div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Personal Project Stages */}
+                        <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs space-y-3">
+                          <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">My Project Tasks ({myProjectTasks.length})</h4>
+                          {myProjectTasks.length === 0 ? (
+                            <p className="text-[11px] text-slate-400 font-bold py-4 text-center">No active project stages where you are responsible.</p>
+                          ) : (
+                            <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1">
+                              {myProjectTasks.map(task => (
+                                <div key={task.id} className="py-2.5 flex items-center justify-between gap-3 text-[11px]">
+                                  <div className="min-w-0">
+                                    <p className="font-black text-slate-850 truncate">{task.projectTitle}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">{task.name}</p>
+                                  </div>
+                                  <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase shrink-0 tracking-wider ${
+                                    task.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                    task.status === "current" ? "bg-sky-50 text-sky-700 border-sky-100 animate-pulse" :
+                                    "bg-slate-50 text-slate-500 border-slate-150"
+                                  }`}>
+                                    {task.status || "pending"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Team Performance Segment */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">{activeDashboardTeam} KPIs & Projects</h3>
+                    
+                    {/* Team KPIs */}
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider pl-1">Team KPIs</h4>
+                      <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
+                        <table className="w-full text-[11px] border-collapse text-left">
+                          <thead>
+                            <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                              <th className="px-4 py-2.5">Name</th>
+                              <th className="px-4 py-2.5">Market</th>
+                              <th className="px-4 py-2.5">Do</th>
+                              <th className="px-4 py-2.5">Drive</th>
+                              <th className="px-4 py-2.5">Monitor</th>
+                              <th className="px-4 py-2.5 text-right">Target ({currentMonthKey})</th>
+                              <th className="px-4 py-2.5 text-right">Actual ({currentMonthKey})</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                            {dashboardKpis.length === 0 ? (
+                              <tr>
+                                <td colSpan="7" className="px-4 py-6 text-center text-slate-400 font-semibold">No KPIs found for this team.</td>
+                              </tr>
+                            ) : (
+                              dashboardKpis.map(k => {
+                                const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+                                const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
+                                return (
+                                  <tr
+                                    key={k.id}
+                                    onClick={() => { if (role === "admin") { setSelectedKpi(k); setIsKpiModalOpen(true); } }}
+                                    className={`hover:bg-slate-50/40 transition-colors ${role === "admin" ? "cursor-pointer" : ""}`}
+                                  >
+                                    <td className="px-4 py-3 font-bold text-slate-850">{k.name}</td>
+                                    <td className="px-4 py-3">{k.market || "-"}</td>
+                                    <td className="px-4 py-3 font-mono">{k.do_person || "-"}</td>
+                                    <td className="px-4 py-3 font-mono">{k.drive_person || "-"}</td>
+                                    <td className="px-4 py-3 font-mono">{k.monitor_person || "-"}</td>
+                                    <td className="px-4 py-3 text-right font-mono font-bold text-slate-600">
+                                      {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
+                                      {actualVal ? new Intl.NumberFormat('en-IN').format(actualVal) : "-"}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Team Projects */}
+                    <div className="space-y-2 pt-2">
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider pl-1">Team Projects</h4>
+                      {dashboardProjects.length === 0 ? (
+                        <div className="bg-white border border-slate-150 rounded-2xl p-6 text-center text-slate-400 font-semibold shadow-xs">
+                          No projects found for this team.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {dashboardProjects.map(p => {
+                            const sortedStages = [...(p.stages || [])].sort((a, b) => a.stage_order - b.stage_order);
+                            
+                            const statusColor = 
+                              p.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                              p.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                              "bg-slate-50 text-slate-500 border-slate-150";
+
+                            return (
+                              <div
+                                key={p.id}
+                                onClick={() => { setSelectedProject(p); setIsProjectModalOpen(true); }}
+                                className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs hover:border-orange-200 hover:shadow-md transition-all cursor-pointer space-y-4"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <h5 className="font-black text-slate-800 text-sm">{p.title}</h5>
+                                  <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                                    {p.status ? p.status.replace("_", " ") : "not started"}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 font-bold">
+                                  <div>Do: <span className="text-slate-800">{p.do_person || "-"}</span></div>
+                                  <div>Drive: <span className="text-slate-800">{p.drive_person || "-"}</span></div>
+                                </div>
+
+                                {sortedStages.length > 0 && (
+                                  <div className="space-y-1.5 pt-1">
+                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Progress Strip</div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {sortedStages.map(s => {
+                                        const color = 
+                                          s.status === "completed" ? "bg-emerald-500" :
+                                          s.status === "current" ? "bg-sky-500 animate-pulse" :
+                                          "bg-slate-350";
+                                        return (
+                                          <span
+                                            key={s.id}
+                                            title={`${s.name} (${s.status || "pending"})`}
+                                            className={`h-2.5 px-2 rounded-full text-[8px] font-black text-white ${color} uppercase tracking-wider flex items-center justify-center`}
+                                          >
+                                            {s.name}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {screen === "kpis" && (
                 <div className="space-y-6">
                   {Object.keys(groupedKpis).length === 0 ? (
