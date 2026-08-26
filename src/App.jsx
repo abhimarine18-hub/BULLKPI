@@ -451,6 +451,27 @@ export default function App() {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState("all");
 
+  const [membersMap, setMembersMap] = useState({});
+
+  const fetchMemberDesignations = async () => {
+    try {
+      const { data, error } = await supabase.from("team_members").select("name, designation");
+      if (error) {
+        console.error("Error loading team member designations:", error.message);
+      } else if (data) {
+        const map = {};
+        data.forEach(m => {
+          if (m.name) {
+            map[m.name] = m.designation || "";
+          }
+        });
+        setMembersMap(map);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Restore session
   useEffect(() => {
     const cachedUser = localStorage.getItem("persistent_user");
@@ -459,6 +480,7 @@ export default function App() {
       const u = JSON.parse(cachedUser);
       setLoggedInUser(u);
       setRole(cachedRole || "employee");
+      fetchMemberDesignations();
       if (cachedRole !== "admin" && u.team) {
         setActiveDashboardTeam(u.team);
       }
@@ -560,12 +582,14 @@ export default function App() {
           name: match.name,
           loginId: match.login_id || match.employee_id,
           team: match.team,
+          designation: match.designation,
           role: "employee"
         };
         setLoggedInUser(u);
         setRole("employee");
         localStorage.setItem("persistent_user", JSON.stringify(u));
         localStorage.setItem("persistent_role", "employee");
+        await fetchMemberDesignations();
 
         if (data.token) {
           localStorage.setItem("auth_token", data.token);
@@ -592,6 +616,7 @@ export default function App() {
     setKpis([]);
     setProjects([]);
     setTeamInfo(null);
+    setMembersMap({});
     localStorage.removeItem("persistent_user");
     localStorage.removeItem("persistent_role");
     localStorage.removeItem("auth_token");
@@ -892,7 +917,10 @@ export default function App() {
                 {loggedInUser.name ? loggedInUser.name.substring(0, 2).toUpperCase() : "US"}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-900 truncate">{loggedInUser.name}</p>
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  {loggedInUser.name}
+                  {loggedInUser.designation && <span className="text-[9px] text-slate-450 font-semibold ml-1">· {loggedInUser.designation}</span>}
+                </p>
                 <p className="text-[10px] text-slate-450 font-semibold truncate">{teamInfo ? teamInfo.name : "Admin View"}</p>
               </div>
               <button onClick={handleLogout} title="Logout" className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors">
@@ -1074,9 +1102,24 @@ export default function App() {
                                   >
                                     <td className="px-4 py-3 font-bold text-slate-850">{k.name}</td>
                                     <td className="px-4 py-3">{k.market || "-"}</td>
-                                    <td className="px-4 py-3 font-mono">{k.do_person || "-"}</td>
-                                    <td className="px-4 py-3 font-mono">{k.drive_person || "-"}</td>
-                                    <td className="px-4 py-3 font-mono">{k.monitor_person || "-"}</td>
+                                    <td className="px-4 py-3 font-mono">
+                                      {k.do_person || "-"}
+                                      {k.do_person && membersMap[k.do_person] && (
+                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.do_person]}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 font-mono">
+                                      {k.drive_person || "-"}
+                                      {k.drive_person && membersMap[k.drive_person] && (
+                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.drive_person]}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 font-mono">
+                                      {k.monitor_person || "-"}
+                                      {k.monitor_person && membersMap[k.monitor_person] && (
+                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.monitor_person]}</span>
+                                      )}
+                                    </td>
                                     <td className="px-4 py-3 text-right font-mono font-bold text-slate-600">
                                       {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}
                                     </td>
@@ -1196,9 +1239,24 @@ export default function App() {
                                   >
                                     <td className="px-4 py-3 font-bold text-slate-800">{k.name}</td>
                                     <td className="px-4 py-3">{k.market || "-"}</td>
-                                    <td className="px-4 py-3 font-mono">{k.do_person || "-"}</td>
-                                    <td className="px-4 py-3 font-mono">{k.drive_person || "-"}</td>
-                                    <td className="px-4 py-3 font-mono">{k.monitor_person || "-"}</td>
+                                    <td className="px-4 py-3 font-mono">
+                                      {k.do_person || "-"}
+                                      {k.do_person && membersMap[k.do_person] && (
+                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.do_person]}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 font-mono">
+                                      {k.drive_person || "-"}
+                                      {k.drive_person && membersMap[k.drive_person] && (
+                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.drive_person]}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 font-mono">
+                                      {k.monitor_person || "-"}
+                                      {k.monitor_person && membersMap[k.monitor_person] && (
+                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.monitor_person]}</span>
+                                      )}
+                                    </td>
                                     <td className="px-4 py-3 font-mono font-bold text-slate-650">{k.cy_target ?? "-"}</td>
                                     <td className="px-4 py-3 text-right font-mono font-bold text-slate-600">
                                       {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}
