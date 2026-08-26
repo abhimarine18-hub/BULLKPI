@@ -28,48 +28,47 @@ export default function App() {
       const u = JSON.parse(cachedUser);
       setLoggedInUser(u);
       setRole(cachedRole || "employee");
-      if (u.teamId) {
-        fetchTeamData(u.teamId);
+      if (u.team) {
+        fetchTeamData(u.team);
       }
     }
   }, []);
 
-  async function fetchTeamData(teamId) {
+  async function fetchTeamData(teamName) {
     try {
-      // Fetch Team details
-      const { data: teamData } = await supabase
-        .from("teams")
-        .select("*")
-        .eq("id", teamId)
-        .single();
-      
-      if (teamData) {
-        setTeamInfo(teamData);
-      }
+      setTeamInfo({ name: teamName });
 
-      // Fetch KPIs for this team (allowing either team_id or team name match)
-      const { data: kpisData } = await supabase
+      // Fetch KPIs for this team
+      const { data: kpisData, error: kpisError } = await supabase
         .from("kpis")
         .select("*")
-        .or(`team_id.eq.${teamId},team.eq.${teamData?.name || ""}`);
+        .eq("team", teamName);
       
-      if (kpisData) {
+      if (kpisError) {
+        console.error("Error fetching KPIs from Supabase:", kpisError.message, kpisError.details);
+      } else if (kpisData) {
         setKpis(kpisData);
       }
 
       // Fetch Projects for this team
-      const { data: projsData } = await supabase
+      const { data: projsData, error: projsError } = await supabase
         .from("projects")
         .select("*")
-        .or(`team_id.eq.${teamId},team.eq.${teamData?.name || ""}`);
+        .eq("team", teamName);
 
-      if (projsData && projsData.length > 0) {
+      if (projsError) {
+        console.error("Error fetching Projects from Supabase:", projsError.message, projsError.details);
+      } else if (projsData && projsData.length > 0) {
         const projIds = projsData.map(p => p.id);
         // Fetch stages
-        const { data: stagesData } = await supabase
+        const { data: stagesData, error: stagesError } = await supabase
           .from("project_stages")
           .select("*")
           .in("project_id", projIds);
+        
+        if (stagesError) {
+          console.error("Error fetching project stages from Supabase:", stagesError.message);
+        }
         
         const mappedProjects = projsData.map(p => ({
           ...p,
@@ -126,7 +125,7 @@ export default function App() {
           id: match.id,
           name: match.name,
           loginId: match.login_id || match.employee_id,
-          teamId: match.team_id,
+          team: match.team,
           role: "employee"
         };
         setLoggedInUser(u);
@@ -138,8 +137,8 @@ export default function App() {
           localStorage.setItem("auth_token", data.token);
         }
 
-        if (match.team_id) {
-          await fetchTeamData(match.team_id);
+        if (match.team) {
+          await fetchTeamData(match.team);
         }
       } else {
         setLoginError(data?.error || "Invalid Login ID or Password. Please try again.");
