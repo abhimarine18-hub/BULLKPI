@@ -224,6 +224,211 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
   );
 }
 
+function ProjectModal({ project, isOpen, onClose, onSave, isAdmin, currentUser }) {
+  const [stages, setStages] = useState([]);
+  const [newStage, setNewStage] = useState({ name: "", responsible: "", support: "", target_date: "", status: "pending" });
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && project) {
+      const sorted = [...(project.stages || [])].sort((a, b) => a.stage_order - b.stage_order);
+      setStages(sorted);
+      setShowAddForm(false);
+      setNewStage({ name: "", responsible: "", support: "", target_date: "", status: "pending" });
+    }
+  }, [isOpen, project]);
+
+  if (!isOpen || !project) return null;
+
+  const handleFieldChange = (index, field, value) => {
+    setStages(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  };
+
+  const handleStatusTransition = async (index, newStatus) => {
+    let updated = stages.map((s, i) => i === index ? { ...s, status: newStatus } : s);
+    
+    // Auto transition logic: if setting to completed/done, set the next stage to 'current' if it exists and is 'pending'
+    if (newStatus === "completed" && index < updated.length - 1) {
+      if (updated[index + 1].status === "pending") {
+        updated[index + 1].status = "current";
+      }
+    }
+
+    setStages(updated);
+    // Auto-save changes immediately for status transitions
+    await onSave(project.id, updated);
+  };
+
+  const handleAddStageSubmit = () => {
+    if (!newStage.name.trim()) return;
+    const order = stages.length + 1;
+    const added = {
+      ...newStage,
+      project_id: project.id,
+      stage_order: order
+    };
+    setStages(prev => [...prev, added]);
+    setShowAddForm(false);
+    setNewStage({ name: "", responsible: "", support: "", target_date: "", status: "pending" });
+  };
+
+  const handleSaveAll = async (e) => {
+    e.preventDefault();
+    await onSave(project.id, stages);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-orange-100 flex flex-col">
+        <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between sticky top-0 z-10">
+          <div>
+            <span className="text-[9px] bg-teal-50 text-teal-700 font-black px-2 py-0.5 rounded-full border border-teal-100 uppercase tracking-wider block w-max mb-1">
+              {project.team}
+            </span>
+            <h3 className="font-black text-slate-800 text-sm">{project.title}</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6 text-xs font-semibold text-slate-650 flex-1 overflow-y-auto">
+          {project.objective && (
+            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider mb-1">Objective</span>
+              <p className="text-slate-700 font-medium leading-relaxed">{project.objective}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Project Stages</h4>
+            
+            <div className="space-y-3">
+              {stages.map((stage, idx) => {
+                const isResponsible = stage.responsible === currentUser?.name;
+                const statusColor = 
+                  stage.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                  stage.status === "current" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                  "bg-slate-50 text-slate-500 border-slate-150";
+
+                return (
+                  <div key={stage.id || idx} className="border border-slate-150 rounded-2xl p-4 space-y-3 bg-white hover:border-orange-100 transition-colors">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-bold text-slate-800 text-xs flex items-center gap-2">
+                        <span className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 shrink-0">
+                          {idx + 1}
+                        </span>
+                        <span>{stage.name}</span>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                        {stage.status || "pending"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mb-1">Responsible</label>
+                        {isAdmin ? (
+                          <input type="text" value={stage.responsible || ""} onChange={e => handleFieldChange(idx, "responsible", e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-850 font-bold" />
+                        ) : (
+                          <p className="text-slate-800 font-bold bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">{stage.responsible || "-"}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mb-1">Support</label>
+                        {isAdmin ? (
+                          <input type="text" value={stage.support || ""} onChange={e => handleFieldChange(idx, "support", e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-850 font-bold" />
+                        ) : (
+                          <p className="text-slate-800 font-bold bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">{stage.support || "-"}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider mb-1">Target Date</label>
+                        {isAdmin ? (
+                          <input type="date" value={stage.target_date || ""} onChange={e => handleFieldChange(idx, "target_date", e.target.value)} className="w-full border border-orange-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-850 font-mono" />
+                        ) : (
+                          <p className="text-slate-800 font-bold bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100 font-mono">{stage.target_date || "-"}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Non-admin / Employee Actions */}
+                    {!isAdmin && isResponsible && (
+                      <div className="flex justify-end pt-1">
+                        {stage.status === "pending" && (
+                          <button type="button" onClick={() => handleStatusTransition(idx, "current")} className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] transition-colors">
+                            Mark as Current
+                          </button>
+                        )}
+                        {stage.status === "current" && (
+                          <button type="button" onClick={() => handleStatusTransition(idx, "completed")} className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] transition-colors">
+                            Mark as Completed
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Admin Add Stage Form */}
+            {isAdmin && (
+              <div className="pt-2">
+                {showAddForm ? (
+                  <div className="border border-dashed border-orange-300 rounded-2xl p-4 bg-orange-50/20 space-y-3">
+                    <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider block">Add New Stage</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="sm:col-span-2">
+                        <input type="text" placeholder="Stage Name" value={newStage.name} onChange={e => setNewStage(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs" />
+                      </div>
+                      <div>
+                        <input type="text" placeholder="Responsible" value={newStage.responsible} onChange={e => setNewStage(prev => ({ ...prev, responsible: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs" />
+                      </div>
+                      <div>
+                        <input type="text" placeholder="Support" value={newStage.support} onChange={e => setNewStage(prev => ({ ...prev, support: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs" />
+                      </div>
+                      <div>
+                        <input type="date" value={newStage.target_date} onChange={e => setNewStage(prev => ({ ...prev, target_date: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs font-mono" />
+                      </div>
+                      <div>
+                        <select value={newStage.status} onChange={e => setNewStage(prev => ({ ...prev, status: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white font-bold text-slate-800">
+                          <option value="pending">pending</option>
+                          <option value="current">current</option>
+                          <option value="completed">completed</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button type="button" onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg text-[10px]">Cancel</button>
+                      <button type="button" onClick={handleAddStageSubmit} className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3 py-1.5 rounded-lg text-[10px]">Add</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setShowAddForm(true)} className="w-full border border-dashed border-slate-300 hover:border-teal-500 hover:text-teal-600 rounded-2xl py-3 flex items-center justify-center gap-1.5 text-slate-500 transition-colors">
+                    <Plus className="h-4 w-4" />
+                    <span className="text-xs font-bold">Add Stage</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {isAdmin && (
+          <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2 sticky bottom-0 z-10 rounded-b-3xl">
+            <button onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+            <button onClick={handleSaveAll} className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Save All Stages</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [role, setRole] = useState("employee");
@@ -240,6 +445,10 @@ export default function App() {
 
   const [selectedKpi, setSelectedKpi] = useState(null);
   const [isKpiModalOpen, setIsKpiModalOpen] = useState(false);
+
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectFilter, setProjectFilter] = useState("all");
 
   // Restore session
   useEffect(() => {
@@ -422,6 +631,60 @@ export default function App() {
     }
   };
 
+  const handleSaveProjectStages = async (projectId, updatedStages) => {
+    try {
+      const { data, error } = await supabase
+        .from("project_stages")
+        .upsert(updatedStages)
+        .select();
+
+      if (error) {
+        console.error("Error saving project stages:", error.message);
+        alert("Failed to save project stages: " + error.message);
+      } else {
+        setProjects(prev => prev.map(p => {
+          if (p.id === projectId) {
+            let newStatus = p.status;
+            if (updatedStages.length > 0) {
+              const allCompleted = updatedStages.every(s => s.status === "completed");
+              const anyCurrentOrCompleted = updatedStages.some(s => s.status === "current" || s.status === "completed");
+              if (allCompleted) newStatus = "completed";
+              else if (anyCurrentOrCompleted) newStatus = "in_progress";
+              else newStatus = "not_started";
+            }
+            
+            if (newStatus !== p.status) {
+              supabase.from("projects").update({ status: newStatus }).eq("id", projectId).then();
+            }
+
+            return {
+              ...p,
+              status: newStatus,
+              stages: updatedStages
+            };
+          }
+          return p;
+        }));
+        
+        setSelectedProject(prev => {
+          if (prev && prev.id === projectId) {
+            let newStatus = prev.status;
+            if (updatedStages.length > 0) {
+              const allCompleted = updatedStages.every(s => s.status === "completed");
+              const anyCurrentOrCompleted = updatedStages.some(s => s.status === "current" || s.status === "completed");
+              if (allCompleted) newStatus = "completed";
+              else if (anyCurrentOrCompleted) newStatus = "in_progress";
+            }
+            return { ...prev, status: newStatus, stages: updatedStages };
+          }
+          return prev;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to save stages:", err);
+    }
+  };
+
   const currentMonthKey = useMemo(() => {
     return new Date().toLocaleString("en-US", { month: "short" }); // e.g. "Aug"
   }, []);
@@ -438,6 +701,36 @@ export default function App() {
     });
     return groups;
   }, [kpis]);
+
+  const groupedProjects = useMemo(() => {
+    const groups = {};
+    projects.forEach(p => {
+      const teamName = p.team || "Unassigned";
+      if (!groups[teamName]) {
+        groups[teamName] = [];
+      }
+      groups[teamName].push(p);
+    });
+    return groups;
+  }, [projects]);
+
+  const myProjectTasks = useMemo(() => {
+    const list = [];
+    projects.forEach(p => {
+      (p.stages || []).forEach(s => {
+        if (s.responsible === loggedInUser?.name) {
+          list.push({
+            ...s,
+            projectTitle: p.title,
+            projectTeam: p.team,
+            projectId: p.id,
+            projectStages: p.stages
+          });
+        }
+      });
+    });
+    return list.sort((a, b) => new Date(a.target_date || 0) - new Date(b.target_date || 0));
+  }, [projects, loggedInUser]);
 
   if (!loggedInUser) {
     return (
@@ -649,10 +942,165 @@ export default function App() {
               )}
 
               {screen === "projects" && (
-                <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
-                  <span className="text-4xl">🚀</span>
-                  <h3 className="text-sm font-black text-slate-800 mt-3">Projects Management</h3>
-                  <p className="text-xs font-semibold text-slate-400 mt-1">Coming soon in the new rebuild!</p>
+                <div className="space-y-4">
+                  {/* Filter Tabs */}
+                  <div className="flex gap-2 border-b border-orange-100 pb-3">
+                    <button
+                      onClick={() => setProjectFilter("all")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+                        projectFilter === "all" ? "bg-orange-100 text-orange-700 font-black" : "text-slate-500 hover:bg-orange-50"
+                      }`}
+                    >
+                      All Team Projects
+                    </button>
+                    <button
+                      onClick={() => setProjectFilter("my_tasks")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+                        projectFilter === "my_tasks" ? "bg-orange-100 text-orange-700 font-black" : "text-slate-500 hover:bg-orange-50"
+                      }`}
+                    >
+                      My Project Tasks ({myProjectTasks.length})
+                    </button>
+                  </div>
+
+                  {projectFilter === "my_tasks" ? (
+                    myProjectTasks.length === 0 ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xs">
+                        <span className="text-3xl">📋</span>
+                        <p className="text-xs font-semibold text-slate-500 mt-2">You have no active project tasks assigned.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
+                        <table className="w-full text-[11px] border-collapse text-left">
+                          <thead>
+                            <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                              <th className="px-4 py-2.5">Project</th>
+                              <th className="px-4 py-2.5">Stage</th>
+                              <th className="px-4 py-2.5">Support</th>
+                              <th className="px-4 py-2.5">Target Date</th>
+                              <th className="px-4 py-2.5">Status</th>
+                              <th className="px-4 py-2.5 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                            {myProjectTasks.map((task) => {
+                              const statusColor = 
+                                task.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                task.status === "current" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                                "bg-slate-50 text-slate-500 border-slate-150";
+
+                              const handleTransition = async (newStatus) => {
+                                const idx = (task.projectStages || []).findIndex(s => s.id === task.id);
+                                if (idx !== -1) {
+                                  let updated = [...(task.projectStages || [])].sort((a, b) => a.stage_order - b.stage_order);
+                                  updated[idx] = { ...updated[idx], status: newStatus };
+                                  if (newStatus === "completed" && idx < updated.length - 1) {
+                                    if (updated[idx + 1].status === "pending") {
+                                      updated[idx + 1].status = "current";
+                                    }
+                                  }
+                                  await handleSaveProjectStages(task.projectId, updated);
+                                }
+                              };
+
+                              return (
+                                <tr key={task.id} className="hover:bg-slate-50/40 transition-colors">
+                                  <td className="px-4 py-3 font-bold text-slate-800">{task.projectTitle}</td>
+                                  <td className="px-4 py-3">{task.name}</td>
+                                  <td className="px-4 py-3 font-mono">{task.support || "-"}</td>
+                                  <td className="px-4 py-3 font-mono">{task.target_date || "-"}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                                      {task.status || "pending"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    {task.status === "pending" && (
+                                      <button onClick={() => handleTransition("current")} className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors">
+                                        Mark as Current
+                                      </button>
+                                    )}
+                                    {task.status === "current" && (
+                                      <button onClick={() => handleTransition("completed")} className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors">
+                                        Mark as Completed
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  ) : (
+                    Object.keys(groupedProjects).length === 0 ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xs">
+                        <span className="text-3xl">🚀</span>
+                        <p className="text-xs font-semibold text-slate-500 mt-2">No projects loaded for this team.</p>
+                      </div>
+                    ) : (
+                      Object.entries(groupedProjects).map(([teamName, list]) => (
+                        <div key={teamName} className="space-y-3 pt-2">
+                          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">{teamName}</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {list.map(p => {
+                              const sortedStages = [...(p.stages || [])].sort((a, b) => a.stage_order - b.stage_order);
+                              
+                              const statusColor = 
+                                p.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                p.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                                "bg-slate-50 text-slate-500 border-slate-150";
+
+                              return (
+                                <div
+                                  key={p.id}
+                                  onClick={() => { setSelectedProject(p); setIsProjectModalOpen(true); }}
+                                  className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs hover:border-orange-200 hover:shadow-md transition-all cursor-pointer space-y-4"
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <h4 className="font-black text-slate-800 text-sm">{p.title}</h4>
+                                    <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                                      {p.status ? p.status.replace("_", " ") : "not started"}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 font-bold">
+                                    <div>Do: <span className="text-slate-800">{p.do_person || "-"}</span></div>
+                                    <div>Drive: <span className="text-slate-800">{p.drive_person || "-"}</span></div>
+                                  </div>
+
+                                  {/* Progress strip */}
+                                  {sortedStages.length > 0 && (
+                                    <div className="space-y-1.5 pt-1">
+                                      <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Progress Strip</div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {sortedStages.map(s => {
+                                          const color = 
+                                            s.status === "completed" ? "bg-emerald-500" :
+                                            s.status === "current" ? "bg-sky-500 animate-pulse" :
+                                            "bg-slate-350";
+                                          return (
+                                            <span
+                                              key={s.id}
+                                              title={`${s.name} (${s.status || "pending"})`}
+                                              className={`h-2.5 px-2 rounded-full text-[8px] font-black text-white ${color} uppercase tracking-wider flex items-center justify-center`}
+                                            >
+                                              {s.name}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    )
+                  )}
                 </div>
               )}
 
@@ -664,6 +1112,15 @@ export default function App() {
             isOpen={isKpiModalOpen}
             onClose={() => { setIsKpiModalOpen(false); setSelectedKpi(null); }}
             onSave={handleSaveKpi}
+          />
+
+          <ProjectModal
+            project={selectedProject}
+            isOpen={isProjectModalOpen}
+            onClose={() => { setIsProjectModalOpen(false); setSelectedProject(null); }}
+            onSave={handleSaveProjectStages}
+            isAdmin={role === "admin"}
+            currentUser={loggedInUser}
           />
           
         </div>
