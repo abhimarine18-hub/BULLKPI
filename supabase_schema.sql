@@ -84,12 +84,12 @@ INSERT INTO team_members (id, team_id, name, employee_id, designation, experienc
 (14, 4, 'Shalini', 'EMP-1096', 'Enquiry Agent', 3, 'Malathi', 'Agent working under Malathi.'),
 (15, 4, 'Smeronika', 'EMP-1097', 'Enquiry Agent', 2, 'Malathi', 'Agent working under Malathi.'),
 (16, 4, 'Jennet', 'EMP-1098', 'Enquiry Agent', 2, 'Malathi', 'Agent working under Malathi.'),
-(17, 4, 'Agent 1', 'EMP-1099', 'Enquiry Agent 1', 1, 'Malathi', 'Agent 1 working under Malathi.'),
-(18, 4, 'Agent 2', 'EMP-1100', 'Enquiry Agent 2', 1, 'Malathi', 'Agent 2 working under Malathi.'),
-(19, 4, 'Agent 3', 'EMP-1101', 'Enquiry Agent 3', 1, 'Malathi', 'Agent 3 working under Malathi.'),
-(20, 4, 'Agent 4', 'EMP-1102', 'Enquiry Agent 4', 1, 'Malathi', 'Agent 4 working under Malathi.'),
-(21, 4, 'Agent 5', 'EMP-1103', 'Enquiry Agent 5', 1, 'Malathi', 'Agent 5 working under Malathi.'),
-(22, 4, 'Agent 6', 'EMP-1104', 'Enquiry Agent 6', 1, 'Malathi', 'Agent 6 working under Malathi.'),
+(17, 4, 'Devi', 'EMP-1099', 'Enquiry Agent Devi', 1, 'Malathi', 'Devi working under Malathi.'),
+(18, 4, 'Ruhina', 'EMP-1100', 'Enquiry Agent Ruhina', 1, 'Malathi', 'Ruhina working under Malathi.'),
+(19, 4, 'Kaveri', 'EMP-1101', 'Enquiry Agent Kaveri', 1, 'Malathi', 'Kaveri working under Malathi.'),
+(20, 4, 'Sanjana', 'EMP-1102', 'Enquiry Agent Sanjana', 1, 'Malathi', 'Sanjana working under Malathi.'),
+(21, 4, 'Harshitha', 'EMP-1103', 'Enquiry Agent Harshitha', 1, 'Malathi', 'Harshitha working under Malathi.'),
+(22, 4, 'Shilpa', 'EMP-1104', 'Enquiry Agent Shilpa', 1, 'Malathi', 'Shilpa working under Malathi.'),
 (23, 5, 'Keerthana', 'EMP-1119', 'CRM Lead & Coordinator', 5, 'Marketing Head', 'Leads client relationships and service coordination.'),
 (24, 6, 'Anitha', 'EMP-1105', 'Events & Expo Lead', 5, 'Marketing Head', 'Plans and executes expo participation end-to-end.')
 ON CONFLICT (id) DO UPDATE SET 
