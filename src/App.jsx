@@ -3292,10 +3292,8 @@ export default function App() {
                               <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
                                 <th className="px-4 py-2.5">Req #</th>
                                 <th className="px-4 py-2.5">Title</th>
-                                <th className="px-4 py-2.5">Type</th>
-                                <th className="px-4 py-2.5">Assigned Team</th>
+                                <th className="px-4 py-2.5">Work taken by</th>
                                 <th className="px-4 py-2.5">Required By</th>
-                                <th className="px-4 py-2.5">Requested By</th>
                                 <th className="px-4 py-2.5">Status</th>
                                 <th className="px-4 py-2.5 text-right">Actions</th>
                               </tr>
@@ -3317,15 +3315,28 @@ export default function App() {
                                 const isAssignedToUserTeam = 
                                   role === "admin" || loggedInUser?.team === r.assigned_team;
 
+                                const fmtDate = (isoStr) => {
+                                  if (!isoStr) return "";
+                                  const d = new Date(isoStr);
+                                  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                                };
+
                                 return (
                                   <tr key={r.id} className="hover:bg-slate-50/40 transition-colors">
                                     <td className="px-4 py-3 font-bold text-slate-800">{r.request_number}</td>
                                     <td className="px-4 py-3 max-w-[150px] truncate" title={r.title}>{r.title}</td>
                                     <td className="px-4 py-3 text-slate-500 font-medium">
                                       {r.accepted_by ? (
-                                        <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                                          {r.accepted_by}
-                                        </span>
+                                        <div className="flex flex-col text-left">
+                                          <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 inline-block w-fit">
+                                            {r.accepted_by}
+                                          </span>
+                                          {r.accepted_at && (
+                                            <span className="text-[8px] text-slate-400 font-mono mt-0.5 pl-1">
+                                              taken: {fmtDate(r.accepted_at)}
+                                            </span>
+                                          )}
+                                        </div>
                                       ) : (
                                         <span className="text-slate-400 italic">Unassigned</span>
                                       )}
@@ -3333,11 +3344,22 @@ export default function App() {
                                     <td className={`px-4 py-3 font-mono ${isOverdue ? "text-rose-600 font-bold bg-rose-50/50" : ""}`}>
                                       {r.required_by_date || "-"}
                                     </td>
-                                    <td className="px-4 py-3">{r.requested_by}</td>
-                                    <td className="px-4 py-3">
-                                      <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
-                                        {r.status || "pending"}
-                                      </span>
+                                    <td className="px-4 py-3 text-left">
+                                      <div className="flex flex-col items-start gap-0.5">
+                                        <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                                          {r.status || "pending"}
+                                        </span>
+                                        {r.status === "in_progress" && r.accepted_at && (
+                                          <span className="text-[8px] text-slate-400 font-mono pl-1">
+                                            {fmtDate(r.accepted_at)}
+                                          </span>
+                                        )}
+                                        {r.status === "ready" && r.approved_at && (
+                                          <span className="text-[8px] text-slate-400 font-mono pl-1">
+                                            {fmtDate(r.approved_at)}
+                                          </span>
+                                        )}
+                                      </div>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                       <div className="flex justify-end items-center gap-2">
