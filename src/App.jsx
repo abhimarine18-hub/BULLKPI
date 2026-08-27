@@ -850,13 +850,19 @@ export default function App() {
     if (cachedUser) {
       const u = JSON.parse(cachedUser);
       setLoggedInUser(u);
+      const isAdm = cachedRole === "admin";
       setRole(cachedRole || "employee");
       fetchMemberDesignations();
-      if (cachedRole !== "admin" && u.team) {
-        setActiveDashboardTeam(u.team);
-      }
-      if (u.team) {
-        fetchTeamData(u.team);
+      if (isAdm) {
+        supabase.from("kpis").select("*").then(({ data }) => { if (data) setKpis(data); });
+        supabase.from("projects").select("*").then(({ data }) => { if (data) setProjects(data); });
+        fetchCampaignsData();
+        fetchContentRequestsData();
+      } else {
+        if (u.team) {
+          setActiveDashboardTeam(u.team);
+          fetchTeamData(u.team);
+        }
       }
     }
   }, []);
