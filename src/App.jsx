@@ -2293,7 +2293,7 @@ export default function App() {
                                   </button>
 
                                   {showTestimonialSubmenu && (
-                                    <div className="absolute left-full top-0 ml-1 bg-white border border-orange-150 rounded-2xl shadow-xl p-1.5 w-36 space-y-0.5 z-55 max-h-[200px] overflow-y-auto divide-y divide-slate-55">
+                                    <div className="absolute left-full top-0 ml-1 bg-white border border-orange-150 rounded-2xl shadow-xl p-1.5 w-36 space-y-0.5 z-55 divide-y divide-slate-55">
                                       {["Hindi", "Tamil", "Kannada", "Telugu", "Bengali", "Gujarati", "Malayalam", "Odia", "Marathi", "Punjabi"].map(lang => (
                                         <button
                                           key={lang}
@@ -2323,6 +2323,15 @@ export default function App() {
                                 >
                                   <span>Branding Video</span>
                                   <span className="text-[9px] text-slate-455">Video</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setActivePopup(prev => ({ ...prev, step: "form", selectedType: "festival_poster" }))}
+                                  className="w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between"
+                                >
+                                  <span>Festival Poster</span>
+                                  <span className="text-[9px] text-slate-450">Poster</span>
                                 </button>
 
                                 <button
@@ -2379,6 +2388,7 @@ export default function App() {
                                         ? `${activePopup.selectedLanguage} Testimonial Video`
                                         : activePopup.selectedType === "sm_poster" ? "SM Poster"
                                         : activePopup.selectedType === "branding_video" ? "Branding Video"
+                                        : activePopup.selectedType === "festival_poster" ? "Festival Poster"
                                         : activePopup.selectedType === "campaign_poster" ? "Campaign Poster"
                                         : activePopup.selectedType === "campaign_video" ? "Campaign Video"
                                         : ""
