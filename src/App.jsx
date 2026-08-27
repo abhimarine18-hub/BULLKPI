@@ -891,6 +891,9 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [activePopup, setActivePopup] = useState(null);
   const [showTestimonialSubmenu, setShowTestimonialSubmenu] = useState(false);
+  const [recurringEnabled, setRecurringEnabled] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState("same_date");
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
 
   const [membersMap, setMembersMap] = useState({});
 
@@ -1155,6 +1158,7 @@ export default function App() {
         console.error("Error fetching content requests from Supabase:", error.message);
       } else if (data) {
         setContentRequests(data);
+        generateUpcomingRecurrences(data);
       }
     } catch (err) {
       console.error("Error loading content requests:", err);
@@ -1427,7 +1431,11 @@ export default function App() {
         requested_by: loggedInUser.name,
         assigned_team: assignedTeam,
         status: "pending",
-        linked_kpi_id: linkedKpi ? linkedKpi.id : null
+        linked_kpi_id: linkedKpi ? linkedKpi.id : null,
+        is_recurring: payload.is_recurring || false,
+        recurrence_type: payload.recurrence_type || null,
+        recurrence_end_date: payload.recurrence_end_date || null,
+        recurrence_parent_id: payload.recurrence_parent_id || null
       };
 
       const { data, error } = await supabase
@@ -1457,6 +1465,134 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error saving content request:", err);
+    }
+  };
+
+  // Helper: compute the next planned_post_date for a recurring row
+  const getNextRecurringDate = (parentDateStr, recType) => {
+    const parent = new Date(parentDateStr);
+    // Move to next calendar month, same year or wrapping
+    const nextMonth = parent.getMonth() + 1;
+    const nextYear = nextMonth > 11 ? parent.getFullYear() + 1 : parent.getFullYear();
+    const adjMonth = nextMonth > 11 ? 0 : nextMonth;
+
+    if (recType === "same_date") {
+      // Same day-of-month next month (capped at last day of that month)
+      const lastDay = new Date(nextYear, adjMonth + 1, 0).getDate();
+      const day = Math.min(parent.getDate(), lastDay);
+      return `${nextYear}-${String(adjMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    } else {
+      // same_weekday: e.g. "2nd Wednesday"
+      const targetWeekday = parent.getDay(); // 0=Sun…6=Sat
+      const weekOfMonth = Math.ceil(parent.getDate() / 7); // 1-based week
+      // Find the nth occurrence of that weekday in the next month
+      let count = 0;
+      const daysInNextMonth = new Date(nextYear, adjMonth + 1, 0).getDate();
+      for (let d = 1; d <= daysInNextMonth; d++) {
+        const wd = new Date(nextYear, adjMonth, d).getDay();
+        if (wd === targetWeekday) {
+          count++;
+          if (count === weekOfMonth) {
+            return `${nextYear}-${String(adjMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          }
+        }
+      }
+      // If that nth weekday doesn't exist (e.g. 5th Monday), use last occurrence
+      let lastOccurrence = null;
+      for (let d = 1; d <= daysInNextMonth; d++) {
+        if (new Date(nextYear, adjMonth, d).getDay() === targetWeekday) {
+          lastOccurrence = d;
+        }
+      }
+      return `${nextYear}-${String(adjMonth + 1).padStart(2, "0")}-${String(lastOccurrence).padStart(2, "0")}`;
+    }
+  };
+
+  const generateUpcomingRecurrences = async (requestsList) => {
+    try {
+      const parents = requestsList.filter(r => r.is_recurring && !r.recurrence_parent_id);
+      if (parents.length === 0) return;
+
+      const toInsert = [];
+      for (const parent of parents) {
+        const nextDate = getNextRecurringDate(parent.planned_post_date, parent.recurrence_type || "same_date");
+
+        // Check end date
+        if (parent.recurrence_end_date && nextDate > parent.recurrence_end_date) continue;
+
+        // Check if a child already exists for that month
+        const nextD = new Date(nextDate);
+        const alreadyExists = requestsList.some(r =>
+          r.recurrence_parent_id === parent.id &&
+          r.planned_post_date &&
+          new Date(r.planned_post_date).getFullYear() === nextD.getFullYear() &&
+          new Date(r.planned_post_date).getMonth() === nextD.getMonth()
+        );
+        if (alreadyExists) continue;
+
+        // Build required_by_date
+        const rbDate = new Date(nextDate);
+        rbDate.setDate(rbDate.getDate() - 5);
+        const requiredByDate = rbDate.toISOString().split("T")[0];
+
+        // Auto-increment request number
+        const currentYear = new Date().getFullYear();
+        const prefix = `CR-${currentYear}-`;
+        const allCR = [...requestsList, ...toInsert];
+        const sameYear = allCR.filter(r => r.request_number && r.request_number.startsWith(prefix));
+        let maxNum = 0;
+        sameYear.forEach(r => {
+          const parts = r.request_number.split("-");
+          if (parts.length === 3) { const n = parseInt(parts[2], 10); if (n > maxNum) maxNum = n; }
+        });
+        const requestNumber = `${prefix}${String(maxNum + 1).padStart(4, "0")}`;
+
+        toInsert.push({
+          request_number: requestNumber,
+          title: parent.title,
+          content_type: parent.content_type,
+          planned_post_date: nextDate,
+          required_by_date: requiredByDate,
+          brief: parent.brief,
+          requested_by: parent.requested_by,
+          assigned_team: parent.assigned_team,
+          status: "pending",
+          linked_kpi_id: parent.linked_kpi_id,
+          is_recurring: true,
+          recurrence_type: parent.recurrence_type,
+          recurrence_end_date: parent.recurrence_end_date,
+          recurrence_parent_id: parent.id
+        });
+      }
+
+      if (toInsert.length === 0) return;
+
+      const { data, error } = await supabase.from("content_requests").insert(toInsert).select();
+      if (error) {
+        console.error("Error generating recurring recurrences:", error.message);
+      } else if (data && data.length > 0) {
+        setContentRequests(prev => [...prev, ...data]);
+      }
+    } catch (err) {
+      console.error("generateUpcomingRecurrences error:", err);
+    }
+  };
+
+  const handleCancelFutureRecurrences = async (parentId) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { error } = await supabase
+        .from("content_requests")
+        .update({ recurrence_end_date: today })
+        .eq("id", parentId);
+      if (error) throw error;
+      setContentRequests(prev =>
+        prev.map(r => r.id === parentId ? { ...r, recurrence_end_date: today } : r)
+      );
+      // Close detail popup after cancelling
+      setActivePopup(null);
+    } catch (err) {
+      console.error("Error cancelling future recurrences:", err);
     }
   };
 
@@ -2602,7 +2738,7 @@ export default function App() {
                                             }`}
                                             title={`${r.title} (${r.status || "pending"})`}
                                           >
-                                            {r.title}
+                                            {r.is_recurring && "🔁 "}{r.title}
                                           </div>
                                         );
                                       })}
@@ -2759,14 +2895,25 @@ export default function App() {
                                   const campaignInput = e.target.elements.campaign.value;
                                   const briefInput = e.target.elements.brief.value.trim();
                                   
+                                  const isRec = recurringEnabled;
+                                  const recType = recurrenceType;
+                                  const recEndDate = recurrenceEndDate ? recurrenceEndDate : null;
+
                                   await handleSaveContentRequest({
                                     title: titleInput,
                                     content_type: activePopup.selectedType,
                                     campaign: campaignInput,
                                     planned_post_date: activePopup.dateStr,
-                                    brief: briefInput
+                                    brief: briefInput,
+                                    is_recurring: isRec,
+                                    recurrence_type: isRec ? recType : null,
+                                    recurrence_end_date: isRec ? recEndDate : null
                                   });
                                   setActivePopup(null);
+                                  // Reset local states
+                                  setRecurringEnabled(false);
+                                  setRecurrenceType("same_date");
+                                  setRecurrenceEndDate("");
                                 }}
                                 className="space-y-3"
                               >
@@ -2818,6 +2965,71 @@ export default function App() {
                                   />
                                 </div>
 
+                                {/* Recurring Toggle & Options */}
+                                <div className="space-y-2 border-t border-slate-50 pt-2 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-[9px] font-bold text-slate-550 uppercase tracking-wider block">Repeat monthly?</label>
+                                    <select
+                                      value={recurringEnabled ? "yes" : "no"}
+                                      onChange={(e) => setRecurringEnabled(e.target.value === "yes")}
+                                      className="border border-orange-200 rounded px-1 py-0.5 text-[10px] bg-white font-bold text-slate-850 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                    >
+                                      <option value="no">No</option>
+                                      <option value="yes">Yes</option>
+                                    </select>
+                                  </div>
+
+                                  {recurringEnabled && (
+                                    <div className="space-y-2 pl-1 border-l-2 border-teal-500">
+                                      <div className="space-y-1">
+                                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Repeat on</label>
+                                        <div className="space-y-1 text-[10px] font-medium text-slate-800">
+                                          <label className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                              type="radio"
+                                              name="recurrence_type"
+                                              value="same_date"
+                                              checked={recurrenceType === "same_date"}
+                                              onChange={() => setRecurrenceType("same_date")}
+                                              className="accent-teal-600"
+                                            />
+                                            <span>Same date each month (e.g. the {new Date(activePopup.dateStr).getDate()})</span>
+                                          </label>
+                                          <label className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                              type="radio"
+                                              name="recurrence_type"
+                                              value="same_weekday"
+                                              checked={recurrenceType === "same_weekday"}
+                                              onChange={() => setRecurrenceType("same_weekday")}
+                                              className="accent-teal-600"
+                                            />
+                                            <span>
+                                              Same weekday (e.g. {(() => {
+                                                const d = new Date(activePopup.dateStr);
+                                                const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                                                const wNum = Math.ceil(d.getDate() / 7);
+                                                const ord = ["", "1st", "2nd", "3rd", "4th", "5th"][wNum] || `${wNum}th`;
+                                                return `${ord} ${weekdays[d.getDay()]}`;
+                                              })()})
+                                            </span>
+                                          </label>
+                                        </div>
+                                      </div>
+
+                                      <div className="space-y-1">
+                                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Repeat until (Optional)</label>
+                                        <input
+                                          type="date"
+                                          value={recurrenceEndDate}
+                                          onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                                          className="border border-orange-200 rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-850 w-full focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
                                 {(() => {
                                   const selectedStat = capacityStats.find(s => s.type === activePopup.selectedType);
                                   return selectedStat ? (
@@ -2838,7 +3050,12 @@ export default function App() {
                                 <div className="flex justify-end gap-1.5 pt-1.5 border-t border-slate-50">
                                   <button
                                     type="button"
-                                    onClick={() => setActivePopup(prev => ({ ...prev, step: "menu" }))}
+                                    onClick={() => {
+                                      setActivePopup(prev => ({ ...prev, step: "menu" }));
+                                      setRecurringEnabled(false);
+                                      setRecurrenceType("same_date");
+                                      setRecurrenceEndDate("");
+                                    }}
                                     className="px-2.5 py-1 text-slate-500 hover:bg-slate-100 rounded-lg font-bold text-[10px] transition-colors"
                                   >
                                     Back
@@ -2889,7 +3106,24 @@ export default function App() {
                                   </div>
                                 )}
 
-                                <div className="flex justify-end pt-1.5 border-t border-slate-55">
+                                {activePopup.request.is_recurring && (
+                                  <div className="bg-teal-50/50 border border-teal-100 rounded-lg p-2 text-[9px] text-teal-850 font-bold text-left space-y-1">
+                                    <div>🔁 Part of a recurring series ({activePopup.request.recurrence_type === "same_weekday" ? "Same weekday" : "Same date each month"})</div>
+                                    {!activePopup.request.recurrence_parent_id ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCancelFutureRecurrences(activePopup.request.id)}
+                                        className="text-[9px] font-black text-rose-600 hover:text-rose-700 underline block"
+                                      >
+                                        Cancel future occurrences
+                                      </button>
+                                    ) : (
+                                      <div className="text-[8px] text-slate-400 font-normal">Child recurrence (manage from parent series)</div>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="flex justify-end gap-1.5 pt-1.5 border-t border-slate-55">
                                   <button
                                     type="button"
                                     onClick={() => setActivePopup(null)}
