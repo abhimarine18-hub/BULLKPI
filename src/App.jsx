@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./supabaseClient";
 import {
-  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus
+  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -429,6 +429,146 @@ function ProjectModal({ project, isOpen, onClose, onSave, isAdmin, currentUser }
   );
 }
 
+function CampaignModal({ campaign, isOpen, onClose, onSave }) {
+  const isEdit = !!campaign;
+  const [formData, setFormData] = useState({
+    name: "",
+    start_date: "",
+    end_date: "",
+    spend: "",
+    reach: "",
+    views: "",
+    leads_generated: "",
+    status: "planning"
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEdit) {
+        setFormData({
+          name: campaign.name || "",
+          start_date: campaign.start_date || "",
+          end_date: campaign.end_date || "",
+          spend: campaign.spend !== null && campaign.spend !== undefined ? String(campaign.spend) : "",
+          reach: campaign.reach !== null && campaign.reach !== undefined ? String(campaign.reach) : "",
+          views: campaign.views !== null && campaign.views !== undefined ? String(campaign.views) : "",
+          leads_generated: campaign.leads_generated !== null && campaign.leads_generated !== undefined ? String(campaign.leads_generated) : "",
+          status: campaign.status || "planning"
+        });
+      } else {
+        setFormData({
+          name: "",
+          start_date: "",
+          end_date: "",
+          spend: "",
+          reach: "",
+          views: "",
+          leads_generated: "",
+          status: "planning"
+        });
+      }
+    }
+  }, [isOpen, campaign, isEdit]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({
+      name: formData.name.trim(),
+      start_date: formData.start_date || null,
+      end_date: formData.end_date || null,
+      spend: formData.spend.trim() ? parseFloat(formData.spend) : null,
+      reach: formData.reach.trim() ? parseInt(formData.reach, 10) : null,
+      views: formData.views.trim() ? parseInt(formData.views, 10) : null,
+      leads_generated: formData.leads_generated.trim() ? parseInt(formData.leads_generated, 10) : null,
+      status: formData.status
+    });
+  };
+
+  const spendVal = parseFloat(formData.spend) || 0;
+  const leadsVal = parseInt(formData.leads_generated, 10) || 0;
+  const costPerLead = spendVal && leadsVal ? (spendVal / leadsVal).toFixed(2) : null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-orange-100 flex flex-col">
+        <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between">
+          <h3 className="font-black text-slate-800 text-sm">{isEdit ? "Campaign details" : "New Campaign"}</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 text-xs font-semibold text-slate-650">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Campaign Name</label>
+            <input required type="text" disabled={isEdit} value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold disabled:bg-slate-50 disabled:text-slate-550" />
+          </div>
+
+          {!isEdit ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Start Date</label>
+                <input required type="date" value={formData.start_date} onChange={e => setFormData(prev => ({ ...prev, start_date: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-mono" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">End Date</label>
+                <input required type="date" value={formData.end_date} onChange={e => setFormData(prev => ({ ...prev, end_date: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-mono" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Spend (₹)</label>
+                  <input type="number" step="any" value={formData.spend} onChange={e => setFormData(prev => ({ ...prev, spend: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Leads Generated</label>
+                  <input type="number" value={formData.leads_generated} onChange={e => setFormData(prev => ({ ...prev, leads_generated: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+                </div>
+              </div>
+
+              {/* ROI line */}
+              {costPerLead !== null && (
+                <div className="bg-teal-50/50 border border-teal-100 rounded-xl p-3 text-center text-teal-800 font-black tracking-wide text-[10px]">
+                  Spend: ₹{new Intl.NumberFormat('en-IN').format(spendVal)} | Leads: {leadsVal} | Cost per Lead: ₹{costPerLead}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Reach</label>
+                  <input type="number" value={formData.reach} onChange={e => setFormData(prev => ({ ...prev, reach: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Views</label>
+                  <input type="number" value={formData.views} onChange={e => setFormData(prev => ({ ...prev, views: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Status</label>
+                <select value={formData.status} onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-teal-500">
+                  <option value="planning">planning</option>
+                  <option value="active">active</option>
+                  <option value="completed">completed</option>
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+          <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Save</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function App() {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [role, setRole] = useState("employee");
@@ -450,6 +590,10 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState("all");
+
+  const [campaigns, setCampaigns] = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
 
   const [membersMap, setMembersMap] = useState({});
 
@@ -534,10 +678,26 @@ export default function App() {
       } else {
         setProjects([]);
       }
+      if (teamName === "Digital Marketing" || role === "admin") {
+        await fetchCampaignsData();
+      }
     } catch (err) {
       console.error("Error loading team data:", err);
     }
   }
+
+  const fetchCampaignsData = async () => {
+    try {
+      const { data, error } = await supabase.from("campaigns").select("*");
+      if (error) {
+        console.error("Error fetching campaigns from Supabase:", error.message);
+      } else if (data) {
+        setCampaigns(data);
+      }
+    } catch (err) {
+      console.error("Error loading campaigns:", err);
+    }
+  };
 
   const handleLogin = async () => {
     const { loginId, password } = loginForm;
@@ -564,6 +724,7 @@ export default function App() {
         if (kpisData) setKpis(kpisData);
         const { data: projsData } = await supabase.from("projects").select("*");
         if (projsData) setProjects(projsData);
+        await fetchCampaignsData();
       } catch (e) {}
       return;
     }
@@ -615,6 +776,7 @@ export default function App() {
     setLoginError("");
     setKpis([]);
     setProjects([]);
+    setCampaigns([]);
     setTeamInfo(null);
     setMembersMap({});
     localStorage.removeItem("persistent_user");
@@ -712,6 +874,54 @@ export default function App() {
       }
     } catch (err) {
       console.error("Failed to save stages:", err);
+    }
+  };
+
+  const handleSaveCampaign = async (payload) => {
+    try {
+      if (selectedCampaign) {
+        // Update
+        const { error } = await supabase
+          .from("campaigns")
+          .update({
+            spend: payload.spend,
+            reach: payload.reach,
+            views: payload.views,
+            leads_generated: payload.leads_generated,
+            status: payload.status
+          })
+          .eq("id", selectedCampaign.id);
+
+        if (error) {
+          console.error("Error updating campaign:", error.message);
+        } else {
+          setCampaigns(prev => prev.map(c => c.id === selectedCampaign.id ? { ...c, ...payload } : c));
+          setIsCampaignModalOpen(false);
+          setSelectedCampaign(null);
+        }
+      } else {
+        // Insert new campaign
+        const newRecord = {
+          name: payload.name,
+          start_date: payload.start_date,
+          end_date: payload.end_date,
+          status: "planning",
+          team: "Digital Marketing"
+        };
+        const { data, error } = await supabase
+          .from("campaigns")
+          .insert(newRecord)
+          .select();
+
+        if (error) {
+          console.error("Error inserting campaign:", error.message);
+        } else if (data && data[0]) {
+          setCampaigns(prev => [...prev, data[0]]);
+          setIsCampaignModalOpen(false);
+        }
+      }
+    } catch (err) {
+      console.error("Error saving campaign:", err);
     }
   };
 
@@ -910,6 +1120,18 @@ export default function App() {
                 <FolderGit2 className="h-4 w-4" />
                 <span>Projects</span>
               </button>
+
+              {(role === "admin" || loggedInUser?.team === "Digital Marketing") && (
+                <button
+                  onClick={() => { setScreen("campaigns"); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                    screen === "campaigns" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                  }`}
+                >
+                  <Megaphone className="h-4 w-4" />
+                  <span>Campaigns</span>
+                </button>
+              )}
             </nav>
 
             <div className="p-3 border-t border-orange-100 flex items-center gap-2">
@@ -1439,6 +1661,79 @@ export default function App() {
                 </div>
               )}
 
+              {screen === "campaigns" && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center pb-2">
+                    <div>
+                      <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Campaigns</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manage marketing campaigns, spend, and lead metrics</p>
+                    </div>
+                    <button
+                      onClick={() => { setSelectedCampaign(null); setIsCampaignModalOpen(true); }}
+                      className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>New Campaign</span>
+                    </button>
+                  </div>
+
+                  {campaigns.length === 0 ? (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                      <span className="text-4xl">📣</span>
+                      <h3 className="text-sm font-black text-slate-800 mt-3">No campaigns loaded</h3>
+                      <p className="text-xs font-semibold text-slate-450 mt-1">Start by adding a new campaign using the button above.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {campaigns.map((c) => {
+                        const statusColor = 
+                          c.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                          c.status === "active" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                          "bg-amber-50 text-amber-700 border-amber-100";
+
+                        const spendVal = parseFloat(c.spend) || 0;
+                        const leadsVal = parseInt(c.leads_generated, 10) || 0;
+                        const costPerLead = spendVal && leadsVal ? (spendVal / leadsVal).toFixed(2) : null;
+
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => { setSelectedCampaign(c); setIsCampaignModalOpen(true); }}
+                            className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs hover:border-orange-250 hover:shadow-md transition-all cursor-pointer space-y-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <h4 className="font-black text-slate-800 text-sm truncate" title={c.name}>{c.name}</h4>
+                              <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider shrink-0 ${statusColor}`}>
+                                {c.status || "planning"}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[10px] text-slate-500 font-bold border-b border-slate-50 pb-3">
+                              <div>Spend: <span className="text-slate-800 font-mono">₹{c.spend ? new Intl.NumberFormat('en-IN').format(c.spend) : "-"}</span></div>
+                              <div>Leads: <span className="text-slate-800 font-mono">{c.leads_generated !== null && c.leads_generated !== undefined ? c.leads_generated : "-"}</span></div>
+                              <div>Reach: <span className="text-slate-800 font-mono">{c.reach ? new Intl.NumberFormat('en-IN').format(c.reach) : "-"}</span></div>
+                              <div>Views: <span className="text-slate-800 font-mono">{c.views ? new Intl.NumberFormat('en-IN').format(c.views) : "-"}</span></div>
+                            </div>
+
+                            {/* Date range & ROI */}
+                            <div className="space-y-1.5 pt-1 text-[10px]">
+                              {costPerLead !== null && (
+                                <div className="bg-teal-50/50 border border-teal-100 rounded-lg p-2 text-center text-teal-850 font-black tracking-wide text-[9px]">
+                                  Cost per Lead: ₹{costPerLead}
+                                </div>
+                              )}
+                              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                                {c.start_date || "-"} to {c.end_date || "-"}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
           </main>
           
@@ -1456,6 +1751,13 @@ export default function App() {
             onSave={handleSaveProjectStages}
             isAdmin={role === "admin"}
             currentUser={loggedInUser}
+          />
+
+          <CampaignModal
+            campaign={selectedCampaign}
+            isOpen={isCampaignModalOpen}
+            onClose={() => { setIsCampaignModalOpen(false); setSelectedCampaign(null); }}
+            onSave={handleSaveCampaign}
           />
           
         </div>
