@@ -569,7 +569,7 @@ function CampaignModal({ campaign, isOpen, onClose, onSave }) {
   );
 }
 
-function NewRequestModal({ isOpen, onClose, onSave, campaigns }) {
+function NewRequestModal({ isOpen, onClose, onSave, campaigns, prefilledDate }) {
   const [formData, setFormData] = useState({
     title: "",
     content_type: "testimonial_video",
@@ -584,11 +584,11 @@ function NewRequestModal({ isOpen, onClose, onSave, campaigns }) {
         title: "",
         content_type: "testimonial_video",
         campaign: "",
-        planned_post_date: "",
+        planned_post_date: prefilledDate || "",
         brief: ""
       });
     }
-  }, [isOpen]);
+  }, [isOpen, prefilledDate]);
 
   if (!isOpen) return null;
 
@@ -702,6 +702,84 @@ function PostLinkModal({ isOpen, onClose, onSave }) {
   );
 }
 
+function RequestDetailsModal({ isOpen, onClose, request }) {
+  if (!isOpen || !request) return null;
+
+  const statusColor = 
+    request.status === "posted" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+    request.status === "ready" ? "bg-teal-50 text-teal-750 border-teal-100" :
+    request.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
+    "bg-amber-50 text-amber-700 border-amber-100";
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-orange-100 flex flex-col animate-in fade-in zoom-in duration-150">
+        <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between">
+          <h3 className="font-black text-slate-800 text-sm">Request Detail ({request.request_number})</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 text-xs font-semibold text-slate-650">
+          <div className="space-y-1">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Title</span>
+            <p className="text-slate-800 font-bold text-sm">{request.title}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Content Type</span>
+              <p className="text-slate-800 capitalize">{request.content_type?.replace("_", " ")}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Team</span>
+              <p className="text-slate-800">{request.assigned_team}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Planned Post Date</span>
+              <p className="text-slate-800 font-mono">{request.planned_post_date || "-"}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Required By Date</span>
+              <p className="text-slate-800 font-mono">{request.required_by_date || "-"}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Requested By</span>
+              <p className="text-slate-800">{request.requested_by}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Status</span>
+              <div>
+                <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                  {request.status || "pending"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1 border-t border-slate-100 pt-3">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block font-sans">Brief / Info</span>
+            <p className="text-slate-700 bg-slate-50 border border-slate-100 rounded-xl p-3 font-medium whitespace-pre-wrap max-h-[150px] overflow-y-auto font-sans leading-relaxed">
+              {request.brief || "No brief details provided."}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end">
+          <button type="button" onClick={onClose} className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [role, setRole] = useState("employee");
@@ -735,6 +813,12 @@ export default function App() {
   const [postLinkValue, setPostLinkValue] = useState("");
   const [requestFilterStatus, setRequestFilterStatus] = useState("all");
   const [requestFilterTeam, setRequestFilterTeam] = useState("all");
+
+  const [calendarPrefilledDate, setCalendarPrefilledDate] = useState("");
+  const [isRequestDetailsModalOpen, setIsRequestDetailsModalOpen] = useState(false);
+  const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
 
   const [membersMap, setMembersMap] = useState({});
 
@@ -1129,6 +1213,19 @@ export default function App() {
       } else if (data && data[0]) {
         setContentRequests(prev => [...prev, data[0]]);
         setIsRequestModalOpen(false);
+        setCalendarPrefilledDate("");
+        
+        try {
+          await supabase.from("notifications").insert({
+            type: "reminder",
+            title: "New Content Request Scheduled",
+            message: `A new content request (${requestNumber}) has been scheduled for team ${assignedTeam}.`,
+            recipient: assignedTeam,
+            status: "unread"
+          });
+        } catch (ne) {
+          console.error("Failed to insert notification:", ne);
+        }
       }
     } catch (err) {
       console.error("Error saving content request:", err);
@@ -1190,6 +1287,19 @@ export default function App() {
       return matchStatus && matchTeam;
     });
   }, [contentRequests, requestFilterStatus, requestFilterTeam]);
+
+  const calendarDays = useMemo(() => {
+    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+    const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const days = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push(null);
+    }
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(i);
+    }
+    return days;
+  }, [currentYear, currentMonth]);
 
   // Group KPIs by team
   const groupedKpis = useMemo(() => {
@@ -2010,128 +2120,244 @@ export default function App() {
 
               {screen === "content_requests" && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-2">
-                    <div>
-                      <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Content Requests</h2>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manage assets requests, assignments, and publishing pipeline</p>
-                    </div>
-                    {(role === "admin" || loggedInUser?.team === "Digital Marketing") && (
-                      <button
-                        onClick={() => setIsRequestModalOpen(true)}
-                        className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
-                      >
-                        <Plus className="h-4 w-4" />
-                        <span>New Request</span>
-                      </button>
-                    )}
-                  </div>
+                  {role !== "admin" && loggedInUser?.team === "Digital Marketing" ? (
+                    /* Calendar View for Digital Marketing */
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center pb-2">
+                        <div>
+                          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Content Planning Calendar</h2>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Schedule and plan upcoming social posts & assets</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1 bg-white border border-slate-150 rounded-xl px-2 py-1 shadow-xs">
+                            <button
+                              onClick={() => {
+                                if (currentMonth === 0) {
+                                  setCurrentMonth(11);
+                                  setCurrentYear(y => y - 1);
+                                } else {
+                                  setCurrentMonth(m => m - 1);
+                                }
+                              }}
+                              className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 font-bold text-xs"
+                            >
+                              &larr;
+                            </button>
+                            <span className="text-xs font-black text-slate-800 px-2 select-none uppercase tracking-wide">
+                              {new Date(currentYear, currentMonth).toLocaleString("en-US", { month: "long", year: "numeric" })}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (currentMonth === 11) {
+                                  setCurrentMonth(0);
+                                  setCurrentYear(y => y + 1);
+                                } else {
+                                  setCurrentMonth(m => m + 1);
+                                }
+                              }}
+                              className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 font-bold text-xs"
+                            >
+                              &rarr;
+                            </button>
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* Filter controls */}
-                  <div className="flex flex-wrap gap-3 bg-white border border-slate-150 p-4 rounded-2xl shadow-xs text-xs font-bold text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase text-slate-400">Status:</span>
-                      <select
-                        value={requestFilterStatus}
-                        onChange={e => setRequestFilterStatus(e.target.value)}
-                        className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
-                      >
-                        <option value="all">All Statuses</option>
-                        <option value="pending">pending</option>
-                        <option value="in_progress">in progress</option>
-                        <option value="ready">ready</option>
-                        <option value="posted">posted</option>
-                      </select>
-                    </div>
+                      {/* Calendar Grid */}
+                      <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-xs">
+                        {/* Days of Week Header */}
+                        <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-center py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                          <div>Sun</div>
+                          <div>Mon</div>
+                          <div>Tue</div>
+                          <div>Wed</div>
+                          <div>Thu</div>
+                          <div>Fri</div>
+                          <div>Sat</div>
+                        </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase text-slate-400">Assigned Team:</span>
-                      <select
-                        value={requestFilterTeam}
-                        onChange={e => setRequestFilterTeam(e.target.value)}
-                        className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
-                      >
-                        <option value="all">All Teams</option>
-                        <option value="Video Production">Video Production</option>
-                        <option value="Graphic Designing">Graphic Designing</option>
-                      </select>
-                    </div>
-                  </div>
+                        {/* Calendar Grid Cells */}
+                        <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
+                          {calendarDays.map((day, idx) => {
+                            if (day === null) {
+                              return <div key={`empty-${idx}`} className="bg-slate-50/20 min-h-[90px]" />;
+                            }
 
-                  {filteredRequests.length === 0 ? (
-                    <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
-                      <span className="text-4xl">📋</span>
-                      <h3 className="text-sm font-black text-slate-800 mt-3">No content requests found</h3>
-                      <p className="text-xs font-semibold text-slate-450 mt-1">Try relaxing filters or submit a request.</p>
-                    </div>
-                  ) : (
-                    <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
-                      <table className="w-full text-[11px] border-collapse text-left">
-                        <thead>
-                          <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
-                            <th className="px-4 py-2.5">Req #</th>
-                            <th className="px-4 py-2.5">Title</th>
-                            <th className="px-4 py-2.5">Type</th>
-                            <th className="px-4 py-2.5">Assigned Team</th>
-                            <th className="px-4 py-2.5">Required By</th>
-                            <th className="px-4 py-2.5">Requested By</th>
-                            <th className="px-4 py-2.5">Status</th>
-                            <th className="px-4 py-2.5 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                          {filteredRequests.map(r => {
-                            const isOverdue = 
-                              r.required_by_date && 
-                              new Date(r.required_by_date) < new Date() && 
-                              (r.status === "pending" || r.status === "in_progress");
-
-                            const statusColor = 
-                              r.status === "posted" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                              r.status === "ready" ? "bg-teal-50 text-teal-750 border-teal-100 animate-pulse" :
-                              r.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
-                              "bg-amber-50 text-amber-700 border-amber-100";
-
-                            const isAssignedToUserTeam = 
-                              role === "admin" || loggedInUser?.team === r.assigned_team;
+                            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                            const dayRequests = contentRequests.filter(r => r.planned_post_date === dateStr);
 
                             return (
-                              <tr key={r.id} className="hover:bg-slate-50/40 transition-colors">
-                                <td className="px-4 py-3 font-bold text-slate-800">{r.request_number}</td>
-                                <td className="px-4 py-3 max-w-[150px] truncate" title={r.title}>{r.title}</td>
-                                <td className="px-4 py-3 capitalize">{r.content_type?.replace("_", " ")}</td>
-                                <td className="px-4 py-3">{r.assigned_team}</td>
-                                <td className={`px-4 py-3 font-mono ${isOverdue ? "text-rose-600 font-bold bg-rose-50/50" : ""}`}>
-                                  {r.required_by_date || "-"}
-                                </td>
-                                <td className="px-4 py-3">{r.requested_by}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
-                                    {r.status || "pending"}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-right">
-                                  {r.status === "pending" && isAssignedToUserTeam && (
-                                    <button
-                                      onClick={() => handleAcceptContentRequest(r.id)}
-                                      className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
-                                    >
-                                      Accept
-                                    </button>
-                                  )}
-                                  {r.status === "ready" && (role === "admin" || loggedInUser?.team === "Digital Marketing") && (
-                                    <button
-                                      onClick={() => { setSelectedRequestForPost(r); setPostLinkModalOpen(true); }}
-                                      className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
-                                    >
-                                      Mark Posted
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
+                              <div
+                                key={`day-${day}`}
+                                onClick={() => {
+                                  setCalendarPrefilledDate(dateStr);
+                                  setIsRequestModalOpen(true);
+                                }}
+                                className="min-h-[90px] p-2 hover:bg-orange-50/20 transition-colors cursor-pointer flex flex-col items-stretch group"
+                              >
+                                <span className="text-[10px] font-black text-slate-400 group-hover:text-orange-500 transition-colors">
+                                  {day}
+                                </span>
+
+                                <div className="mt-1 space-y-1 overflow-y-auto flex-1 max-h-[70px] pr-0.5">
+                                  {dayRequests.map(r => {
+                                    const isVideo = r.content_type?.includes("video");
+                                    return (
+                                      <div
+                                        key={r.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedRequestDetails(r);
+                                          setIsRequestDetailsModalOpen(true);
+                                        }}
+                                        className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg border truncate text-left cursor-pointer uppercase ${
+                                          isVideo 
+                                            ? "bg-sky-50 text-sky-700 border-sky-100 hover:border-sky-300" 
+                                            : "bg-emerald-50 text-emerald-700 border-emerald-100 hover:border-emerald-300"
+                                        }`}
+                                        title={`${r.title} (${r.status || "pending"})`}
+                                      >
+                                        {r.title}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             );
                           })}
-                        </tbody>
-                      </table>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Existing List View for Video Production, Graphic Designing, and Admin */
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center pb-2">
+                        <div>
+                          <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Content Requests Queue</h2>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manage assets requests, assignments, and publishing pipeline</p>
+                        </div>
+                        {role === "admin" && (
+                          <button
+                            onClick={() => {
+                              setCalendarPrefilledDate("");
+                              setIsRequestModalOpen(true);
+                            }}
+                            className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span>New Request</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filter controls */}
+                      <div className="flex flex-wrap gap-3 bg-white border border-slate-150 p-4 rounded-2xl shadow-xs text-xs font-bold text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase text-slate-400">Status:</span>
+                          <select
+                            value={requestFilterStatus}
+                            onChange={e => setRequestFilterStatus(e.target.value)}
+                            className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                          >
+                            <option value="all">All Statuses</option>
+                            <option value="pending">pending</option>
+                            <option value="in_progress">in progress</option>
+                            <option value="ready">ready</option>
+                            <option value="posted">posted</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase text-slate-400">Assigned Team:</span>
+                          <select
+                            value={requestFilterTeam}
+                            onChange={e => setRequestFilterTeam(e.target.value)}
+                            className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                          >
+                            <option value="all">All Teams</option>
+                            <option value="Video Production">Video Production</option>
+                            <option value="Graphic Designing">Graphic Designing</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {filteredRequests.length === 0 ? (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                          <span className="text-4xl">📋</span>
+                          <h3 className="text-sm font-black text-slate-800 mt-3">No content requests found</h3>
+                          <p className="text-xs font-semibold text-slate-450 mt-1">Try relaxing filters.</p>
+                        </div>
+                      ) : (
+                        <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
+                          <table className="w-full text-[11px] border-collapse text-left">
+                            <thead>
+                              <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                                <th className="px-4 py-2.5">Req #</th>
+                                <th className="px-4 py-2.5">Title</th>
+                                <th className="px-4 py-2.5">Type</th>
+                                <th className="px-4 py-2.5">Assigned Team</th>
+                                <th className="px-4 py-2.5">Required By</th>
+                                <th className="px-4 py-2.5">Requested By</th>
+                                <th className="px-4 py-2.5">Status</th>
+                                <th className="px-4 py-2.5 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                              {filteredRequests.map(r => {
+                                const isOverdue = 
+                                  r.required_by_date && 
+                                  new Date(r.required_by_date) < new Date() && 
+                                  (r.status === "pending" || r.status === "in_progress");
+
+                                const statusColor = 
+                                  r.status === "posted" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                  r.status === "ready" ? "bg-teal-50 text-teal-750 border-teal-100 animate-pulse" :
+                                  r.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                                  "bg-amber-50 text-amber-700 border-amber-100";
+
+                                const isAssignedToUserTeam = 
+                                  role === "admin" || loggedInUser?.team === r.assigned_team;
+
+                                return (
+                                  <tr key={r.id} className="hover:bg-slate-50/40 transition-colors">
+                                    <td className="px-4 py-3 font-bold text-slate-800">{r.request_number}</td>
+                                    <td className="px-4 py-3 max-w-[150px] truncate" title={r.title}>{r.title}</td>
+                                    <td className="px-4 py-3 capitalize">{r.content_type?.replace("_", " ")}</td>
+                                    <td className="px-4 py-3">{r.assigned_team}</td>
+                                    <td className={`px-4 py-3 font-mono ${isOverdue ? "text-rose-600 font-bold bg-rose-50/50" : ""}`}>
+                                      {r.required_by_date || "-"}
+                                    </td>
+                                    <td className="px-4 py-3">{r.requested_by}</td>
+                                    <td className="px-4 py-3">
+                                      <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                                        {r.status || "pending"}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                      {r.status === "pending" && isAssignedToUserTeam && (
+                                        <button
+                                          onClick={() => handleAcceptContentRequest(r.id)}
+                                          className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
+                                        >
+                                          Accept
+                                        </button>
+                                      )}
+                                      {r.status === "ready" && (role === "admin" || loggedInUser?.team === "Digital Marketing") && (
+                                        <button
+                                          onClick={() => { setSelectedRequestForPost(r); setPostLinkModalOpen(true); }}
+                                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
+                                        >
+                                          Mark Posted
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2165,15 +2391,22 @@ export default function App() {
 
           <NewRequestModal
             isOpen={isRequestModalOpen}
-            onClose={() => setIsRequestModalOpen(false)}
+            onClose={() => { setIsRequestModalOpen(false); setCalendarPrefilledDate(""); }}
             onSave={handleSaveContentRequest}
             campaigns={campaigns}
+            prefilledDate={calendarPrefilledDate}
           />
 
           <PostLinkModal
             isOpen={postLinkModalOpen}
             onClose={() => { setPostLinkModalOpen(false); setSelectedRequestForPost(null); }}
             onSave={(link) => { if (selectedRequestForPost) handlePostContentRequest(selectedRequestForPost.id, link); }}
+          />
+
+          <RequestDetailsModal
+            isOpen={isRequestDetailsModalOpen}
+            onClose={() => { setIsRequestDetailsModalOpen(false); setSelectedRequestDetails(null); }}
+            request={selectedRequestDetails}
           />
           
         </div>
