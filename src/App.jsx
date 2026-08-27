@@ -21,7 +21,12 @@ export const formatKeyToLabel = (key) => {
   return `${monthNames[month]} ${year}`;
 };
 
-function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {} }) {
+function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = [], agentLeaves = [] }) {
+  const [previewMonthKey, setPreviewMonthKey] = useState(() => {
+    const d = new Date();
+    const currentK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return FY_KEYS.includes(currentK) ? currentK : "2026-08";
+  });
   const isEdit = !!kpi;
   const [formData, setFormData] = useState({
     name: "",
@@ -283,6 +288,121 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {} }) {
                 );
               })}
             </div>
+          </div>
+
+          <hr className="border-orange-100" />
+
+          {/* Daily Target Preview */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Daily Target Preview</h4>
+                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Live rollup calculation based on working days</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700">
+                <span>Month:</span>
+                <select
+                  value={previewMonthKey}
+                  onChange={e => setPreviewMonthKey(e.target.value)}
+                  className="border border-orange-200 rounded-lg px-2 py-1 text-[10px] font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                  {FY_KEYS.map(mKey => (
+                    <option key={mKey} value={mKey}>{formatKeyToLabel(mKey)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {(() => {
+              if (!previewMonthKey.includes("-")) return null;
+              const [yearStr, monthStr] = previewMonthKey.split("-");
+              const year = parseInt(yearStr);
+              const month = parseInt(monthStr) - 1; // 0-indexed month
+              
+              const firstDayIndex = new Date(year, month, 1).getDay();
+              const totalDays = new Date(year, month + 1, 0).getDate();
+              
+              const dailyTarget = parseFloat(formData.daily_target) || 0;
+              const enteredMonthlyTarget = parseFloat(formData.monthly_target?.[previewMonthKey]) || 0;
+              
+              let workingDaysCount = 0;
+              const daysInfo = [];
+              
+              for (let d = 1; d <= totalDays; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                const dateObj = new Date(year, month, d);
+                const isSunday = dateObj.getDay() === 0;
+                
+                const matchingHoliday = holidays.find(h => 
+                  h.holiday_date === dateStr && 
+                  (h.applies_to === "all" || h.applies_to === formData.team)
+                );
+                
+                const hasLeave = agentLeaves.some(l => 
+                  l.leave_date === dateStr && 
+                  l.agent_name === formData.do_person
+                );
+                
+                const isOff = isSunday || !!matchingHoliday || hasLeave;
+                const reason = isSunday ? "Sun" : (matchingHoliday ? "Holiday" : "Leave");
+                
+                if (!isOff) {
+                  workingDaysCount++;
+                }
+                
+                daysInfo.push({ day: d, isOff, reason });
+              }
+              
+              const effectiveMonthlyTotal = workingDaysCount * dailyTarget;
+              const hasMismatch = enteredMonthlyTarget > 0 && Math.abs(effectiveMonthlyTotal - enteredMonthlyTarget) > 0.01;
+              
+              return (
+                <div className="space-y-2 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                  <div className="flex flex-wrap justify-between items-center gap-2 text-[10px] font-bold text-slate-600">
+                    <div>
+                      <span>Working days: <strong className="text-slate-800">{workingDaysCount}</strong></span>
+                      <span className="mx-2 text-slate-300">|</span>
+                      <span>Daily: <strong className="text-slate-800">{dailyTarget}</strong></span>
+                      <span className="mx-2 text-slate-300">|</span>
+                      <span>Effective Total: <strong className="text-teal-650">{effectiveMonthlyTotal}</strong></span>
+                    </div>
+                    {hasMismatch && (
+                      <span className="bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-lg border border-amber-100 flex items-center gap-1 select-none animate-pulse">
+                        ⚠️ Mismatch (Entered monthly target: {enteredMonthlyTarget})
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1 text-center text-[8px] font-black text-slate-400 uppercase tracking-wider mt-2">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+                      <div key={d}>{d}</div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1.5 mt-1 select-none">
+                    {Array.from({ length: firstDayIndex }).map((_, idx) => (
+                      <div key={`empty-${idx}`} className="aspect-square bg-slate-100/30 rounded-lg" />
+                    ))}
+                    {daysInfo.map(info => (
+                      <div
+                        key={info.day}
+                        className={`aspect-square rounded-lg flex flex-col justify-between p-1.5 border text-center transition-colors
+                          ${info.isOff 
+                            ? "bg-slate-100 border-slate-200 text-slate-400" 
+                            : "bg-white border-slate-100 hover:bg-teal-50/20 text-slate-700"}`}
+                      >
+                        <span className={`text-[9px] font-bold ${info.isOff ? "line-through text-slate-300" : ""}`}>{info.day}</span>
+                        <span className={`text-[8.5px] font-black uppercase mt-0.5 truncate block
+                          ${info.isOff ? "text-[7.5px] text-slate-400 font-semibold" : "text-teal-650"}`}
+                        >
+                          {info.isOff ? info.reason : dailyTarget || "-"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -4193,6 +4313,8 @@ export default function App() {
             onClose={() => { setIsKpiModalOpen(false); setSelectedKpi(null); }}
             onSave={handleSaveKpi}
             membersMap={membersMap}
+            holidays={holidays}
+            agentLeaves={agentLeaves}
           />
 
           <ProjectModal
