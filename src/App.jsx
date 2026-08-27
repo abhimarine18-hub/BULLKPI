@@ -1408,6 +1408,8 @@ export default function App() {
 
       const assignedTeam = payload.content_type.includes("video") ? "Video Production" : "Graphic Designing";
 
+      const linkedKpi = getLinkedKpiForContentType(payload.content_type);
+
       const newRecord = {
         request_number: requestNumber,
         title: payload.title,
@@ -1417,7 +1419,8 @@ export default function App() {
         brief: payload.campaign ? `Campaign: ${payload.campaign}\n\nBrief: ${payload.brief}` : payload.brief,
         requested_by: loggedInUser.name,
         assigned_team: assignedTeam,
-        status: "pending"
+        status: "pending",
+        linked_kpi_id: linkedKpi ? linkedKpi.id : null
       };
 
       const { data, error } = await supabase
@@ -1518,6 +1521,104 @@ export default function App() {
     }
     return days;
   }, [currentYear, currentMonth]);
+
+  const getLinkedKpiForContentType = (contentType) => {
+    if (!contentType) return null;
+    const normalized = contentType.toLowerCase().replace(/_/g, " ");
+
+    const candidates = kpis.filter(k => 
+      k.team === "Video Production" || 
+      k.team === "Graphic Designing" || 
+      k.team === "Digital Marketing"
+    );
+
+    if (normalized.includes("testimonial video")) {
+      const langs = ["hindi", "tamil", "kannada", "telugu", "bengali", "gujarati", "malayalam", "odia", "marathi", "punjabi"];
+      const matchedLang = langs.find(lang => normalized.includes(lang));
+      if (matchedLang) {
+        let match = candidates.find(k => {
+          const nameLower = k.name.toLowerCase();
+          return nameLower.includes("testimonial") && 
+                 nameLower.includes("posted") &&
+                 (nameLower.includes(matchedLang) || (matchedLang === "bengali" && nameLower.includes("benglali")));
+        });
+        if (!match) {
+          match = candidates.find(k => {
+            const nameLower = k.name.toLowerCase();
+            return nameLower.includes("testimonial") && 
+                   (nameLower.includes(matchedLang) || (matchedLang === "bengali" && nameLower.includes("benglali")));
+          });
+        }
+        if (match) return match;
+      }
+    }
+
+    if (normalized.includes("sm poster") || normalized.includes("campaign poster") || normalized.includes("festival poster") || normalized.includes("poster")) {
+      const match = candidates.find(k => {
+        const nameLower = k.name.toLowerCase();
+        return nameLower.includes("poster") && !nameLower.includes("reach");
+      });
+      if (match) return match;
+    }
+
+    if (normalized.includes("branding video")) {
+      const match = candidates.find(k => k.name.toLowerCase().includes("branding video"));
+      if (match) return match;
+    }
+
+    if (normalized.includes("campaign video") || normalized.includes("video")) {
+      const match = candidates.find(k => {
+        const nameLower = k.name.toLowerCase();
+        return nameLower.includes("video") && !nameLower.includes("view");
+      });
+      if (match) return match;
+    }
+
+    return null;
+  };
+
+  const capacityStats = useMemo(() => {
+    const monthStr = `${new Date(currentYear, currentMonth).toLocaleString("en-US", { month: "short" })} ${currentYear}`;
+    
+    const types = [
+      { id: "sm_poster", label: "SM Poster", type: "sm_poster" },
+      { id: "branding_video", label: "Branding Video", type: "branding_video" },
+      { id: "festival_poster", label: "Festival Poster", type: "festival_poster" },
+      { id: "campaign_poster", label: "Campaign Poster", type: "campaign_poster" },
+      { id: "campaign_video", label: "Campaign Video", type: "campaign_video" },
+      ...["Hindi", "Tamil", "Kannada", "Telugu", "Bengali", "Gujarati", "Malayalam", "Odia", "Marathi", "Punjabi"].map(lang => ({
+        id: `testimonial_video_${lang.toLowerCase()}`,
+        label: `${lang} Testimonial`,
+        type: `testimonial_video_${lang.toLowerCase()}`
+      }))
+    ];
+
+    const monthlyRequests = contentRequests.filter(r => {
+      if (!r.planned_post_date) return false;
+      const d = new Date(r.planned_post_date);
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    });
+
+    return types.map(t => {
+      const linkedKpi = getLinkedKpiForContentType(t.type);
+      const target = linkedKpi?.monthly_target?.[monthStr] ?? 0;
+      
+      const scheduled = monthlyRequests.filter(r => 
+        (r.linked_kpi_id && linkedKpi && r.linked_kpi_id === linkedKpi.id) ||
+        (r.content_type === t.type)
+      ).length;
+
+      const remaining = target - scheduled;
+
+      return {
+        ...t,
+        target,
+        scheduled,
+        remaining,
+        linkedKpi
+      };
+    });
+  }, [currentYear, currentMonth, contentRequests, kpis]);
 
   // Group KPIs by team
   const groupedKpis = useMemo(() => {
@@ -2392,82 +2493,121 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Calendar Grid */}
-                      <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-xs">
-                        {/* Days of Week Header */}
-                        <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-center py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                          <div>Sun</div>
-                          <div>Mon</div>
-                          <div>Tue</div>
-                          <div>Wed</div>
-                          <div>Thu</div>
-                          <div>Fri</div>
-                          <div>Sat</div>
+                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 relative animate-in fade-in duration-200">
+                        {/* Calendar Grid */}
+                        <div className="lg:col-span-3 bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-xs flex flex-col justify-between">
+                          <div>
+                            {/* Days of Week Header */}
+                            <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-center py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                              <div>Sun</div>
+                              <div>Mon</div>
+                              <div>Tue</div>
+                              <div>Wed</div>
+                              <div>Thu</div>
+                              <div>Fri</div>
+                              <div>Sat</div>
+                            </div>
+
+                            {/* Calendar Grid Cells */}
+                            <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
+                              {calendarDays.map((day, idx) => {
+                                if (day === null) {
+                                  return <div key={`empty-${idx}`} className="bg-slate-50/20 min-h-[90px]" />;
+                                }
+
+                                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                                const dayRequests = contentRequests.filter(r => r.planned_post_date === dateStr);
+
+                                return (
+                                  <div
+                                    key={`day-${day}`}
+                                    onClick={(e) => {
+                                      const rect = e.currentTarget.getBoundingClientRect();
+                                      setActivePopup({
+                                        dateStr,
+                                        x: rect.left + window.scrollX,
+                                        y: rect.bottom + window.scrollY,
+                                        step: "menu",
+                                        selectedType: "",
+                                        selectedLanguage: "",
+                                        request: null
+                                      });
+                                    }}
+                                    className="min-h-[90px] p-2 hover:bg-orange-50/20 transition-colors cursor-pointer flex flex-col items-stretch group"
+                                  >
+                                    <span className="text-[10px] font-black text-slate-400 group-hover:text-orange-500 transition-colors">
+                                      {day}
+                                    </span>
+
+                                    <div className="mt-1 space-y-1 overflow-y-auto flex-1 max-h-[70px] pr-0.5">
+                                      {dayRequests.map(r => {
+                                        const isVideo = r.content_type?.includes("video");
+                                        return (
+                                          <div
+                                            key={r.id}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const rect = e.currentTarget.getBoundingClientRect();
+                                              setActivePopup({
+                                                dateStr,
+                                                x: rect.left + window.scrollX,
+                                                y: rect.bottom + window.scrollY,
+                                                step: "details",
+                                                request: r
+                                              });
+                                            }}
+                                            className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg border truncate text-left cursor-pointer uppercase ${
+                                              isVideo 
+                                                ? "bg-sky-50 text-sky-700 border-sky-100 hover:border-sky-300" 
+                                                : "bg-emerald-50 text-emerald-700 border-emerald-100 hover:border-emerald-300"
+                                            }`}
+                                            title={`${r.title} (${r.status || "pending"})`}
+                                          >
+                                            {r.title}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
 
-                        {/* Calendar Grid Cells */}
-                        <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
-                          {calendarDays.map((day, idx) => {
-                            if (day === null) {
-                              return <div key={`empty-${idx}`} className="bg-slate-50/20 min-h-[90px]" />;
-                            }
-
-                            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                            const dayRequests = contentRequests.filter(r => r.planned_post_date === dateStr);
-
-                            return (
-                              <div
-                                key={`day-${day}`}
-                                onClick={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setActivePopup({
-                                    dateStr,
-                                    x: rect.left + window.scrollX,
-                                    y: rect.bottom + window.scrollY,
-                                    step: "menu",
-                                    selectedType: "",
-                                    selectedLanguage: "",
-                                    request: null
-                                  });
-                                }}
-                                className="min-h-[90px] p-2 hover:bg-orange-50/20 transition-colors cursor-pointer flex flex-col items-stretch group"
-                              >
-                                <span className="text-[10px] font-black text-slate-400 group-hover:text-orange-500 transition-colors">
-                                  {day}
-                                </span>
-
-                                <div className="mt-1 space-y-1 overflow-y-auto flex-1 max-h-[70px] pr-0.5">
-                                  {dayRequests.map(r => {
-                                    const isVideo = r.content_type?.includes("video");
-                                    return (
-                                      <div
-                                        key={r.id}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const rect = e.currentTarget.getBoundingClientRect();
-                                          setActivePopup({
-                                            dateStr,
-                                            x: rect.left + window.scrollX,
-                                            y: rect.bottom + window.scrollY,
-                                            step: "details",
-                                            request: r
-                                          });
-                                        }}
-                                        className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg border truncate text-left cursor-pointer uppercase ${
-                                          isVideo 
-                                            ? "bg-sky-50 text-sky-700 border-sky-100 hover:border-sky-300" 
-                                            : "bg-emerald-50 text-emerald-700 border-emerald-100 hover:border-emerald-300"
-                                        }`}
-                                        title={`${r.title} (${r.status || "pending"})`}
-                                      >
-                                        {r.title}
-                                      </div>
-                                    );
-                                  })}
+                        {/* Capacity Summary Panel */}
+                        <div className="lg:col-span-1 bg-white border border-slate-150 rounded-3xl p-4 shadow-xs space-y-3 flex flex-col justify-start">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Monthly Capacity</h3>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Target vs Scheduled posts</p>
+                          </div>
+                          <div className="divide-y divide-slate-100 overflow-y-auto max-h-[520px] pr-1 space-y-2.5">
+                            {capacityStats.map(stat => {
+                              const isOver = stat.scheduled > stat.target;
+                              return (
+                                <div key={stat.id} className="pt-2 flex items-center justify-between text-[10px]">
+                                  <div className="min-w-0 pr-2">
+                                    <p className="font-bold text-slate-800 truncate" title={stat.label}>{stat.label}</p>
+                                    <p className="text-[8px] text-slate-400 font-bold font-mono truncate" title={stat.linkedKpi ? stat.linkedKpi.name : "Untracked"}>
+                                      {stat.linkedKpi ? stat.linkedKpi.name : "Untracked"}
+                                    </p>
+                                  </div>
+                                  <div className="text-right font-bold text-slate-650 flex flex-col items-end shrink-0">
+                                    <p className="font-mono text-slate-800">{stat.scheduled} / {stat.target}</p>
+                                    {isOver ? (
+                                      <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-100 uppercase tracking-wider mt-0.5 animate-pulse">
+                                        Additional
+                                      </span>
+                                    ) : (
+                                      <span className="text-[7.5px] text-slate-400 uppercase tracking-wider font-semibold">
+                                        {Math.max(0, stat.remaining)} left
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
 
@@ -2638,6 +2778,23 @@ export default function App() {
                                     placeholder="Details..."
                                   />
                                 </div>
+
+                                {(() => {
+                                  const selectedStat = capacityStats.find(s => s.type === activePopup.selectedType);
+                                  return selectedStat ? (
+                                    <div className="text-[9px] font-bold py-1 px-2 rounded-lg bg-slate-50 border border-slate-100 select-none text-left mb-1.5 leading-tight">
+                                      {selectedStat.scheduled >= selectedStat.target ? (
+                                        <span className="text-orange-600">
+                                          {selectedStat.label}: {selectedStat.scheduled}/{selectedStat.target} scheduled — this will be <span className="font-black uppercase tracking-wider bg-orange-55 px-1 rounded border border-orange-100 text-[8px] animate-pulse">Additional</span>
+                                        </span>
+                                      ) : (
+                                        <span className="text-slate-650">
+                                          {selectedStat.label}: {selectedStat.scheduled}/{selectedStat.target} scheduled, {selectedStat.remaining} remaining
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : null;
+                                })()}
 
                                 <div className="flex justify-end gap-1.5 pt-1.5 border-t border-slate-50">
                                   <button
