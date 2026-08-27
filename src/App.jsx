@@ -3343,6 +3343,12 @@ export default function App() {
                                   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
                                 };
 
+                                const fmtDateTime = (isoStr) => {
+                                  if (!isoStr) return "";
+                                  const d = new Date(isoStr);
+                                  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+                                };
+
                                 return (
                                   <tr key={r.id} className="hover:bg-slate-50/40 transition-colors">
                                     <td className="px-4 py-3 font-bold text-slate-800">{r.request_number}</td>
@@ -3355,7 +3361,7 @@ export default function App() {
                                           </span>
                                           {r.accepted_at && (
                                             <span className="text-[8px] text-slate-400 font-mono mt-0.5 pl-1">
-                                              taken: {fmtDate(r.accepted_at)}
+                                              taken: {fmtDateTime(r.accepted_at)}
                                             </span>
                                           )}
                                         </div>
