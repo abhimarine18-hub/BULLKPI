@@ -819,8 +819,9 @@ export default function App() {
   const [selectedRequestDetails, setSelectedRequestDetails] = useState(null);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [activePopup, setActivePopup] = useState(null);
+  const [showTestimonialSubmenu, setShowTestimonialSubmenu] = useState(false);
 
-  const [requestsViewMode, setRequestsViewMode] = useState("list");
   const [membersMap, setMembersMap] = useState({});
 
   const fetchMemberDesignations = async () => {
@@ -853,13 +854,6 @@ export default function App() {
       fetchMemberDesignations();
       if (cachedRole !== "admin" && u.team) {
         setActiveDashboardTeam(u.team);
-        if (u.team === "Digital Marketing") {
-          setRequestsViewMode("calendar");
-        } else {
-          setRequestsViewMode("list");
-        }
-      } else if (cachedRole === "admin") {
-        setRequestsViewMode("calendar");
       }
       if (u.team) {
         fetchTeamData(u.team);
@@ -963,7 +957,6 @@ export default function App() {
       const u = { name: "Admin", loginId: "admin", role: "admin" };
       setLoggedInUser(u);
       setRole("admin");
-      setRequestsViewMode("calendar");
       localStorage.setItem("persistent_user", JSON.stringify(u));
       localStorage.setItem("persistent_role", "admin");
       setLoading(false);
@@ -1009,11 +1002,6 @@ export default function App() {
 
         if (match.team) {
           setActiveDashboardTeam(match.team);
-          if (match.team === "Digital Marketing") {
-            setRequestsViewMode("calendar");
-          } else {
-            setRequestsViewMode("list");
-          }
           await fetchTeamData(match.team);
         }
       } else {
@@ -2129,31 +2117,14 @@ export default function App() {
                       })}
                     </div>
                   )}
-                         {screen === "content_requests" && (
-                <div className="space-y-4">
-                  {/* View Mode Switcher Tabs */}
-                  <div className="flex gap-2 border-b border-orange-100 pb-3">
-                    <button
-                      onClick={() => setRequestsViewMode("calendar")}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
-                        requestsViewMode === "calendar" ? "bg-orange-100 text-orange-700 font-black" : "text-slate-500 hover:bg-orange-50"
-                      }`}
-                    >
-                      Calendar View
-                    </button>
-                    <button
-                      onClick={() => setRequestsViewMode("list")}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
-                        requestsViewMode === "list" ? "bg-orange-100 text-orange-700 font-black" : "text-slate-500 hover:bg-orange-50"
-                      }`}
-                    >
-                      List View
-                    </button>
-                  </div>
+                </div>
+              )}
 
-                  {requestsViewMode === "calendar" ? (
-                    /* Calendar View */
-                    <div className="space-y-4">
+              {screen === "content_requests" && (
+                <div className="space-y-4">
+                  {role !== "admin" && loggedInUser?.team === "Digital Marketing" ? (
+                    /* Calendar View with Floating Context Popup for Digital Marketing */
+                    <div className="space-y-4 relative">
                       <div className="flex justify-between items-center pb-2">
                         <div>
                           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Content Planning Calendar</h2>
@@ -2196,6 +2167,7 @@ export default function App() {
 
                       {/* Calendar Grid */}
                       <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-xs">
+                        {/* Days of Week Header */}
                         <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-center py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">
                           <div>Sun</div>
                           <div>Mon</div>
@@ -2206,6 +2178,7 @@ export default function App() {
                           <div>Sat</div>
                         </div>
 
+                        {/* Calendar Grid Cells */}
                         <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
                           {calendarDays.map((day, idx) => {
                             if (day === null) {
@@ -2218,9 +2191,17 @@ export default function App() {
                             return (
                               <div
                                 key={`day-${day}`}
-                                onClick={() => {
-                                  setCalendarPrefilledDate(dateStr);
-                                  setIsRequestModalOpen(true);
+                                onClick={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setActivePopup({
+                                    dateStr,
+                                    x: rect.left + window.scrollX,
+                                    y: rect.bottom + window.scrollY,
+                                    step: "menu",
+                                    selectedType: "",
+                                    selectedLanguage: "",
+                                    request: null
+                                  });
                                 }}
                                 className="min-h-[90px] p-2 hover:bg-orange-50/20 transition-colors cursor-pointer flex flex-col items-stretch group"
                               >
@@ -2236,8 +2217,14 @@ export default function App() {
                                         key={r.id}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setSelectedRequestDetails(r);
-                                          setIsRequestDetailsModalOpen(true);
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setActivePopup({
+                                            dateStr,
+                                            x: rect.left + window.scrollX,
+                                            y: rect.bottom + window.scrollY,
+                                            step: "details",
+                                            request: r
+                                          });
                                         }}
                                         className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg border truncate text-left cursor-pointer uppercase ${
                                           isVideo 
@@ -2256,25 +2243,254 @@ export default function App() {
                           })}
                         </div>
                       </div>
+
+                      {/* Floating Context Popup */}
+                      {activePopup && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setActivePopup(null)} />
+                          <div
+                            className="fixed z-50 bg-white border border-orange-100 rounded-2xl shadow-xl p-3 w-56 text-xs text-slate-700 font-semibold flex flex-col"
+                            style={{
+                              left: `${Math.min(activePopup.x, window.innerWidth - 240)}px`,
+                              top: `${Math.min(activePopup.y, window.innerHeight - 380)}px`
+                            }}
+                          >
+                            {activePopup.step === "menu" && (
+                              <div className="space-y-1 relative">
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider pb-1.5 border-b border-slate-50 mb-1">
+                                  Schedule: {activePopup.dateStr}
+                                </div>
+                                
+                                <button
+                                  type="button"
+                                  onClick={() => setActivePopup(prev => ({ ...prev, step: "form", selectedType: "sm_poster" }))}
+                                  className="w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between"
+                                >
+                                  <span>SM Poster</span>
+                                  <span className="text-[9px] text-slate-450">Poster</span>
+                                </button>
+
+                                <div
+                                  className="relative"
+                                  onMouseEnter={() => setShowTestimonialSubmenu(true)}
+                                  onMouseLeave={() => setShowTestimonialSubmenu(false)}
+                                >
+                                  <button
+                                    type="button"
+                                    className={`w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between ${showTestimonialSubmenu ? "bg-orange-50" : ""}`}
+                                  >
+                                    <span>Testimonial Video</span>
+                                    <span className="text-[9px] text-slate-450">&rarr;</span>
+                                  </button>
+
+                                  {showTestimonialSubmenu && (
+                                    <div className="absolute left-full top-0 ml-1 bg-white border border-orange-150 rounded-2xl shadow-xl p-1.5 w-36 space-y-0.5 z-55 max-h-[200px] overflow-y-auto divide-y divide-slate-55">
+                                      {["Hindi", "Tamil", "Kannada", "Telugu", "Bengali", "Gujarati", "Malayalam", "Odia", "Marathi", "Punjabi"].map(lang => (
+                                        <button
+                                          key={lang}
+                                          type="button"
+                                          onClick={() => {
+                                            setActivePopup(prev => ({
+                                              ...prev,
+                                              step: "form",
+                                              selectedType: `testimonial_video_${lang.toLowerCase()}`,
+                                              selectedLanguage: lang
+                                            }));
+                                            setShowTestimonialSubmenu(false);
+                                          }}
+                                          className="w-full text-left px-2 py-1 hover:bg-orange-50 rounded-lg font-bold text-[10px] transition-colors"
+                                        >
+                                          {lang}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setActivePopup(prev => ({ ...prev, step: "form", selectedType: "branding_video" }))}
+                                  className="w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between"
+                                >
+                                  <span>Branding Video</span>
+                                  <span className="text-[9px] text-slate-455">Video</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setActivePopup(prev => ({ ...prev, step: "form", selectedType: "campaign_poster" }))}
+                                  className="w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between"
+                                >
+                                  <span>Campaign Poster</span>
+                                  <span className="text-[9px] text-slate-455">Poster</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setActivePopup(prev => ({ ...prev, step: "form", selectedType: "campaign_video" }))}
+                                  className="w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between"
+                                >
+                                  <span>Campaign Video</span>
+                                  <span className="text-[9px] text-slate-455">Video</span>
+                                </button>
+                              </div>
+                            )}
+
+                            {activePopup.step === "form" && (
+                              <form
+                                onSubmit={async (e) => {
+                                  e.preventDefault();
+                                  const titleInput = e.target.elements.title.value.trim();
+                                  const campaignInput = e.target.elements.campaign.value;
+                                  const briefInput = e.target.elements.brief.value.trim();
+                                  
+                                  await handleSaveContentRequest({
+                                    title: titleInput,
+                                    content_type: activePopup.selectedType,
+                                    campaign: campaignInput,
+                                    planned_post_date: activePopup.dateStr,
+                                    brief: briefInput
+                                  });
+                                  setActivePopup(null);
+                                }}
+                                className="space-y-3"
+                              >
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-50">
+                                  Schedule Form ({activePopup.dateStr})
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Title</label>
+                                  <input
+                                    required
+                                    type="text"
+                                    name="title"
+                                    defaultValue={
+                                      activePopup.selectedLanguage 
+                                        ? `${activePopup.selectedLanguage} Testimonial Video`
+                                        : activePopup.selectedType === "sm_poster" ? "SM Poster"
+                                        : activePopup.selectedType === "branding_video" ? "Branding Video"
+                                        : activePopup.selectedType === "campaign_poster" ? "Campaign Poster"
+                                        : activePopup.selectedType === "campaign_video" ? "Campaign Video"
+                                        : ""
+                                    }
+                                    className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Campaign (Optional)</label>
+                                  <select
+                                    name="campaign"
+                                    className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs bg-white text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                  >
+                                    <option value="">None</option>
+                                    {campaigns.map(c => (
+                                      <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Brief</label>
+                                  <textarea
+                                    name="brief"
+                                    rows="3"
+                                    required
+                                    className="w-full border border-orange-200 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-medium resize-none leading-normal"
+                                    placeholder="Details..."
+                                  />
+                                </div>
+
+                                <div className="flex justify-end gap-1.5 pt-1.5 border-t border-slate-50">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActivePopup(prev => ({ ...prev, step: "menu" }))}
+                                    className="px-2.5 py-1 text-slate-500 hover:bg-slate-100 rounded-lg font-bold text-[10px] transition-colors"
+                                  >
+                                    Back
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    className="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 rounded-lg font-bold text-[10px] transition-colors shadow-xs"
+                                  >
+                                    Schedule
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+
+                            {activePopup.step === "details" && activePopup.request && (
+                              <div className="space-y-2 text-[10px]">
+                                <div className="flex items-center justify-between border-b border-slate-50 pb-1">
+                                  <span className="text-[9px] font-bold text-slate-400 font-mono">
+                                    {activePopup.request.request_number}
+                                  </span>
+                                  <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-black uppercase tracking-wider ${
+                                    activePopup.request.status === "posted" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                    activePopup.request.status === "ready" ? "bg-teal-50 text-teal-750 border-teal-100" :
+                                    activePopup.request.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                                    "bg-amber-50 text-amber-700 border-amber-100"
+                                  }`}>
+                                    {activePopup.request.status || "pending"}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-0.5 text-left">
+                                  <p className="font-black text-slate-800 text-[11px] leading-tight">
+                                    {activePopup.request.title}
+                                  </p>
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider capitalize">
+                                    {activePopup.request.content_type?.replace(/_/g, " ")}
+                                  </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-500 font-bold pt-1 border-t border-slate-50">
+                                  <div>Team: <span className="text-slate-800">{activePopup.request.assigned_team}</span></div>
+                                  <div>Due: <span className="text-slate-800 font-mono">{activePopup.request.required_by_date || "-"}</span></div>
+                                </div>
+
+                                {activePopup.request.brief && (
+                                  <div className="bg-slate-50 rounded-lg p-2 text-[9px] text-slate-650 font-medium text-left max-h-[80px] overflow-y-auto leading-normal whitespace-pre-wrap">
+                                    {activePopup.request.brief}
+                                  </div>
+                                )}
+
+                                <div className="flex justify-end pt-1.5 border-t border-slate-55">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActivePopup(null)}
+                                    className="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 rounded-lg font-bold text-[10px] transition-colors shadow-xs"
+                                  >
+                                    Close
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
-                    /* Tabular List View */
+                    /* Existing List View for Video Production, Graphic Designing, and Admin */
                     <div className="space-y-4">
                       <div className="flex justify-between items-center pb-2">
                         <div>
                           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Content Requests Queue</h2>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manage assets requests, assignments, and publishing pipeline</p>
                         </div>
-                        <button
-                          onClick={() => {
-                            setCalendarPrefilledDate("");
-                            setIsRequestModalOpen(true);
-                          }}
-                          className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
-                        >
-                          <Plus className="h-4 w-4" />
-                          <span>New Request</span>
-                        </button>
+                        {role === "admin" && (
+                          <button
+                            onClick={() => {
+                              setCalendarPrefilledDate("");
+                              setIsRequestModalOpen(true);
+                            }}
+                            className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span>New Request</span>
+                          </button>
+                        )}
                       </div>
 
                       {/* Filter controls */}
@@ -2388,7 +2604,6 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              )}          </div>
               )}
 
             </div>
