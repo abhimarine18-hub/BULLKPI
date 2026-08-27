@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./supabaseClient";
 import {
-  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen
+  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen, Calendar
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -959,6 +959,109 @@ export default function App() {
   const [todayLogs, setTodayLogs] = useState({});
   const [submitStatus, setSubmitStatus] = useState({});
   const [logInputs, setLogInputs] = useState({});
+  const [holidays, setHolidays] = useState([]);
+  const [agentLeaves, setAgentLeaves] = useState([]);
+
+  const [selectedHolidayDate, setSelectedHolidayDate] = useState("");
+  const [holidayName, setHolidayName] = useState("");
+  const [holidayAppliesTo, setHolidayAppliesTo] = useState("all");
+
+  const [leaveAgentName, setLeaveAgentName] = useState("");
+  const [leaveDate, setLeaveDate] = useState("");
+  const [leaveReason, setLeaveReason] = useState("");
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+
+  const handleAddHoliday = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!selectedHolidayDate || !holidayName.trim()) return;
+    try {
+      const { data, error } = await supabase.from("holidays").insert({
+        holiday_date: selectedHolidayDate,
+        name: holidayName.trim(),
+        applies_to: holidayAppliesTo
+      }).select();
+      if (error) {
+        alert("Error adding holiday: " + error.message);
+      } else {
+        setHolidays(prev => [...prev, ...data]);
+        setSelectedHolidayDate("");
+        setHolidayName("");
+        setHolidayAppliesTo("all");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteHoliday = async (id) => {
+    if (!confirm("Are you sure you want to remove this holiday?")) return;
+    try {
+      const { error } = await supabase.from("holidays").delete().eq("id", id);
+      if (error) {
+        alert("Error deleting holiday: " + error.message);
+      } else {
+        setHolidays(prev => prev.filter(h => h.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkLeave = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!leaveAgentName || !leaveDate) return;
+    try {
+      const { data, error } = await supabase.from("agent_leaves").insert({
+        agent_name: leaveAgentName,
+        leave_date: leaveDate,
+        reason: leaveReason.trim() || null
+      }).select();
+      if (error) {
+        alert("Error marking leave: " + error.message);
+      } else {
+        setAgentLeaves(prev => [...prev, ...data]);
+        setLeaveDate("");
+        setLeaveReason("");
+        setLeaveModalOpen(false);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteLeave = async (id) => {
+    if (!confirm("Are you sure you want to remove this leave?")) return;
+    try {
+      const { error } = await supabase.from("agent_leaves").delete().eq("id", id);
+      if (error) {
+        alert("Error deleting leave: " + error.message);
+      } else {
+        setAgentLeaves(prev => prev.filter(l => l.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchHolidaysData = async () => {
+    try {
+      const { data, error } = await supabase.from("holidays").select("*");
+      if (error) console.error("Error loading holidays:", error.message);
+      else if (data) setHolidays(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchAgentLeavesData = async () => {
+    try {
+      const { data, error } = await supabase.from("agent_leaves").select("*");
+      if (error) console.error("Error loading agent leaves:", error.message);
+      else if (data) setAgentLeaves(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleLogWork = async (kpi, amountStr) => {
     const amount = parseFloat(amountStr);
@@ -1056,6 +1159,8 @@ export default function App() {
       const isAdm = cachedRole === "admin";
       setRole(cachedRole || "employee");
       fetchMemberDesignations();
+      fetchHolidaysData();
+      fetchAgentLeavesData();
       if (isAdm) {
         supabase.from("kpis").select("*").then(({ data }) => { if (data) setKpis(data); });
         supabase.from("projects").select("*").then(({ data }) => { if (data) setProjects(data); });
@@ -1329,6 +1434,8 @@ export default function App() {
         await fetchCampaignsData();
         await fetchAdPerformanceData();
         await fetchContentRequestsData();
+        await fetchHolidaysData();
+        await fetchAgentLeavesData();
       } catch (e) {}
       return;
     }
@@ -1364,6 +1471,8 @@ export default function App() {
           setActiveDashboardTeam(match.team);
           await fetchTeamData(match.team);
         }
+        await fetchHolidaysData();
+        await fetchAgentLeavesData();
       } else {
         setLoginError(data?.error || "Invalid Login ID or Password. Please try again.");
       }
@@ -2259,6 +2368,18 @@ export default function App() {
                 >
                   <ClipboardList className="h-4 w-4" />
                   <span>Content Requests</span>
+                </button>
+              )}
+
+              {role === "admin" && (
+                <button
+                  onClick={() => { setScreen("holidays"); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                    screen === "holidays" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                  }`}
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span>Holidays</span>
                 </button>
               )}
             </nav>
@@ -3697,10 +3818,49 @@ export default function App() {
 
               {screen === "daily_log" && (
                 <div className="space-y-6">
-                  <div>
-                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Daily Log</h2>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Log today's achievements against your assigned KPI activities</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Daily Log</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Log today's achievements against your assigned KPI activities</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setLeaveAgentName(role === "admin" ? "" : loggedInUser?.name || "");
+                        setLeaveDate(new Date().toISOString().split("T")[0]);
+                        setLeaveReason("");
+                        setLeaveModalOpen(true);
+                      }}
+                      className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                    >
+                      🌴 Mark Leave
+                    </button>
                   </div>
+
+                  {(() => {
+                    const currentMonthNum = new Date().getMonth();
+                    const currentYearNum = new Date().getFullYear();
+                    const monthLeaves = agentLeaves.filter(l => {
+                      const d = new Date(l.leave_date);
+                      const matchesAgent = role === "admin" || l.agent_name === loggedInUser?.name;
+                      return d.getFullYear() === currentYearNum && d.getMonth() === currentMonthNum && matchesAgent;
+                    });
+                    if (monthLeaves.length > 0) {
+                      return (
+                        <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-3 flex flex-wrap items-center gap-2 text-xs font-bold text-orange-800">
+                          <span className="text-[9px] uppercase tracking-wider text-orange-500 block">Marked Leaves this month:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {monthLeaves.map(l => (
+                              <span key={l.id} className="bg-white border border-orange-200 px-2.5 py-1 rounded-xl text-[10px] flex items-center gap-1">
+                                <span>📅 {l.agent_name}: {l.leave_date}</span>
+                                <button onClick={() => handleDeleteLeave(l.id)} className="text-red-500 hover:text-red-700 ml-1 font-black text-xs">×</button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {(() => {
                     const myKpis = kpis.filter(
@@ -3729,6 +3889,25 @@ export default function App() {
                           const progressPercent = monthTarget > 0 ? Math.min(100, Math.round((monthActual / monthTarget) * 100)) : 0;
                           const logs = todayLogs[k.id] || [];
 
+                          const localTodayStr = (() => {
+                            const dObj = new Date();
+                            const y = dObj.getFullYear();
+                            const m = String(dObj.getMonth() + 1).padStart(2, "0");
+                            const dy = String(dObj.getDate()).padStart(2, "0");
+                            return `${y}-${m}-${dy}`;
+                          })();
+                          const isSunday = new Date().getDay() === 0;
+                          const matchingHoliday = holidays.find(h => 
+                            h.holiday_date === localTodayStr && 
+                            (h.applies_to === "all" || h.applies_to === k.team)
+                          );
+                          const hasLeave = agentLeaves.some(l => 
+                            l.leave_date === localTodayStr && 
+                            l.agent_name === k.do_person
+                          );
+                          const isOffToday = isSunday || !!matchingHoliday || hasLeave;
+                          const offReason = isSunday ? "Sunday" : (matchingHoliday ? `Holiday: ${matchingHoliday.name}` : "On Leave");
+
                           return (
                             <div key={k.id} className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4">
                               <div>
@@ -3737,7 +3916,12 @@ export default function App() {
                                 
                                 <div className="grid grid-cols-2 gap-4 mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100 text-[10px] font-bold text-slate-600">
                                   <div>
-                                    {k.daily_target !== null && k.daily_target !== undefined ? (
+                                    {isOffToday ? (
+                                      <>
+                                        <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
+                                        <span className="text-orange-700 text-xs font-black">Off today — no target</span>
+                                      </>
+                                    ) : k.daily_target !== null && k.daily_target !== undefined ? (
                                       <>
                                         <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
                                         <span className="text-orange-700 text-xs font-black">{k.daily_target}</span>
@@ -3756,7 +3940,7 @@ export default function App() {
                                 </div>
 
                                 {/* Progress Bar (only shown for monthly target KPIs) */}
-                                {(k.daily_target === null || k.daily_target === undefined) && (
+                                {!isOffToday && (k.daily_target === null || k.daily_target === undefined) && (
                                   <div className="mt-3 space-y-1">
                                     <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
                                       <span>Month Progress</span>
@@ -3773,25 +3957,31 @@ export default function App() {
                               </div>
 
                               <div className="space-y-3 pt-2 border-t border-slate-50">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex-1">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Enter today's achievement</label>
-                                    <input
-                                      type="number"
-                                      step="any"
-                                      placeholder="0"
-                                      value={logInputs[k.id] || ""}
-                                      onChange={e => setLogInputs(prev => ({ ...prev, [k.id]: e.target.value }))}
-                                      className="w-full border border-orange-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                    />
+                                {isOffToday ? (
+                                  <div className="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-center text-xs font-black text-orange-700 uppercase tracking-wider select-none">
+                                    🌴 Off Today ({offReason})
                                   </div>
-                                  <button
-                                    onClick={() => handleLogWork(k, logInputs[k.id] || "")}
-                                    className="bg-teal-500 hover:bg-teal-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors self-end h-[34px] flex items-center justify-center"
-                                  >
-                                    Submit
-                                  </button>
-                                </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1">
+                                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Enter today's achievement</label>
+                                      <input
+                                        type="number"
+                                        step="any"
+                                        placeholder="0"
+                                        value={logInputs[k.id] || ""}
+                                        onChange={e => setLogInputs(prev => ({ ...prev, [k.id]: e.target.value }))}
+                                        className="w-full border border-orange-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => handleLogWork(k, logInputs[k.id] || "")}
+                                      className="bg-teal-500 hover:bg-teal-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors self-end h-[34px] flex items-center justify-center"
+                                    >
+                                      Submit
+                                    </button>
+                                  </div>
+                                )}
 
                                 {submitStatus[k.id] && (
                                   <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-[10px] py-1.5 px-3 rounded-lg font-bold flex items-center gap-1">
@@ -3819,6 +4009,178 @@ export default function App() {
                       </div>
                     );
                   })()}
+                </div>
+              )}
+
+              {screen === "holidays" && role === "admin" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Holidays Management</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Define company-wide or team-specific holidays to auto-adjust daily targets</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-orange-100 shadow-xs text-xs font-bold text-slate-800">
+                      <button onClick={() => {
+                        if (currentMonth === 0) {
+                          setCurrentMonth(11);
+                          setCurrentYear(y => y - 1);
+                        } else {
+                          setCurrentMonth(m => m - 1);
+                        }
+                      }} className="hover:bg-slate-100 p-1 rounded">◀</button>
+                      <span>{MONTHS_LIST[currentMonth]} {currentYear}</span>
+                      <button onClick={() => {
+                        if (currentMonth === 11) {
+                          setCurrentMonth(0);
+                          setCurrentYear(y => y + 1);
+                        } else {
+                          setCurrentMonth(m => m + 1);
+                        }
+                      }} className="hover:bg-slate-100 p-1 rounded">▶</button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Calendar grid */}
+                    <div className="lg:col-span-2 bg-white border border-orange-100 rounded-3xl p-5 shadow-xs">
+                      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+                          <div key={d} className="py-1">{d}</div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-2">
+                        {(() => {
+                          const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+                          const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+                          const cells = [];
+                          for (let i = 0; i < firstDayIndex; i++) {
+                            cells.push(<div key={`empty-${i}`} className="aspect-square bg-slate-50/50 rounded-xl" />);
+                          }
+                          for (let day = 1; day <= totalDays; day++) {
+                            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                            const dayHolidays = holidays.filter(h => h.holiday_date === dateStr);
+                            const isToday = new Date().toDateString() === new Date(currentYear, currentMonth, day).toDateString();
+                            
+                            cells.push(
+                              <button
+                                key={day}
+                                onClick={() => {
+                                  setSelectedHolidayDate(dateStr);
+                                  setHolidayName("");
+                                }}
+                                className={`aspect-square p-2 rounded-xl flex flex-col justify-between items-start text-[11px] font-bold transition-all relative border
+                                  ${dayHolidays.length > 0 ? "bg-orange-50 border-orange-200 text-orange-800" : "bg-white hover:bg-orange-50/30 border-slate-100 text-slate-700"}
+                                  ${isToday ? "ring-2 ring-teal-500" : ""}
+                                `}
+                              >
+                                <span>{day}</span>
+                                {dayHolidays.map(h => (
+                                  <span key={h.id} className="text-[7.5px] bg-orange-200 px-1 rounded block w-full truncate text-left" title={`${h.name} (${h.applies_to === "all" ? "All" : h.applies_to})`}>
+                                    {h.name}
+                                  </span>
+                                ))}
+                              </button>
+                            );
+                          }
+                          return cells;
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Sidebar action panel */}
+                    <div className="space-y-4">
+                      {selectedHolidayDate ? (
+                        <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs space-y-4">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Add Holiday</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{selectedHolidayDate}</p>
+                          </div>
+                          
+                          <form onSubmit={handleAddHoliday} className="space-y-3">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Holiday Name</label>
+                              <input
+                                type="text"
+                                value={holidayName}
+                                onChange={e => setHolidayName(e.target.value)}
+                                placeholder="e.g. Independence Day"
+                                required
+                                className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
+                              />
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Applies To</label>
+                              <select
+                                value={holidayAppliesTo}
+                                onChange={e => setHolidayAppliesTo(e.target.value)}
+                                className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                              >
+                                <option value="all">All Teams</option>
+                                <option value="Digital Marketing">Digital Marketing</option>
+                                <option value="Video Production">Video Production</option>
+                                <option value="Graphic Designing">Graphic Designing</option>
+                                <option value="Enquiry Management">Enquiry Management</option>
+                                <option value="CRM and Coordinator">CRM and Coordinator</option>
+                                <option value="Expo and Events">Expo and Events</option>
+                              </select>
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedHolidayDate("")}
+                                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl text-xs transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-xl text-xs shadow-sm transition-colors"
+                              >
+                                Add Holiday
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-6 text-center text-slate-400 font-semibold text-xs">
+                          Click a calendar date to mark it as a holiday.
+                        </div>
+                      )}
+
+                      {/* List of holidays in current month */}
+                      <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs">
+                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-3">Holiday List</h3>
+                        {holidays.length === 0 ? (
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center py-4">No holidays saved.</p>
+                        ) : (
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {holidays
+                              .filter(h => {
+                                const d = new Date(h.holiday_date);
+                                return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+                              })
+                              .sort((a, b) => new Date(a.holiday_date) - new Date(b.holiday_date))
+                              .map(h => (
+                                <div key={h.id} className="flex justify-between items-center bg-slate-50 border border-slate-100 p-2.5 rounded-xl text-xs font-bold text-slate-700">
+                                  <div>
+                                    <p className="text-slate-800">{h.name}</p>
+                                    <p className="text-[8px] text-slate-400 uppercase tracking-wider mt-0.5">{h.holiday_date} • {h.applies_to === "all" ? "All Teams" : h.applies_to}</p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteHoliday(h.id)}
+                                    className="text-red-500 hover:text-red-600 font-extrabold text-[10px] p-1 rounded hover:bg-red-50"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -3868,6 +4230,83 @@ export default function App() {
             onClose={() => { setIsRequestDetailsModalOpen(false); setSelectedRequestDetails(null); }}
             request={selectedRequestDetails}
           />
+
+          {leaveModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl border border-orange-100 shadow-xl w-full max-w-sm overflow-hidden font-semibold text-xs text-slate-755">
+                <div className="bg-orange-50/55 px-6 py-4 border-b border-orange-100/50 flex justify-between items-center">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">🌴 Mark Leave</h3>
+                  <button onClick={() => setLeaveModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-extrabold text-base">×</button>
+                </div>
+                <form onSubmit={handleMarkLeave} className="p-6 space-y-4">
+                  {role === "admin" ? (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Agent Name</label>
+                      <select
+                        value={leaveAgentName}
+                        onChange={e => setLeaveAgentName(e.target.value)}
+                        required
+                        className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      >
+                        <option value="">Select Agent...</option>
+                        {Object.keys(membersMap).sort().map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Agent Name</label>
+                      <input
+                        type="text"
+                        value={leaveAgentName}
+                        disabled
+                        className="w-full border border-orange-100 bg-slate-50 rounded-xl px-3 py-2 text-xs text-slate-500 font-semibold"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Leave Date</label>
+                    <input
+                      type="date"
+                      value={leaveDate}
+                      onChange={e => setLeaveDate(e.target.value)}
+                      required
+                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Reason (Optional)</label>
+                    <input
+                      type="text"
+                      value={leaveReason}
+                      onChange={e => setLeaveReason(e.target.value)}
+                      placeholder="e.g. Sick Leave / Personal Work"
+                      className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setLeaveModalOpen(false)}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl text-xs transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-teal-500 hover:bg-teal-650 text-white font-bold py-2 rounded-xl text-xs shadow-sm transition-colors"
+                    >
+                      Mark Leave
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
           
         </div>
       </div>
