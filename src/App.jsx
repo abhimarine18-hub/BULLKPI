@@ -881,6 +881,8 @@ export default function App() {
   const [selectedRequestForPost, setSelectedRequestForPost] = useState(null);
   const [postLinkModalOpen, setPostLinkModalOpen] = useState(false);
   const [postLinkValue, setPostLinkValue] = useState("");
+  const [driveLinks, setDriveLinks] = useState({});
+  const [approvedByNames, setApprovedByNames] = useState({});
   const [requestFilterStatus, setRequestFilterStatus] = useState("all");
   const [requestFilterTeam, setRequestFilterTeam] = useState("all");
 
@@ -1598,18 +1600,104 @@ export default function App() {
 
   const handleAcceptContentRequest = async (requestId) => {
     try {
+      const now = new Date().toISOString();
+      const userName = loggedInUser.name;
       const { error } = await supabase
         .from("content_requests")
-        .update({ status: "in_progress" })
+        .update({
+          status: "in_progress",
+          accepted_by: userName,
+          accepted_at: now
+        })
         .eq("id", requestId);
 
       if (error) {
         console.error("Error accepting request:", error.message);
       } else {
-        setContentRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "in_progress" } : r));
+        setContentRequests(prev => prev.map(r => r.id === requestId ? {
+          ...r,
+          status: "in_progress",
+          accepted_by: userName,
+          accepted_at: now
+        } : r));
       }
     } catch (err) {
       console.error("Error accepting request:", err);
+    }
+  };
+
+  const handleSubmitForApproval = async (requestId, driveLink) => {
+    try {
+      if (!driveLink || !driveLink.trim()) {
+        alert("Google Drive Link is required.");
+        return;
+      }
+      const { error } = await supabase
+        .from("content_requests")
+        .update({
+          status: "in_review",
+          drive_link: driveLink.trim()
+        })
+        .eq("id", requestId);
+
+      if (error) {
+        console.error("Error submitting for approval:", error.message);
+      } else {
+        setContentRequests(prev => prev.map(r => r.id === requestId ? {
+          ...r,
+          status: "in_review",
+          drive_link: driveLink.trim()
+        } : r));
+      }
+    } catch (err) {
+      console.error("Error submitting for approval:", err);
+    }
+  };
+
+  const handleApproveContentRequest = async (requestId, approvedBy) => {
+    try {
+      if (!approvedBy || !approvedBy.trim()) {
+        alert("Approved by field is required.");
+        return;
+      }
+      const now = new Date().toISOString();
+      const req = contentRequests.find(r => r.id === requestId);
+      if (!req) return;
+
+      const { error } = await supabase
+        .from("content_requests")
+        .update({
+          status: "ready",
+          approved_by: approvedBy.trim(),
+          approved_at: now
+        })
+        .eq("id", requestId);
+
+      if (error) {
+        console.error("Error approving request:", error.message);
+      } else {
+        setContentRequests(prev => prev.map(r => r.id === requestId ? {
+          ...r,
+          status: "ready",
+          approved_by: approvedBy.trim(),
+          approved_at: now
+        } : r));
+
+        // Insert notification to DM person who requested it
+        try {
+          await supabase.from("notifications").insert({
+            type: "reminder",
+            title: "Content Request Ready",
+            message: `Your content request "${req.title}" is ready! Link: ${req.drive_link || ""}`,
+            recipient: req.requested_by,
+            status: "unread"
+          });
+        } catch (ne) {
+          console.error("Failed to insert approval notification:", ne);
+        }
+      }
+    } catch (err) {
+      console.error("Error approving request:", err);
     }
   };
 
@@ -3220,10 +3308,11 @@ export default function App() {
                                   (r.status === "pending" || r.status === "in_progress");
 
                                 const statusColor = 
-                                  r.status === "posted" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                  r.status === "ready" ? "bg-teal-50 text-teal-750 border-teal-100 animate-pulse" :
+                                  r.status === "posted" ? "bg-emerald-800 text-white border-emerald-900 font-bold" :
+                                  r.status === "ready" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                  r.status === "in_review" ? "bg-amber-55 text-amber-800 border-amber-200" :
                                   r.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
-                                  "bg-amber-50 text-amber-700 border-amber-100";
+                                  "bg-slate-50 text-slate-700 border-slate-200";
 
                                 const isAssignedToUserTeam = 
                                   role === "admin" || loggedInUser?.team === r.assigned_team;
@@ -3244,22 +3333,75 @@ export default function App() {
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                      {r.status === "pending" && isAssignedToUserTeam && (
-                                        <button
-                                          onClick={() => handleAcceptContentRequest(r.id)}
-                                          className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
-                                        >
-                                          Accept
-                                        </button>
-                                      )}
-                                      {r.status === "ready" && (role === "admin" || loggedInUser?.team === "Digital Marketing") && (
-                                        <button
-                                          onClick={() => { setSelectedRequestForPost(r); setPostLinkModalOpen(true); }}
-                                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
-                                        >
-                                          Mark Posted
-                                        </button>
-                                      )}
+                                      <div className="flex justify-end items-center gap-2">
+                                        {/* Accept: Pending state */}
+                                        {(!r.status || r.status === "pending") && isAssignedToUserTeam && (
+                                          <button
+                                            onClick={() => handleAcceptContentRequest(r.id)}
+                                            className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
+                                          >
+                                            Accept
+                                          </button>
+                                        )}
+
+                                        {/* Submit for Approval: In Progress state */}
+                                        {r.status === "in_progress" && isAssignedToUserTeam && r.accepted_by === loggedInUser.name && (
+                                          <div className="flex items-center gap-1.5">
+                                            <input
+                                              type="text"
+                                              placeholder="Drive Link"
+                                              value={driveLinks[r.id] || ""}
+                                              onChange={(e) => setDriveLinks(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                              className="border border-orange-200 rounded px-1.5 py-0.5 text-[10px] w-24 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                            />
+                                            <button
+                                              onClick={() => handleSubmitForApproval(r.id, driveLinks[r.id])}
+                                              className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2 py-1 rounded-lg text-[10px] transition-colors whitespace-nowrap"
+                                            >
+                                              Submit Review
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {/* Approve: In Review state */}
+                                        {r.status === "in_review" && isAssignedToUserTeam && (
+                                          <div className="flex items-center gap-1.5">
+                                            {r.drive_link && (
+                                              <a
+                                                href={r.drive_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sky-600 hover:text-sky-700 underline text-[9px] font-black mr-1"
+                                              >
+                                                Open Link
+                                              </a>
+                                            )}
+                                            <input
+                                              type="text"
+                                              placeholder="Approved By"
+                                              value={approvedByNames[r.id] || ""}
+                                              onChange={(e) => setApprovedByNames(prev => ({ ...prev, [r.id]: e.target.value }))}
+                                              className="border border-orange-200 rounded px-1.5 py-0.5 text-[10px] w-24 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                            />
+                                            <button
+                                              onClick={() => handleApproveContentRequest(r.id, approvedByNames[r.id])}
+                                              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2 py-1 rounded-lg text-[10px] transition-colors"
+                                            >
+                                              Approve
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {/* Mark Posted: Ready state */}
+                                        {r.status === "ready" && (role === "admin" || loggedInUser?.team === "Digital Marketing") && (
+                                          <button
+                                            onClick={() => { setSelectedRequestForPost(r); setPostLinkModalOpen(true); }}
+                                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
+                                          >
+                                            Mark Posted
+                                          </button>
+                                        )}
+                                      </div>
                                     </td>
                                   </tr>
                                 );
