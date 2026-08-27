@@ -1701,6 +1701,28 @@ export default function App() {
     }
   };
 
+  const handleUpdateDriveLink = async (requestId) => {
+    const currentLink = contentRequests.find(r => r.id === requestId)?.drive_link || "";
+    const newLink = prompt("Enter new Google Drive Link:", currentLink);
+    if (newLink === null) return;
+
+    try {
+      const { error } = await supabase
+        .from("content_requests")
+        .update({ drive_link: newLink.trim() })
+        .eq("id", requestId);
+
+      if (error) {
+        console.error("Error updating drive link:", error.message);
+        alert("Failed to update link: " + error.message);
+      } else {
+        setContentRequests(prev => prev.map(r => r.id === requestId ? { ...r, drive_link: newLink.trim() } : r));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handlePostContentRequest = async (requestId, postLink) => {
     try {
       const req = contentRequests.find(r => r.id === requestId);
@@ -3363,6 +3385,29 @@ export default function App() {
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                       <div className="flex justify-end items-center gap-2">
+                                        {/* Always show Google Drive Link button if it exists */}
+                                        {r.drive_link && (
+                                          <div className="flex items-center gap-1">
+                                            <a
+                                              href={r.drive_link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold px-2 py-1 rounded-lg text-[9px] border border-sky-100 transition-colors flex items-center gap-1"
+                                            >
+                                              <span>🔗 Link</span>
+                                            </a>
+                                            {role === "admin" && (
+                                              <button
+                                                onClick={() => handleUpdateDriveLink(r.id)}
+                                                className="text-slate-400 hover:text-slate-600 text-[10px] p-0.5"
+                                                title="Edit Drive Link"
+                                              >
+                                                ✏️
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
+
                                         {/* Accept: Pending state */}
                                         {(!r.status || r.status === "pending") && isAssignedToUserTeam && (
                                           <button
@@ -3395,16 +3440,6 @@ export default function App() {
                                         {/* Approve: In Review state */}
                                         {r.status === "in_review" && isAssignedToUserTeam && (
                                           <div className="flex items-center gap-1.5">
-                                            {r.drive_link && (
-                                              <a
-                                                href={r.drive_link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sky-600 hover:text-sky-700 underline text-[9px] font-black mr-1"
-                                              >
-                                                Open Link
-                                              </a>
-                                            )}
                                             <input
                                               type="text"
                                               placeholder="Approved By"
