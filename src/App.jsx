@@ -36,6 +36,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
     direction: "higher",
     cy_target: "",
     daily_target: "",
+    has_daily_target: false,
     do_person: "",
     drive_person: "",
     monitor_person: "",
@@ -57,6 +58,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
           direction: kpi.direction || "higher",
           cy_target: kpi.cy_target !== null ? String(kpi.cy_target) : "",
           daily_target: kpi.daily_target !== null && kpi.daily_target !== undefined ? String(kpi.daily_target) : "",
+          has_daily_target: kpi.has_daily_target || false,
           do_person: kpi.do_person || "",
           drive_person: kpi.drive_person || "",
           monitor_person: kpi.monitor_person || "",
@@ -75,6 +77,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
           direction: "higher",
           cy_target: "",
           daily_target: "",
+          has_daily_target: false,
           do_person: "",
           drive_person: "",
           monitor_person: "",
@@ -95,7 +98,8 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
     onSave({
       ...formData,
       cy_target: formData.cy_target.trim() ? parseFloat(formData.cy_target) : null,
-      daily_target: formData.daily_target.trim() ? parseFloat(formData.daily_target) : null
+      daily_target: formData.daily_target.trim() ? parseFloat(formData.daily_target) : null,
+      has_daily_target: formData.has_daily_target
     });
   };
 
@@ -180,11 +184,30 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
               <input type="number" step="any" value={formData.cy_target} onChange={e => setFormData(prev => ({ ...prev, cy_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (per working day)</label>
-              <input type="number" step="any" value={formData.daily_target} onChange={e => setFormData(prev => ({ ...prev, daily_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
-              <span className="text-[9.5px] text-slate-400 font-medium block mt-0.5">Excludes Sundays, holidays, and agent leave automatically.</span>
+            <div className="flex items-center gap-2 md:col-span-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 select-none">
+              <input
+                type="checkbox"
+                id="enable_daily_target"
+                checked={formData.has_daily_target}
+                onChange={e => setFormData(prev => ({ ...prev, has_daily_target: e.target.checked }))}
+                className="w-4 h-4 text-teal-600 border-orange-200 rounded focus:ring-teal-500 accent-teal-600 cursor-pointer"
+              />
+              <label htmlFor="enable_daily_target" className="text-[10px] font-black text-slate-700 uppercase tracking-wider cursor-pointer">
+                Enable Daily Target (Paced)
+              </label>
             </div>
+
+            {formData.has_daily_target ? (
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (per working day)</label>
+                <input type="number" step="any" value={formData.daily_target} onChange={e => setFormData(prev => ({ ...prev, daily_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+                <span className="text-[9.5px] text-slate-400 font-medium block mt-0.5">Excludes Sundays, holidays, and agent leave automatically.</span>
+              </div>
+            ) : (
+              <div className="bg-slate-100/50 border border-slate-200 border-dashed rounded-xl p-3 text-center text-slate-450 font-semibold text-[10px] md:col-span-2 select-none">
+                ℹ️ This KPI is tracked monthly only — must be completed by month end.
+              </div>
+            )}
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Do Person</label>
@@ -290,120 +313,124 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
             </div>
           </div>
 
-          <hr className="border-orange-100" />
+          {formData.has_daily_target && (
+            <>
+              <hr className="border-orange-100" />
 
-          {/* Daily Target Preview */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <div>
-                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Daily Target Preview</h4>
-                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Live rollup calculation based on working days</p>
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700">
-                <span>Month:</span>
-                <select
-                  value={previewMonthKey}
-                  onChange={e => setPreviewMonthKey(e.target.value)}
-                  className="border border-orange-200 rounded-lg px-2 py-1 text-[10px] font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-                >
-                  {FY_KEYS.map(mKey => (
-                    <option key={mKey} value={mKey}>{formatKeyToLabel(mKey)}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {(() => {
-              if (!previewMonthKey.includes("-")) return null;
-              const [yearStr, monthStr] = previewMonthKey.split("-");
-              const year = parseInt(yearStr);
-              const month = parseInt(monthStr) - 1; // 0-indexed month
-              
-              const firstDayIndex = new Date(year, month, 1).getDay();
-              const totalDays = new Date(year, month + 1, 0).getDate();
-              
-              const dailyTarget = parseFloat(formData.daily_target) || 0;
-              const enteredMonthlyTarget = parseFloat(formData.monthly_target?.[previewMonthKey]) || 0;
-              
-              let workingDaysCount = 0;
-              const daysInfo = [];
-              
-              for (let d = 1; d <= totalDays; d++) {
-                const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-                const dateObj = new Date(year, month, d);
-                const isSunday = dateObj.getDay() === 0;
-                
-                const matchingHoliday = holidays.find(h => 
-                  h.holiday_date === dateStr && 
-                  (h.applies_to === "all" || h.applies_to === formData.team)
-                );
-                
-                const hasLeave = agentLeaves.some(l => 
-                  l.leave_date === dateStr && 
-                  l.agent_name === formData.do_person
-                );
-                
-                const isOff = isSunday || !!matchingHoliday || hasLeave;
-                const reason = isSunday ? "Sun" : (matchingHoliday ? "Holiday" : "Leave");
-                
-                if (!isOff) {
-                  workingDaysCount++;
-                }
-                
-                daysInfo.push({ day: d, isOff, reason });
-              }
-              
-              const effectiveMonthlyTotal = workingDaysCount * dailyTarget;
-              const hasMismatch = enteredMonthlyTarget > 0 && Math.abs(effectiveMonthlyTotal - enteredMonthlyTarget) > 0.01;
-              
-              return (
-                <div className="space-y-2 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                  <div className="flex flex-wrap justify-between items-center gap-2 text-[10px] font-bold text-slate-600">
-                    <div>
-                      <span>Working days: <strong className="text-slate-800">{workingDaysCount}</strong></span>
-                      <span className="mx-2 text-slate-300">|</span>
-                      <span>Daily: <strong className="text-slate-800">{dailyTarget}</strong></span>
-                      <span className="mx-2 text-slate-300">|</span>
-                      <span>Effective Total: <strong className="text-teal-650">{effectiveMonthlyTotal}</strong></span>
-                    </div>
-                    {hasMismatch && (
-                      <span className="bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-lg border border-amber-100 flex items-center gap-1 select-none animate-pulse">
-                        ⚠️ Mismatch (Entered monthly target: {enteredMonthlyTarget})
-                      </span>
-                    )}
+              {/* Daily Target Preview */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Daily Target Preview</h4>
+                    <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Live rollup calculation based on working days</p>
                   </div>
-
-                  <div className="grid grid-cols-7 gap-1 text-center text-[8px] font-black text-slate-400 uppercase tracking-wider mt-2">
-                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
-                      <div key={d}>{d}</div>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-1.5 mt-1 select-none">
-                    {Array.from({ length: firstDayIndex }).map((_, idx) => (
-                      <div key={`empty-${idx}`} className="aspect-square bg-slate-100/30 rounded-lg" />
-                    ))}
-                    {daysInfo.map(info => (
-                      <div
-                        key={info.day}
-                        className={`aspect-square rounded-lg flex flex-col justify-between p-1.5 border text-center transition-colors
-                          ${info.isOff 
-                            ? "bg-slate-100 border-slate-200 text-slate-400" 
-                            : "bg-white border-slate-100 hover:bg-teal-50/20 text-slate-700"}`}
-                      >
-                        <span className={`text-[9px] font-bold ${info.isOff ? "line-through text-slate-300" : ""}`}>{info.day}</span>
-                        <span className={`text-[8.5px] font-black uppercase mt-0.5 truncate block
-                          ${info.isOff ? "text-[7.5px] text-slate-400 font-semibold" : "text-teal-650"}`}
-                        >
-                          {info.isOff ? info.reason : dailyTarget || "-"}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700">
+                    <span>Month:</span>
+                    <select
+                      value={previewMonthKey}
+                      onChange={e => setPreviewMonthKey(e.target.value)}
+                      className="border border-orange-200 rounded-lg px-2 py-1 text-[10px] font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    >
+                      {FY_KEYS.map(mKey => (
+                        <option key={mKey} value={mKey}>{formatKeyToLabel(mKey)}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              );
-            })()}
-          </div>
+
+                {(() => {
+                  if (!previewMonthKey.includes("-")) return null;
+                  const [yearStr, monthStr] = previewMonthKey.split("-");
+                  const year = parseInt(yearStr);
+                  const month = parseInt(monthStr) - 1; // 0-indexed month
+                  
+                  const firstDayIndex = new Date(year, month, 1).getDay();
+                  const totalDays = new Date(year, month + 1, 0).getDate();
+                  
+                  const dailyTarget = parseFloat(formData.daily_target) || 0;
+                  const enteredMonthlyTarget = parseFloat(formData.monthly_target?.[previewMonthKey]) || 0;
+                  
+                  let workingDaysCount = 0;
+                  const daysInfo = [];
+                  
+                  for (let d = 1; d <= totalDays; d++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                    const dateObj = new Date(year, month, d);
+                    const isSunday = dateObj.getDay() === 0;
+                    
+                    const matchingHoliday = holidays.find(h => 
+                      h.holiday_date === dateStr && 
+                      (h.applies_to === "all" || h.applies_to === formData.team)
+                    );
+                    
+                    const hasLeave = agentLeaves.some(l => 
+                      l.leave_date === dateStr && 
+                      l.agent_name === formData.do_person
+                    );
+                    
+                    const isOff = isSunday || !!matchingHoliday || hasLeave;
+                    const reason = isSunday ? "Sun" : (matchingHoliday ? "Holiday" : "Leave");
+                    
+                    if (!isOff) {
+                      workingDaysCount++;
+                    }
+                    
+                    daysInfo.push({ day: d, isOff, reason });
+                  }
+                  
+                  const effectiveMonthlyTotal = workingDaysCount * dailyTarget;
+                  const hasMismatch = enteredMonthlyTarget > 0 && Math.abs(effectiveMonthlyTotal - enteredMonthlyTarget) > 0.01;
+                  
+                  return (
+                    <div className="space-y-2 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                      <div className="flex flex-wrap justify-between items-center gap-2 text-[10px] font-bold text-slate-600">
+                        <div>
+                          <span>Working days: <strong className="text-slate-800">{workingDaysCount}</strong></span>
+                          <span className="mx-2 text-slate-300">|</span>
+                          <span>Daily: <strong className="text-slate-800">{dailyTarget}</strong></span>
+                          <span className="mx-2 text-slate-300">|</span>
+                          <span>Effective Total: <strong className="text-teal-650">{effectiveMonthlyTotal}</strong></span>
+                        </div>
+                        {hasMismatch && (
+                          <span className="bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-lg border border-amber-100 flex items-center gap-1 select-none animate-pulse">
+                            ⚠️ Mismatch (Entered monthly target: {enteredMonthlyTarget})
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1 text-center text-[8px] font-black text-slate-400 uppercase tracking-wider mt-2">
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+                          <div key={d}>{d}</div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1.5 mt-1 select-none">
+                        {Array.from({ length: firstDayIndex }).map((_, idx) => (
+                          <div key={`empty-${idx}`} className="aspect-square bg-slate-100/30 rounded-lg" />
+                        ))}
+                        {daysInfo.map(info => (
+                          <div
+                            key={info.day}
+                            className={`aspect-square rounded-lg flex flex-col justify-between p-1.5 border text-center transition-colors
+                              ${info.isOff 
+                                ? "bg-slate-100 border-slate-200 text-slate-400" 
+                                : "bg-white border-slate-100 hover:bg-teal-50/20 text-slate-700"}`}
+                          >
+                            <span className={`text-[9px] font-bold ${info.isOff ? "line-through text-slate-300" : ""}`}>{info.day}</span>
+                            <span className={`text-[8.5px] font-black uppercase mt-0.5 truncate block
+                              ${info.isOff ? "text-[7.5px] text-slate-400 font-semibold" : "text-teal-650"}`}
+                            >
+                              {info.isOff ? info.reason : dailyTarget || "-"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2 sticky bottom-0 z-10 rounded-b-3xl">
@@ -4037,31 +4064,33 @@ export default function App() {
                                 
                                 <div className="grid grid-cols-2 gap-4 mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100 text-[10px] font-bold text-slate-600">
                                   <div>
-                                    {isOffToday ? (
-                                      <>
-                                        <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
-                                        <span className="text-orange-700 text-xs font-black">Off today — no target</span>
-                                      </>
-                                    ) : k.daily_target !== null && k.daily_target !== undefined ? (
-                                      <>
-                                        <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
-                                        <span className="text-orange-700 text-xs font-black">{k.daily_target}</span>
-                                      </>
+                                    {k.has_daily_target ? (
+                                      isOffToday ? (
+                                        <>
+                                          <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
+                                          <span className="text-orange-700 text-xs font-black">Off today — no target</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
+                                          <span className="text-orange-700 text-xs font-black">{k.daily_target ?? "Not set"}</span>
+                                        </>
+                                      )
                                     ) : (
                                       <>
-                                        <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">Month Target</span>
+                                        <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">This Month's Target</span>
                                         <span className="text-slate-800 text-xs font-black">{monthTarget}</span>
                                       </>
                                     )}
                                   </div>
                                   <div>
-                                    <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">Month Actual</span>
+                                    <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">{k.has_daily_target ? "Month Actual" : "This Month's Actual"}</span>
                                     <span className="text-slate-800 text-xs font-black">{monthActual}</span>
                                   </div>
                                 </div>
 
-                                {/* Progress Bar (only shown for monthly target KPIs) */}
-                                {!isOffToday && (k.daily_target === null || k.daily_target === undefined) && (
+                                {/* Progress Bar */}
+                                {(!k.has_daily_target || (!isOffToday && (k.daily_target === null || k.daily_target === undefined))) && (
                                   <div className="mt-3 space-y-1">
                                     <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
                                       <span>Month Progress</span>
@@ -4078,14 +4107,16 @@ export default function App() {
                               </div>
 
                               <div className="space-y-3 pt-2 border-t border-slate-50">
-                                {isOffToday ? (
+                                {k.has_daily_target && isOffToday ? (
                                   <div className="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-center text-xs font-black text-orange-700 uppercase tracking-wider select-none">
                                     🌴 Off Today ({offReason})
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-2">
                                     <div className="flex-1">
-                                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Enter today's achievement</label>
+                                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+                                        {k.has_daily_target ? "Enter today's achievement" : "Enter progress to add"}
+                                      </label>
                                       <input
                                         type="number"
                                         step="any"
