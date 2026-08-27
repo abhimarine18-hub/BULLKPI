@@ -1540,13 +1540,17 @@ export default function App() {
           const nameLower = k.name.toLowerCase();
           return nameLower.includes("testimonial") && 
                  nameLower.includes("posted") &&
-                 (nameLower.includes(matchedLang) || (matchedLang === "bengali" && nameLower.includes("benglali")));
+                 (nameLower.includes(matchedLang) || 
+                  (matchedLang === "bengali" && nameLower.includes("benglali")) ||
+                  (matchedLang === "marathi" && nameLower.includes("marati")));
         });
         if (!match) {
           match = candidates.find(k => {
             const nameLower = k.name.toLowerCase();
             return nameLower.includes("testimonial") && 
-                   (nameLower.includes(matchedLang) || (matchedLang === "bengali" && nameLower.includes("benglali")));
+                   (nameLower.includes(matchedLang) || 
+                    (matchedLang === "bengali" && nameLower.includes("benglali")) ||
+                    (matchedLang === "marathi" && nameLower.includes("marati")));
           });
         }
         if (match) return match;
