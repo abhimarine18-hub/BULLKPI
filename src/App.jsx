@@ -1616,7 +1616,8 @@ export default function App() {
   };
 
   const capacityStats = useMemo(() => {
-    const monthStr = `${new Date(currentYear, currentMonth).toLocaleString("en-US", { month: "short" })} ${currentYear}`;
+    // monthly_target keys are stored as 3-letter month abbreviations: "Jan", "Feb", ... "Dec"
+    const monthStr = MONTHS_LIST[currentMonth]; // e.g. "Aug"
     
     const types = [
       { id: "sm_poster", label: "SM Poster", type: "sm_poster" },
