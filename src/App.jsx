@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./supabaseClient";
 import {
-  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList
+  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -932,6 +932,62 @@ export default function App() {
   const [requestFilterStatus, setRequestFilterStatus] = useState("all");
   const [requestFilterTeam, setRequestFilterTeam] = useState("all");
   const [contentRequestsError, setContentRequestsError] = useState("");
+  const [todayLogs, setTodayLogs] = useState({});
+  const [submitStatus, setSubmitStatus] = useState({});
+  const [logInputs, setLogInputs] = useState({});
+
+  const handleLogWork = async (kpi, amountStr) => {
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid positive number.");
+      return;
+    }
+    
+    try {
+      const currentMonthName = MONTHS_LIST[new Date().getMonth()];
+      const currentActuals = kpi.monthly_actual || {};
+      const oldVal = parseFloat(currentActuals[currentMonthName]) || 0;
+      const newVal = oldVal + amount;
+      
+      const updatedActuals = {
+        ...currentActuals,
+        [currentMonthName]: newVal
+      };
+      
+      const { data, error } = await supabase
+        .from("kpis")
+        .update({ monthly_actual: updatedActuals })
+        .eq("id", kpi.id)
+        .select();
+        
+      if (error) {
+        console.error("Error logging work:", error.message);
+        alert("Failed to save to database: " + error.message);
+      } else {
+        // Update local state
+        setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, monthly_actual: updatedActuals } : k));
+        
+        // Update today's logs for feedback
+        setTodayLogs(prev => ({
+          ...prev,
+          [kpi.id]: [...(prev[kpi.id] || []), amount]
+        }));
+        
+        // Set success message
+        const targetVal = kpi.monthly_target?.[currentMonthName] || 0;
+        setSubmitStatus(prev => ({
+          ...prev,
+          [kpi.id]: `Added ${amount} — month total now ${newVal}/${targetVal}.`
+        }));
+        
+        // Clear input
+        setLogInputs(prev => ({ ...prev, [kpi.id]: "" }));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred: " + err.message);
+    }
+  };
 
   const [calendarPrefilledDate, setCalendarPrefilledDate] = useState("");
   const [isRequestDetailsModalOpen, setIsRequestDetailsModalOpen] = useState(false);
@@ -2126,6 +2182,18 @@ export default function App() {
                 <LayoutDashboard className="h-4 w-4" />
                 <span>My Dashboard</span>
               </button>
+
+              {role !== "admin" && (
+                <button
+                  onClick={() => { setScreen("daily_log"); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                    screen === "daily_log" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                  }`}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span>Daily Log</span>
+                </button>
+              )}
 
               <button
                 onClick={() => { setScreen("kpis"); setMobileMenuOpen(false); }}
@@ -3604,6 +3672,118 @@ export default function App() {
                 </div>
               )}
 
+              {screen === "daily_log" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Daily Log</h2>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Log today's achievements against your assigned KPI activities</p>
+                  </div>
+
+                  {(() => {
+                    const myKpis = kpis.filter(
+                      k => k.do_person === loggedInUser?.name && (!k.kpi_type || k.kpi_type === "activity")
+                    );
+                    const currentMonthName = MONTHS_LIST[new Date().getMonth()];
+
+                    if (myKpis.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                          <span className="text-4xl">📝</span>
+                          <h3 className="text-sm font-black text-slate-800 mt-3">No activity KPIs assigned</h3>
+                          <p className="text-xs font-semibold text-slate-450 mt-1">You are not marked as the DO Person on any activity KPIs.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {myKpis.map(k => {
+                          const monthTarget = k.monthly_target?.[currentMonthName] ?? 0;
+                          const monthActual = k.monthly_actual?.[currentMonthName] ?? 0;
+                          const progressPercent = monthTarget > 0 ? Math.min(100, Math.round((monthActual / monthTarget) * 100)) : 0;
+                          const logs = todayLogs[k.id] || [];
+
+                          return (
+                            <div key={k.id} className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+                              <div>
+                                <h3 className="text-xs font-black text-slate-800 leading-snug">{k.name}</h3>
+                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-0.5">UOM: {k.unit || "Nos"}</p>
+                                
+                                <div className="grid grid-cols-2 gap-4 mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100 text-[10px] font-bold text-slate-600">
+                                  <div>
+                                    <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">Month Target</span>
+                                    <span className="text-slate-800 text-xs font-black">{monthTarget}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">Month Actual</span>
+                                    <span className="text-slate-800 text-xs font-black">{monthActual}</span>
+                                  </div>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="mt-3 space-y-1">
+                                  <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
+                                    <span>Month Progress</span>
+                                    <span className="text-slate-700">{progressPercent}%</span>
+                                  </div>
+                                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-350"
+                                      style={{ width: `${progressPercent}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3 pt-2 border-t border-slate-50">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Enter today's achievement</label>
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      placeholder="0"
+                                      value={logInputs[k.id] || ""}
+                                      onChange={e => setLogInputs(prev => ({ ...prev, [k.id]: e.target.value }))}
+                                      className="w-full border border-orange-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => handleLogWork(k, logInputs[k.id] || "")}
+                                    className="bg-teal-500 hover:bg-teal-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors self-end h-[34px] flex items-center justify-center"
+                                  >
+                                    Submit
+                                  </button>
+                                </div>
+
+                                {submitStatus[k.id] && (
+                                  <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-[10px] py-1.5 px-3 rounded-lg font-bold flex items-center gap-1">
+                                    <span>✅</span>
+                                    <span>{submitStatus[k.id]}</span>
+                                  </div>
+                                )}
+
+                                {logs.length > 0 && (
+                                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-[9.5px] font-bold text-slate-600">
+                                    <span className="text-[8px] uppercase text-slate-400 block mb-1">Today's Submissions:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {logs.map((log, idx) => (
+                                        <span key={idx} className="bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-slate-800 font-mono">
+                                          +{log}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </main>
           
