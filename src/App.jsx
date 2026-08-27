@@ -20,6 +20,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
     monitor_person: "",
     checker: "",
     approver: "",
+    ai_checking_enabled: false,
     monthly_target: {},
     monthly_actual: {}
   });
@@ -39,6 +40,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
           monitor_person: kpi.monitor_person || "",
           checker: kpi.checker || "",
           approver: kpi.approver || "",
+          ai_checking_enabled: kpi.ai_checking_enabled || false,
           monthly_target: kpi.monthly_target || {},
           monthly_actual: kpi.monthly_actual || {}
         });
@@ -55,6 +57,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
           monitor_person: "",
           checker: "",
           approver: "",
+          ai_checking_enabled: false,
           monthly_target: {},
           monthly_actual: {}
         });
@@ -133,7 +136,11 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Unit (UOM)</label>
-              <input required type="text" value={formData.unit} onChange={e => setFormData(prev => ({ ...prev, unit: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+              <select value={formData.unit} onChange={e => setFormData(prev => ({ ...prev, unit: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                {["Nos", "percentage", "hours", "days", "weeks", "months", "runs", "INR", "USD", "others"].map(uom => (
+                  <option key={uom} value={uom}>{uom}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
@@ -151,27 +158,66 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Do Person</label>
-              <input type="text" value={formData.do_person} onChange={e => setFormData(prev => ({ ...prev, do_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+              <select value={formData.do_person} onChange={e => setFormData(prev => ({ ...prev, do_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="">Select Person...</option>
+                {Object.keys(membersMap).sort().map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Drive Person</label>
-              <input type="text" value={formData.drive_person} onChange={e => setFormData(prev => ({ ...prev, drive_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+              <select value={formData.drive_person} onChange={e => setFormData(prev => ({ ...prev, drive_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="">Select Person...</option>
+                {Object.keys(membersMap).sort().map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Monitor Person</label>
-              <input type="text" value={formData.monitor_person} onChange={e => setFormData(prev => ({ ...prev, monitor_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+              <select value={formData.monitor_person} onChange={e => setFormData(prev => ({ ...prev, monitor_person: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="">Select Person...</option>
+                {Object.keys(membersMap).sort().map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Checker</label>
-              <input type="text" value={formData.checker} onChange={e => setFormData(prev => ({ ...prev, checker: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+              <select value={formData.checker} onChange={e => setFormData(prev => ({ ...prev, checker: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="">Select Person...</option>
+                {Object.keys(membersMap).sort().map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Approver</label>
-              <input type="text" value={formData.approver} onChange={e => setFormData(prev => ({ ...prev, approver: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+              <select value={formData.approver} onChange={e => setFormData(prev => ({ ...prev, approver: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="">Select Person...</option>
+                {Object.keys(membersMap).sort().map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Checkbox for AI Checking Enabled */}
+            <div className="flex items-center gap-2 md:col-span-2 py-1 bg-slate-50 border border-slate-100 rounded-xl px-3 mt-1 select-none">
+              <input
+                type="checkbox"
+                id="ai_checking"
+                checked={formData.ai_checking_enabled}
+                onChange={e => setFormData(prev => ({ ...prev, ai_checking_enabled: e.target.checked }))}
+                className="w-4 h-4 text-teal-600 border-orange-200 rounded focus:ring-teal-500 accent-teal-600 cursor-pointer"
+              />
+              <label htmlFor="ai_checking" className="text-[10px] font-black text-slate-700 uppercase tracking-wider cursor-pointer">
+                AI Checking Enabled
+              </label>
             </div>
           </div>
 
