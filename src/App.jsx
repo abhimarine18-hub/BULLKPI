@@ -15,6 +15,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
     unit: "Nos",
     direction: "higher",
     cy_target: "",
+    daily_target: "",
     do_person: "",
     drive_person: "",
     monitor_person: "",
@@ -35,6 +36,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
           unit: kpi.unit || "Nos",
           direction: kpi.direction || "higher",
           cy_target: kpi.cy_target !== null ? String(kpi.cy_target) : "",
+          daily_target: kpi.daily_target !== null && kpi.daily_target !== undefined ? String(kpi.daily_target) : "",
           do_person: kpi.do_person || "",
           drive_person: kpi.drive_person || "",
           monitor_person: kpi.monitor_person || "",
@@ -52,6 +54,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
           unit: "Nos",
           direction: "higher",
           cy_target: "",
+          daily_target: "",
           do_person: "",
           drive_person: "",
           monitor_person: "",
@@ -71,7 +74,8 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
     e.preventDefault();
     onSave({
       ...formData,
-      cy_target: formData.cy_target.trim() ? parseFloat(formData.cy_target) : null
+      cy_target: formData.cy_target.trim() ? parseFloat(formData.cy_target) : null,
+      daily_target: formData.daily_target.trim() ? parseFloat(formData.daily_target) : null
     });
   };
 
@@ -154,6 +158,11 @@ function KpiModal({ kpi, isOpen, onClose, onSave }) {
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">CY Target</label>
               <input type="number" step="any" value={formData.cy_target} onChange={e => setFormData(prev => ({ ...prev, cy_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (Optional)</label>
+              <input type="number" step="any" value={formData.daily_target} onChange={e => setFormData(prev => ({ ...prev, daily_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
             </div>
 
             <div className="space-y-1">
@@ -3711,8 +3720,17 @@ export default function App() {
                                 
                                 <div className="grid grid-cols-2 gap-4 mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100 text-[10px] font-bold text-slate-600">
                                   <div>
-                                    <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">Month Target</span>
-                                    <span className="text-slate-800 text-xs font-black">{monthTarget}</span>
+                                    {k.daily_target !== null && k.daily_target !== undefined ? (
+                                      <>
+                                        <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
+                                        <span className="text-orange-700 text-xs font-black">{k.daily_target}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">Month Target</span>
+                                        <span className="text-slate-800 text-xs font-black">{monthTarget}</span>
+                                      </>
+                                    )}
                                   </div>
                                   <div>
                                     <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">Month Actual</span>
@@ -3720,19 +3738,21 @@ export default function App() {
                                   </div>
                                 </div>
 
-                                {/* Progress Bar */}
-                                <div className="mt-3 space-y-1">
-                                  <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
-                                    <span>Month Progress</span>
-                                    <span className="text-slate-700">{progressPercent}%</span>
+                                {/* Progress Bar (only shown for monthly target KPIs) */}
+                                {(k.daily_target === null || k.daily_target === undefined) && (
+                                  <div className="mt-3 space-y-1">
+                                    <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
+                                      <span>Month Progress</span>
+                                      <span className="text-slate-700">{progressPercent}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-350"
+                                        style={{ width: `${progressPercent}%` }}
+                                      />
+                                    </div>
                                   </div>
-                                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div 
-                                      className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-350"
-                                      style={{ width: `${progressPercent}%` }}
-                                    />
-                                  </div>
-                                </div>
+                                )}
                               </div>
 
                               <div className="space-y-3 pt-2 border-t border-slate-50">
