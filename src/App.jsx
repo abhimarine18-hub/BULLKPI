@@ -942,16 +942,23 @@ export default function App() {
     try {
       setTeamInfo({ name: teamName });
 
-      // Fetch KPIs for this team
-      const { data: kpisData, error: kpisError } = await supabase
-        .from("kpis")
-        .select("*")
-        .eq("team", teamName);
-      
+      // Fetch KPIs for this team; DM also needs VP + GD KPIs for capacity tracking
+      let kpisQuery = supabase.from("kpis").select("*").eq("team", teamName);
+      const { data: kpisData, error: kpisError } = await kpisQuery;
+
       if (kpisError) {
         console.error("Error fetching KPIs from Supabase:", kpisError.message, kpisError.details);
       } else if (kpisData) {
-        setKpis(kpisData);
+        if (teamName === "Digital Marketing") {
+          // Also load Video Production + Graphic Designing KPIs for capacity panel
+          const { data: prodKpisData } = await supabase
+            .from("kpis")
+            .select("*")
+            .in("team", ["Video Production", "Graphic Designing"]);
+          setKpis([...kpisData, ...(prodKpisData || [])]);
+        } else {
+          setKpis(kpisData);
+        }
       }
 
       // Fetch Projects for this team
