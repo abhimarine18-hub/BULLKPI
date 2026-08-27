@@ -1568,7 +1568,7 @@ export default function App() {
                   <span>Add KPI</span>
                 </button>
               )}
-              {screen === "dashboard" && role === "admin" && (
+              {(screen === "dashboard" || screen === "content_requests") && role === "admin" && (
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase text-slate-400">Team Switcher:</span>
                   <select
@@ -2131,7 +2131,7 @@ export default function App() {
 
               {screen === "content_requests" && (
                 <div className="space-y-4">
-                  {role !== "admin" && loggedInUser?.team === "Digital Marketing" ? (
+                  {((role !== "admin" && loggedInUser?.team === "Digital Marketing") || (role === "admin" && activeDashboardTeam === "Digital Marketing")) ? (
                     /* Calendar View with Floating Context Popup for Digital Marketing */
                     <div className="space-y-4 relative">
                       <div className="flex justify-between items-center pb-2">
