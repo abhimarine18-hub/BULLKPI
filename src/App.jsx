@@ -1526,54 +1526,81 @@ export default function App() {
     if (!contentType) return null;
     const normalized = contentType.toLowerCase().replace(/_/g, " ");
 
-    const candidates = kpis.filter(k => 
-      k.team === "Video Production" || 
-      k.team === "Graphic Designing" || 
-      k.team === "Digital Marketing"
+    // Only look in production teams — never Digital Marketing — since we track production capacity
+    const candidates = kpis.filter(k =>
+      k.team === "Video Production" ||
+      k.team === "Graphic Designing"
     );
 
+    // Helper: does a KPI name contain a "created/produced" keyword (not "posted")?
+    const isCreatedKpi = (nameLower) =>
+      (nameLower.includes("created") || nameLower.includes("produced") || nameLower.includes("done")) &&
+      !nameLower.includes("posted");
+
     if (normalized.includes("testimonial video")) {
-      const langs = ["hindi", "tamil", "kannada", "telugu", "bengali", "gujarati", "malayalam", "odia", "marathi", "punjabi"];
-      const matchedLang = langs.find(lang => normalized.includes(lang));
+      const langAliases = {
+        hindi:     ["hindi"],
+        tamil:     ["tamil"],
+        kannada:   ["kannada"],
+        telugu:    ["telugu"],
+        bengali:   ["bengali", "benglali"],
+        gujarati:  ["gujarati"],
+        malayalam: ["malayalam"],
+        odia:      ["odia"],
+        marathi:   ["marathi", "marati"],
+        punjabi:   ["punjabi"],
+      };
+      const matchedLang = Object.keys(langAliases).find(lang => normalized.includes(lang));
       if (matchedLang) {
+        const aliases = langAliases[matchedLang];
+        // First try: "testimonial" + "created/produced" + language alias
         let match = candidates.find(k => {
-          const nameLower = k.name.toLowerCase();
-          return nameLower.includes("testimonial") && 
-                 nameLower.includes("posted") &&
-                 (nameLower.includes(matchedLang) || 
-                  (matchedLang === "bengali" && nameLower.includes("benglali")) ||
-                  (matchedLang === "marathi" && nameLower.includes("marati")));
+          const n = k.name.toLowerCase();
+          return n.includes("testimonial") && isCreatedKpi(n) && aliases.some(a => n.includes(a));
         });
+        // Fallback: any "testimonial" + language (catches edge cases)
         if (!match) {
           match = candidates.find(k => {
-            const nameLower = k.name.toLowerCase();
-            return nameLower.includes("testimonial") && 
-                   (nameLower.includes(matchedLang) || 
-                    (matchedLang === "bengali" && nameLower.includes("benglali")) ||
-                    (matchedLang === "marathi" && nameLower.includes("marati")));
+            const n = k.name.toLowerCase();
+            return n.includes("testimonial") && aliases.some(a => n.includes(a));
           });
         }
         if (match) return match;
       }
     }
 
-    if (normalized.includes("sm poster") || normalized.includes("campaign poster") || normalized.includes("festival poster") || normalized.includes("poster")) {
+    if (normalized.includes("branding video")) {
+      // e.g. "No of branding video done by Internal team"
       const match = candidates.find(k => {
-        const nameLower = k.name.toLowerCase();
-        return nameLower.includes("poster") && !nameLower.includes("reach");
+        const n = k.name.toLowerCase();
+        return n.includes("branding video") && isCreatedKpi(n);
       });
       if (match) return match;
     }
 
-    if (normalized.includes("branding video")) {
-      const match = candidates.find(k => k.name.toLowerCase().includes("branding video"));
-      if (match) return match;
+    if (normalized.includes("campaign video") || normalized.includes("campaign poster") || normalized.includes("sm poster") || normalized.includes("festival poster")) {
+      // Fall back to generic poster/video "created" KPIs for types without a dedicated KPI
+      if (normalized.includes("video")) {
+        const match = candidates.find(k => {
+          const n = k.name.toLowerCase();
+          return n.includes("video") && isCreatedKpi(n) && !n.includes("testimonial");
+        });
+        if (match) return match;
+      }
+      if (normalized.includes("poster")) {
+        const match = candidates.find(k => {
+          const n = k.name.toLowerCase();
+          return n.includes("poster") && isCreatedKpi(n) && !n.includes("reach") && !n.includes("posted");
+        });
+        if (match) return match;
+      }
     }
 
-    if (normalized.includes("campaign video") || normalized.includes("video")) {
+    // Generic poster fallback (sm_poster alone)
+    if (normalized.includes("poster")) {
       const match = candidates.find(k => {
-        const nameLower = k.name.toLowerCase();
-        return nameLower.includes("video") && !nameLower.includes("view");
+        const n = k.name.toLowerCase();
+        return n.includes("poster") && isCreatedKpi(n) && !n.includes("reach");
       });
       if (match) return match;
     }
