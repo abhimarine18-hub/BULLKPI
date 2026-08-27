@@ -429,7 +429,7 @@ function ProjectModal({ project, isOpen, onClose, onSave, isAdmin, currentUser }
   );
 }
 
-function CampaignModal({ campaign, isOpen, onClose, onSave }) {
+function CampaignModal({ campaign, isOpen, onClose, onSave, adPerformance = [] }) {
   const isEdit = !!campaign;
   const [formData, setFormData] = useState({
     name: "",
@@ -470,6 +470,32 @@ function CampaignModal({ campaign, isOpen, onClose, onSave }) {
     }
   }, [isOpen, campaign, isEdit]);
 
+  const sortedAds = useMemo(() => {
+    if (!campaign) return [];
+    return adPerformance
+      .filter(ad => ad.campaign_id === campaign.id)
+      .map(ad => {
+        const spend = parseFloat(ad.spend) || 0;
+        const leads = parseInt(ad.leads, 10) || 0;
+        const cpl = leads > 0 ? (spend / leads) : Infinity;
+        return { ...ad, cpl };
+      })
+      .sort((a, b) => a.cpl - b.cpl);
+  }, [adPerformance, campaign]);
+
+  const summary = useMemo(() => {
+    let totalSpend = 0;
+    let totalLeads = 0;
+    let totalReach = 0;
+    sortedAds.forEach(ad => {
+      totalSpend += parseFloat(ad.spend) || 0;
+      totalLeads += parseInt(ad.leads, 10) || 0;
+      totalReach += parseInt(ad.reach, 10) || 0;
+    });
+    const blendedCpl = totalLeads > 0 ? (totalSpend / totalLeads) : 0;
+    return { totalSpend, totalLeads, totalReach, blendedCpl };
+  }, [sortedAds]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
@@ -492,7 +518,7 @@ function CampaignModal({ campaign, isOpen, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-orange-100 flex flex-col">
+      <form onSubmit={handleSubmit} className={`bg-white rounded-3xl shadow-xl w-full ${isEdit && sortedAds.length > 0 ? "max-w-2xl" : "max-w-md"} overflow-hidden border border-orange-100 flex flex-col`}>
         <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between">
           <h3 className="font-black text-slate-800 text-sm">{isEdit ? "Campaign details" : "New Campaign"}</h3>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
@@ -500,7 +526,7 @@ function CampaignModal({ campaign, isOpen, onClose, onSave }) {
           </button>
         </div>
 
-        <div className="p-6 space-y-4 text-xs font-semibold text-slate-650">
+        <div className="p-6 space-y-4 text-xs font-semibold text-slate-650 overflow-y-auto max-h-[80vh]">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Campaign Name</label>
             <input required type="text" disabled={isEdit} value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold disabled:bg-slate-50 disabled:text-slate-550" />
@@ -556,11 +582,54 @@ function CampaignModal({ campaign, isOpen, onClose, onSave }) {
                   <option value="completed">completed</option>
                 </select>
               </div>
+
+              {sortedAds.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Ad Performance</h4>
+                  
+                  {/* Summary row */}
+                  <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-2.5 text-center text-slate-700 font-bold text-[9px] flex justify-around select-none">
+                    <div>Total Spend: <span className="font-mono text-slate-900">₹{new Intl.NumberFormat('en-IN').format(summary.totalSpend)}</span></div>
+                    <div>Total Leads: <span className="font-mono text-slate-900">{summary.totalLeads}</span></div>
+                    <div>Blended CPL: <span className="font-mono text-teal-700 font-black">₹{summary.blendedCpl.toFixed(2)}</span></div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="border border-slate-150 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                    <table className="w-full text-[9px] border-collapse text-left">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                          <th className="px-3 py-2">Ad Set</th>
+                          <th className="px-3 py-2">Ad Name</th>
+                          <th className="px-3 py-2 text-right">Spend</th>
+                          <th className="px-3 py-2 text-right">Leads</th>
+                          <th className="px-3 py-2 text-right">CPL</th>
+                          <th className="px-3 py-2 text-right">Reach</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                        {sortedAds.map(ad => (
+                          <tr key={ad.id} className="hover:bg-slate-50/50">
+                            <td className="px-3 py-2 max-w-[110px] truncate" title={ad.adset_name}>{ad.adset_name}</td>
+                            <td className="px-3 py-2 max-w-[110px] truncate" title={ad.ad_name}>{ad.ad_name}</td>
+                            <td className="px-3 py-2 text-right font-mono">₹{ad.spend ? new Intl.NumberFormat('en-IN').format(ad.spend) : "0"}</td>
+                            <td className="px-3 py-2 text-right font-mono">{ad.leads}</td>
+                            <td className="px-3 py-2 text-right font-mono font-bold text-teal-650">
+                              {ad.cpl === Infinity ? "-" : `₹${ad.cpl.toFixed(2)}`}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono">{ad.reach ? new Intl.NumberFormat('en-IN').format(ad.reach) : "0"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
 
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2 shrink-0">
           <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
           <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Save</button>
         </div>
@@ -803,6 +872,7 @@ export default function App() {
   const [projectFilter, setProjectFilter] = useState("all");
 
   const [campaigns, setCampaigns] = useState([]);
+  const [adPerformance, setAdPerformance] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
 
@@ -857,6 +927,7 @@ export default function App() {
         supabase.from("kpis").select("*").then(({ data }) => { if (data) setKpis(data); });
         supabase.from("projects").select("*").then(({ data }) => { if (data) setProjects(data); });
         fetchCampaignsData();
+        fetchAdPerformanceData();
         fetchContentRequestsData();
       } else {
         if (u.team) {
@@ -913,6 +984,7 @@ export default function App() {
       }
       if (teamName === "Digital Marketing" || role === "admin") {
         await fetchCampaignsData();
+        await fetchAdPerformanceData();
       }
       if (role === "admin" || ["Digital Marketing", "Video Production", "Graphic Designing"].includes(teamName)) {
         await fetchContentRequestsData();
@@ -921,6 +993,127 @@ export default function App() {
       console.error("Error loading team data:", err);
     }
   }
+
+  const parseCSV = (text) => {
+    const lines = [];
+    let row = [""];
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const next = text[i + 1];
+      if (c === '"') {
+        if (inQuotes && next === '"') {
+          row[row.length - 1] += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (c === ',' && !inQuotes) {
+        row.push('');
+      } else if ((c === '\r' || c === '\n') && !inQuotes) {
+        if (c === '\r' && next === '\n') {
+          i++;
+        }
+        lines.push(row.map(cell => cell.trim()));
+        row = [''];
+      } else {
+        row[row.length - 1] += c;
+      }
+    }
+    if (row.length > 1 || row[0] !== '') {
+      lines.push(row.map(cell => cell.trim()));
+    }
+    return lines;
+  };
+
+  const handleImportAdReport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const text = evt.target.result;
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          alert("CSV is empty or invalid.");
+          return;
+        }
+
+        const headers = rows[0].map(h => h.toLowerCase().trim());
+        
+        const getIdx = (candidates) => {
+          return headers.findIndex(h => candidates.some(c => h.includes(c) || c.includes(h)));
+        };
+
+        const campaignNameIdx = getIdx(["campaign name", "campaign_name", "campaign"]);
+        const adsetNameIdx = getIdx(["ad set name", "ad_set_name", "adset name", "adset_name", "adset"]);
+        const adNameIdx = getIdx(["ad name", "ad_name", "ad"]);
+        const spendIdx = getIdx(["amount spent", "amount_spent", "spend", "spent"]);
+        const reachIdx = getIdx(["reach"]);
+        const leadsIdx = getIdx(["leads", "conversions", "leads_generated"]);
+
+        if (campaignNameIdx === -1 || adsetNameIdx === -1 || adNameIdx === -1) {
+          alert("Could not find required columns in CSV (Campaign Name, Ad Set Name, Ad Name).");
+          return;
+        }
+
+        const parsedRecords = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length < Math.max(campaignNameIdx, adsetNameIdx, adNameIdx) + 1) continue;
+
+          const campName = row[campaignNameIdx] || "";
+          if (!campName) continue;
+
+          const adsetName = row[adsetNameIdx] || "";
+          const adName = row[adNameIdx] || "";
+          const spend = parseFloat((row[spendIdx] || "0").replace(/[^0-9.]/g, "")) || 0;
+          const reach = parseInt((row[reachIdx] || "0").replace(/[^0-9]/g, ""), 10) || 0;
+          const leads = parseInt((row[leadsIdx] || "0").replace(/[^0-9]/g, ""), 10) || 0;
+
+          const matchedCampaign = campaigns.find(c => 
+            c.name.toLowerCase().trim() === campName.toLowerCase().trim() ||
+            c.name.toLowerCase().includes(campName.toLowerCase()) ||
+            campName.toLowerCase().includes(c.name.toLowerCase())
+          );
+
+          parsedRecords.push({
+            campaign_id: matchedCampaign ? matchedCampaign.id : null,
+            campaign_name: campName,
+            adset_name: adsetName,
+            ad_name: adName,
+            spend: spend,
+            reach: reach,
+            leads: leads
+          });
+        }
+
+        if (parsedRecords.length === 0) {
+          alert("No valid rows parsed from the CSV.");
+          return;
+        }
+
+        const { error } = await supabase
+          .from("ad_performance")
+          .insert(parsedRecords);
+
+        if (error) {
+          throw error;
+        }
+
+        alert(`Successfully imported ${parsedRecords.length} ad performance records!`);
+        await fetchAdPerformanceData();
+      } catch (err) {
+        console.error("Error importing ad report:", err);
+        alert("Failed to import ad report: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const fetchCampaignsData = async () => {
     try {
@@ -932,6 +1125,19 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error loading campaigns:", err);
+    }
+  };
+
+  const fetchAdPerformanceData = async () => {
+    try {
+      const { data, error } = await supabase.from("ad_performance").select("*");
+      if (error) {
+        console.error("Error fetching ad performance from Supabase:", error.message);
+      } else if (data) {
+        setAdPerformance(data);
+      }
+    } catch (err) {
+      console.error("Error loading ad performance:", err);
     }
   };
 
@@ -977,6 +1183,7 @@ export default function App() {
         const { data: projsData } = await supabase.from("projects").select("*");
         if (projsData) setProjects(projsData);
         await fetchCampaignsData();
+        await fetchAdPerformanceData();
         await fetchContentRequestsData();
       } catch (e) {}
       return;
@@ -2063,13 +2270,24 @@ export default function App() {
                       <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Campaigns</h2>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manage marketing campaigns, spend, and lead metrics</p>
                     </div>
-                    <button
-                      onClick={() => { setSelectedCampaign(null); setIsCampaignModalOpen(true); }}
-                      className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>New Campaign</span>
-                    </button>
+                    <div className="flex gap-2 items-center">
+                      <label className="cursor-pointer bg-slate-150 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors border border-slate-200">
+                        <span>Import Ad Report</span>
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleImportAdReport}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        onClick={() => { setSelectedCampaign(null); setIsCampaignModalOpen(true); }}
+                        className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>New Campaign</span>
+                      </button>
+                    </div>
                   </div>
 
                   {campaigns.length === 0 ? (
@@ -2649,6 +2867,7 @@ export default function App() {
             isOpen={isCampaignModalOpen}
             onClose={() => { setIsCampaignModalOpen(false); setSelectedCampaign(null); }}
             onSave={handleSaveCampaign}
+            adPerformance={adPerformance}
           />
 
           <NewRequestModal
