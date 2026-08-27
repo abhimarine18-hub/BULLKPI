@@ -931,6 +931,7 @@ export default function App() {
   const [approvedByNames, setApprovedByNames] = useState({});
   const [requestFilterStatus, setRequestFilterStatus] = useState("all");
   const [requestFilterTeam, setRequestFilterTeam] = useState("all");
+  const [contentRequestsError, setContentRequestsError] = useState("");
 
   const [calendarPrefilledDate, setCalendarPrefilledDate] = useState("");
   const [isRequestDetailsModalOpen, setIsRequestDetailsModalOpen] = useState(false);
@@ -1201,15 +1202,18 @@ export default function App() {
 
   const fetchContentRequestsData = async () => {
     try {
+      setContentRequestsError("");
       const { data, error } = await supabase.from("content_requests").select("*");
       if (error) {
         console.error("Error fetching content requests from Supabase:", error.message);
+        setContentRequestsError(error.message);
       } else if (data) {
         setContentRequests(data);
         generateUpcomingRecurrences(data);
       }
     } catch (err) {
       console.error("Error loading content requests:", err);
+      setContentRequestsError(err.message || String(err));
     }
   };
 
@@ -3316,35 +3320,62 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Filter controls */}
-                      <div className="flex flex-wrap gap-3 bg-white border border-slate-150 p-4 rounded-2xl shadow-xs text-xs font-bold text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] uppercase text-slate-400">Status:</span>
-                          <select
-                            value={requestFilterStatus}
-                            onChange={e => setRequestFilterStatus(e.target.value)}
-                            className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                      {/* Error banner if fetching failed */}
+                      {contentRequestsError && (
+                        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-4 py-3 rounded-2xl font-bold flex flex-col gap-1 shadow-xs animate-shake">
+                          <div className="flex items-center gap-1.5 text-rose-900">
+                            <span className="text-base">⚠️</span>
+                            <span>Failed to fetch content requests from database:</span>
+                          </div>
+                          <p className="font-mono text-[10px] bg-rose-100/50 p-2 rounded-lg border border-rose-150 whitespace-pre-wrap">{contentRequestsError}</p>
+                          <button 
+                            onClick={fetchContentRequestsData} 
+                            className="bg-rose-600 hover:bg-rose-700 text-white font-extrabold px-3 py-1 rounded-xl text-[10px] w-fit mt-1 self-end transition-colors shadow-xs"
                           >
-                            <option value="all">All Statuses</option>
-                            <option value="pending">pending</option>
-                            <option value="in_progress">in progress</option>
-                            <option value="ready">ready</option>
-                            <option value="posted">posted</option>
-                          </select>
+                            Retry Connection
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Filter controls */}
+                      <div className="flex flex-wrap justify-between items-center gap-3 bg-white border border-slate-150 p-4 rounded-2xl shadow-xs text-xs font-bold text-slate-600">
+                        <div className="flex flex-wrap gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase text-slate-400">Status:</span>
+                            <select
+                              value={requestFilterStatus}
+                              onChange={e => setRequestFilterStatus(e.target.value)}
+                              className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                            >
+                              <option value="all">All Statuses</option>
+                              <option value="pending">pending</option>
+                              <option value="in_progress">in progress</option>
+                              <option value="ready">ready</option>
+                              <option value="posted">posted</option>
+                            </select>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase text-slate-400">Assigned Team:</span>
+                            <select
+                              value={requestFilterTeam}
+                              onChange={e => setRequestFilterTeam(e.target.value)}
+                              className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                            >
+                              <option value="all">All Teams</option>
+                              <option value="Video Production">Video Production</option>
+                              <option value="Graphic Designing">Graphic Designing</option>
+                            </select>
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] uppercase text-slate-400">Assigned Team:</span>
-                          <select
-                            value={requestFilterTeam}
-                            onChange={e => setRequestFilterTeam(e.target.value)}
-                            className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
-                          >
-                            <option value="all">All Teams</option>
-                            <option value="Video Production">Video Production</option>
-                            <option value="Graphic Designing">Graphic Designing</option>
-                          </select>
-                        </div>
+                        <button
+                          onClick={fetchContentRequestsData}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold px-3.5 py-1.5 rounded-xl text-[11px] transition-colors border border-slate-200 flex items-center gap-1.5 shadow-xs"
+                          title="Refresh Queue"
+                        >
+                          🔄 Refresh
+                        </button>
                       </div>
 
                       {filteredRequests.length === 0 ? (
