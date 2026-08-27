@@ -820,6 +820,7 @@ export default function App() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
 
+  const [requestsViewMode, setRequestsViewMode] = useState("list");
   const [membersMap, setMembersMap] = useState({});
 
   const fetchMemberDesignations = async () => {
@@ -852,6 +853,13 @@ export default function App() {
       fetchMemberDesignations();
       if (cachedRole !== "admin" && u.team) {
         setActiveDashboardTeam(u.team);
+        if (u.team === "Digital Marketing") {
+          setRequestsViewMode("calendar");
+        } else {
+          setRequestsViewMode("list");
+        }
+      } else if (cachedRole === "admin") {
+        setRequestsViewMode("calendar");
       }
       if (u.team) {
         fetchTeamData(u.team);
@@ -955,6 +963,7 @@ export default function App() {
       const u = { name: "Admin", loginId: "admin", role: "admin" };
       setLoggedInUser(u);
       setRole("admin");
+      setRequestsViewMode("calendar");
       localStorage.setItem("persistent_user", JSON.stringify(u));
       localStorage.setItem("persistent_role", "admin");
       setLoading(false);
@@ -1000,6 +1009,11 @@ export default function App() {
 
         if (match.team) {
           setActiveDashboardTeam(match.team);
+          if (match.team === "Digital Marketing") {
+            setRequestsViewMode("calendar");
+          } else {
+            setRequestsViewMode("list");
+          }
           await fetchTeamData(match.team);
         }
       } else {
@@ -2115,13 +2129,30 @@ export default function App() {
                       })}
                     </div>
                   )}
-                </div>
-              )}
-
-              {screen === "content_requests" && (
+                         {screen === "content_requests" && (
                 <div className="space-y-4">
-                  {role !== "admin" && loggedInUser?.team === "Digital Marketing" ? (
-                    /* Calendar View for Digital Marketing */
+                  {/* View Mode Switcher Tabs */}
+                  <div className="flex gap-2 border-b border-orange-100 pb-3">
+                    <button
+                      onClick={() => setRequestsViewMode("calendar")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+                        requestsViewMode === "calendar" ? "bg-orange-100 text-orange-700 font-black" : "text-slate-500 hover:bg-orange-50"
+                      }`}
+                    >
+                      Calendar View
+                    </button>
+                    <button
+                      onClick={() => setRequestsViewMode("list")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+                        requestsViewMode === "list" ? "bg-orange-100 text-orange-700 font-black" : "text-slate-500 hover:bg-orange-50"
+                      }`}
+                    >
+                      List View
+                    </button>
+                  </div>
+
+                  {requestsViewMode === "calendar" ? (
+                    /* Calendar View */
                     <div className="space-y-4">
                       <div className="flex justify-between items-center pb-2">
                         <div>
@@ -2165,7 +2196,6 @@ export default function App() {
 
                       {/* Calendar Grid */}
                       <div className="bg-white border border-slate-150 rounded-3xl overflow-hidden shadow-xs">
-                        {/* Days of Week Header */}
                         <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-center py-2 text-[9px] font-black text-slate-400 uppercase tracking-wider">
                           <div>Sun</div>
                           <div>Mon</div>
@@ -2176,7 +2206,6 @@ export default function App() {
                           <div>Sat</div>
                         </div>
 
-                        {/* Calendar Grid Cells */}
                         <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
                           {calendarDays.map((day, idx) => {
                             if (day === null) {
@@ -2229,25 +2258,23 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    /* Existing List View for Video Production, Graphic Designing, and Admin */
+                    /* Tabular List View */
                     <div className="space-y-4">
                       <div className="flex justify-between items-center pb-2">
                         <div>
                           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Content Requests Queue</h2>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manage assets requests, assignments, and publishing pipeline</p>
                         </div>
-                        {role === "admin" && (
-                          <button
-                            onClick={() => {
-                              setCalendarPrefilledDate("");
-                              setIsRequestModalOpen(true);
-                            }}
-                            className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
-                          >
-                            <Plus className="h-4 w-4" />
-                            <span>New Request</span>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => {
+                            setCalendarPrefilledDate("");
+                            setIsRequestModalOpen(true);
+                          }}
+                          className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>New Request</span>
+                        </button>
                       </div>
 
                       {/* Filter controls */}
@@ -2361,6 +2388,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
+              )}          </div>
               )}
 
             </div>
