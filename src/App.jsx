@@ -6,6 +6,21 @@ import {
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+export const FY_KEYS = [
+  "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12",
+  "2027-01", "2027-02", "2027-03"
+];
+
+export const formatKeyToLabel = (key) => {
+  if (!key || !key.includes("-")) return key;
+  const [year, month] = key.split("-");
+  const monthNames = {
+    "01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr", "05": "May", "06": "Jun",
+    "07": "Jul", "08": "Aug", "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dec"
+  };
+  return `${monthNames[month]} ${year}`;
+};
+
 function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {} }) {
   const isEdit = !!kpi;
   const [formData, setFormData] = useState({
@@ -236,12 +251,12 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {} }) {
           <div className="space-y-2">
             <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Monthly Targets</h4>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {MONTHS_LIST.map(m => {
-                const val = formData.monthly_target?.[m] ?? "";
+              {FY_KEYS.map(mKey => {
+                const val = formData.monthly_target?.[mKey] ?? "";
                 return (
-                  <div key={m} className="space-y-0.5">
-                    <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider text-center">{m}</label>
-                    <input type="number" step="any" value={val} onChange={e => handleMonthTargetChange(m, e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800" />
+                  <div key={mKey} className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider text-center">{formatKeyToLabel(mKey)}</label>
+                    <input type="number" step="any" value={val} onChange={e => handleMonthTargetChange(mKey, e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800" />
                   </div>
                 );
               })}
@@ -257,12 +272,12 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {} }) {
               <span className="text-[9px] bg-amber-50 text-amber-700 font-black px-2 py-0.5 rounded-full border border-amber-100">Manual override (temporary)</span>
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {MONTHS_LIST.map(m => {
-                const val = formData.monthly_actual?.[m] ?? "";
+              {FY_KEYS.map(mKey => {
+                const val = formData.monthly_actual?.[mKey] ?? "";
                 return (
-                  <div key={m} className="space-y-0.5">
-                    <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider text-center">{m}</label>
-                    <input type="number" step="any" value={val} onChange={e => handleMonthActualChange(m, e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800" />
+                  <div key={mKey} className="space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider text-center">{formatKeyToLabel(mKey)}</label>
+                    <input type="number" step="any" value={val} onChange={e => handleMonthActualChange(mKey, e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800" />
                   </div>
                 );
               })}
@@ -953,14 +968,15 @@ export default function App() {
     }
     
     try {
-      const currentMonthName = MONTHS_LIST[new Date().getMonth()];
+      const d = new Date();
+      const currentMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const currentActuals = kpi.monthly_actual || {};
-      const oldVal = parseFloat(currentActuals[currentMonthName]) || 0;
+      const oldVal = parseFloat(currentActuals[currentMonthKey]) || 0;
       const newVal = oldVal + amount;
       
       const updatedActuals = {
         ...currentActuals,
-        [currentMonthName]: newVal
+        [currentMonthKey]: newVal
       };
       
       const { data, error } = await supabase
@@ -983,7 +999,7 @@ export default function App() {
         }));
         
         // Set success message
-        const targetVal = kpi.monthly_target?.[currentMonthName] || 0;
+        const targetVal = kpi.monthly_target?.[currentMonthKey] || 0;
         setSubmitStatus(prev => ({
           ...prev,
           [kpi.id]: `Added ${amount} — month total now ${newVal}/${targetVal}.`
@@ -1866,7 +1882,8 @@ export default function App() {
   };
 
   const currentMonthKey = useMemo(() => {
-    return new Date().toLocaleString("en-US", { month: "short" }); // e.g. "Aug"
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }, []);
 
   const filteredRequests = useMemo(() => {
@@ -1977,8 +1994,7 @@ export default function App() {
   };
 
   const capacityStats = useMemo(() => {
-    // monthly_target keys are stored as 3-letter month abbreviations: "Jan", "Feb", ... "Dec"
-    const monthStr = MONTHS_LIST[currentMonth]; // e.g. "Aug"
+    const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`; // e.g. "2026-08"
     
     const types = [
       { id: "sm_poster", label: "SM Poster", type: "sm_poster" },
@@ -2001,7 +2017,7 @@ export default function App() {
 
     return types.map(t => {
       const linkedKpi = getLinkedKpiForContentType(t.type);
-      const target = linkedKpi?.monthly_target?.[monthStr] ?? 0;
+      const target = linkedKpi?.monthly_target?.[monthKey] ?? 0;
       
       const scheduled = monthlyRequests.filter(r => 
         (r.linked_kpi_id && linkedKpi && r.linked_kpi_id === linkedKpi.id) ||
@@ -2416,8 +2432,8 @@ export default function App() {
                               <th className="px-4 py-2.5">Do</th>
                               <th className="px-4 py-2.5">Drive</th>
                               <th className="px-4 py-2.5">Monitor</th>
-                              <th className="px-4 py-2.5 text-right">Target ({currentMonthKey})</th>
-                              <th className="px-4 py-2.5 text-right">Actual ({currentMonthKey})</th>
+                              <th className="px-4 py-2.5 text-right">Target ({formatKeyToLabel(currentMonthKey)})</th>
+                              <th className="px-4 py-2.5 text-right">Actual ({formatKeyToLabel(currentMonthKey)})</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
@@ -2558,8 +2574,8 @@ export default function App() {
                                 <th className="px-4 py-2">Drive</th>
                                 <th className="px-4 py-2">Monitor</th>
                                 <th className="px-4 py-2">CY Target</th>
-                                <th className="px-4 py-2 text-right">Target ({currentMonthKey})</th>
-                                <th className="px-4 py-2 text-right">Actual ({currentMonthKey})</th>
+                                <th className="px-4 py-2 text-right">Target ({formatKeyToLabel(currentMonthKey)})</th>
+                                <th className="px-4 py-2 text-right">Actual ({formatKeyToLabel(currentMonthKey)})</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
@@ -3690,7 +3706,8 @@ export default function App() {
                     const myKpis = kpis.filter(
                       k => (role === "admin" || k.do_person === loggedInUser?.name) && (!k.kpi_type || k.kpi_type === "activity")
                     );
-                    const currentMonthName = MONTHS_LIST[new Date().getMonth()];
+                    const d = new Date();
+                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
                     if (myKpis.length === 0) {
                       return (
@@ -3707,8 +3724,8 @@ export default function App() {
                     return (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {myKpis.map(k => {
-                          const monthTarget = k.monthly_target?.[currentMonthName] ?? 0;
-                          const monthActual = k.monthly_actual?.[currentMonthName] ?? 0;
+                          const monthTarget = k.monthly_target?.[monthKey] ?? 0;
+                          const monthActual = k.monthly_actual?.[monthKey] ?? 0;
                           const progressPercent = monthTarget > 0 ? Math.min(100, Math.round((monthActual / monthTarget) * 100)) : 0;
                           const logs = todayLogs[k.id] || [];
 
