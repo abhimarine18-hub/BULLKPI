@@ -948,9 +948,12 @@ export default function App() {
     }
   };
 
-  const handleLogin = async () => {
-    const { loginId, password } = loginForm;
-    if (!loginId.trim() || !password.trim()) {
+  const handleLogin = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const loginId = (loginForm.loginId || "").trim() || (document.getElementsByName("loginId")[0]?.value || "").trim();
+    const password = (loginForm.password || "").trim() || (document.getElementsByName("password")[0]?.value || "").trim();
+
+    if (!loginId || !password) {
       setLoginError("Please enter your Login ID and Password.");
       return;
     }
@@ -1395,14 +1398,14 @@ export default function App() {
             <p className="text-sm text-slate-500 mt-1 font-semibold">Sign in to your account</p>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-xl border border-orange-100 p-6 space-y-4 font-semibold text-xs text-slate-650">
+          <form onSubmit={handleLogin} className="bg-white rounded-3xl shadow-xl border border-orange-100 p-6 space-y-4 font-semibold text-xs text-slate-650">
             <div>
               <label className="text-[10px] font-bold text-slate-500 block mb-1.5 uppercase tracking-wider">Login ID</label>
               <input
                 type="text"
+                name="loginId"
                 value={loginForm.loginId}
                 onChange={e => setLoginForm(prev => ({ ...prev, loginId: e.target.value }))}
-                onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300 font-medium text-slate-800"
                 placeholder="Enter your Login ID or Employee ID"
                 autoComplete="username"
@@ -1412,9 +1415,9 @@ export default function App() {
               <label className="text-[10px] font-bold text-slate-500 block mb-1.5 uppercase tracking-wider">Password</label>
               <input
                 type="password"
+                name="password"
                 value={loginForm.password}
                 onChange={e => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-300 font-medium text-slate-800"
                 placeholder="Enter your password"
                 autoComplete="current-password"
@@ -1424,7 +1427,7 @@ export default function App() {
               <p className="text-xs text-rose-500 font-semibold bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{loginError}</p>
             )}
             <button
-              onClick={handleLogin}
+              type="submit"
               disabled={loading}
               className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl transition-colors shadow-sm text-xs disabled:opacity-50"
             >
@@ -1433,7 +1436,7 @@ export default function App() {
             <p className="text-center text-[10px] text-slate-400 mt-1">
               Contact your admin if you have forgotten your login ID or password.
             </p>
-          </div>
+          </form>
           <p className="text-center text-[10px] text-slate-400 mt-4">BULL Machines · PulseKPI v2.0</p>
         </div>
       </div>
