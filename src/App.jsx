@@ -3371,15 +3371,53 @@ export default function App() {
                                         <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
                                           {r.status || "pending"}
                                         </span>
-                                        {r.status === "in_progress" && r.accepted_at && (
-                                          <span className="text-[8px] text-slate-400 font-mono pl-1">
-                                            {fmtDate(r.accepted_at)}
+                                        {/* Pending: Show created_at if exists */}
+                                        {(!r.status || r.status === "pending") && r.created_at && (
+                                          <span className="text-[8px] text-slate-400 font-mono pl-1" title="Created date/time">
+                                            cr: {new Date(r.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                           </span>
                                         )}
-                                        {r.status === "ready" && r.approved_at && (
-                                          <span className="text-[8px] text-slate-400 font-mono pl-1">
-                                            {fmtDate(r.approved_at)}
+                                        {/* In Progress: Show accepted_at */}
+                                        {r.status === "in_progress" && r.accepted_at && (
+                                          <span className="text-[8px] text-slate-400 font-mono pl-1" title="Accepted date/time">
+                                            ac: {new Date(r.accepted_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                           </span>
+                                        )}
+                                        {/* In Review: Show accepted_at */}
+                                        {r.status === "in_review" && r.accepted_at && (
+                                          <span className="text-[8px] text-slate-400 font-mono pl-1" title="Accepted date/time">
+                                            ac: {new Date(r.accepted_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                          </span>
+                                        )}
+                                        {/* Ready: Show approved_by and approved_at */}
+                                        {r.status === "ready" && (
+                                          <div className="flex flex-col text-left pl-1">
+                                            {r.approved_by && (
+                                              <span className="text-[8.5px] font-bold text-slate-700">
+                                                By: {r.approved_by}
+                                              </span>
+                                            )}
+                                            {r.approved_at && (
+                                              <span className="text-[8px] text-slate-400 font-mono">
+                                                ap: {new Date(r.approved_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {/* Posted: Show approved_by and approved_at */}
+                                        {r.status === "posted" && (
+                                          <div className="flex flex-col text-left pl-1">
+                                            {r.approved_by && (
+                                              <span className="text-[8.5px] font-bold text-slate-400">
+                                                By: {r.approved_by}
+                                              </span>
+                                            )}
+                                            {r.approved_at && (
+                                              <span className="text-[8px] text-slate-400 font-mono">
+                                                ap: {new Date(r.approved_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                              </span>
+                                            )}
+                                          </div>
                                         )}
                                       </div>
                                     </td>
