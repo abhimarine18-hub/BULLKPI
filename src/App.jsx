@@ -176,8 +176,9 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {} }) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (Optional)</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (per working day)</label>
               <input type="number" step="any" value={formData.daily_target} onChange={e => setFormData(prev => ({ ...prev, daily_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+              <span className="text-[9.5px] text-slate-400 font-medium block mt-0.5">Excludes Sundays, holidays, and agent leave automatically.</span>
             </div>
 
             <div className="space-y-1">
