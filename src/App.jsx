@@ -3321,8 +3321,15 @@ export default function App() {
                                   <tr key={r.id} className="hover:bg-slate-50/40 transition-colors">
                                     <td className="px-4 py-3 font-bold text-slate-800">{r.request_number}</td>
                                     <td className="px-4 py-3 max-w-[150px] truncate" title={r.title}>{r.title}</td>
-                                    <td className="px-4 py-3 capitalize">{r.content_type?.replace("_", " ")}</td>
-                                    <td className="px-4 py-3">{r.assigned_team}</td>
+                                    <td className="px-4 py-3 text-slate-500 font-medium">
+                                      {r.accepted_by ? (
+                                        <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                                          {r.accepted_by}
+                                        </span>
+                                      ) : (
+                                        <span className="text-slate-400 italic">Unassigned</span>
+                                      )}
+                                    </td>
                                     <td className={`px-4 py-3 font-mono ${isOverdue ? "text-rose-600 font-bold bg-rose-50/50" : ""}`}>
                                       {r.required_by_date || "-"}
                                     </td>
