@@ -6,7 +6,7 @@ import {
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function KpiModal({ kpi, isOpen, onClose, onSave }) {
+function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {} }) {
   const isEdit = !!kpi;
   const [formData, setFormData] = useState({
     name: "",
@@ -3812,6 +3812,7 @@ export default function App() {
             isOpen={isKpiModalOpen}
             onClose={() => { setIsKpiModalOpen(false); setSelectedKpi(null); }}
             onSave={handleSaveKpi}
+            membersMap={membersMap}
           />
 
           <ProjectModal
