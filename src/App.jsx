@@ -3315,7 +3315,8 @@ export default function App() {
                                 <th className="px-4 py-2.5">Req #</th>
                                 <th className="px-4 py-2.5">Title</th>
                                 <th className="px-4 py-2.5">Work taken by</th>
-                                <th className="px-4 py-2.5">Required By</th>
+                                <th className="px-4 py-2.5">Target date</th>
+                                <th className="px-4 py-2.5">Required by</th>
                                 <th className="px-4 py-2.5">Status</th>
                                 <th className="px-4 py-2.5 text-right">Actions</th>
                               </tr>
@@ -3369,8 +3370,11 @@ export default function App() {
                                         <span className="text-slate-400 italic">Unassigned</span>
                                       )}
                                     </td>
-                                    <td className={`px-4 py-3 font-mono ${isOverdue ? "text-rose-600 font-bold bg-rose-50/50" : ""}`}>
-                                      {r.required_by_date || "-"}
+                                    <td className="px-4 py-3 font-mono">
+                                      {r.planned_post_date || "-"}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-800">
+                                      {r.requested_by || "-"}
                                     </td>
                                     <td className="px-4 py-3 text-left">
                                       <div className="flex flex-col items-start gap-0.5">
