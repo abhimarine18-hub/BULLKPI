@@ -2183,17 +2183,15 @@ export default function App() {
                 <span>My Dashboard</span>
               </button>
 
-              {role !== "admin" && (
-                <button
-                  onClick={() => { setScreen("daily_log"); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-                    screen === "daily_log" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
-                  }`}
-                >
-                  <BookOpen className="h-4 w-4" />
-                  <span>Daily Log</span>
-                </button>
-              )}
+              <button
+                onClick={() => { setScreen("daily_log"); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                  screen === "daily_log" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                }`}
+              >
+                <BookOpen className="h-4 w-4" />
+                <span>Daily Log</span>
+              </button>
 
               <button
                 onClick={() => { setScreen("kpis"); setMobileMenuOpen(false); }}
@@ -3681,7 +3679,7 @@ export default function App() {
 
                   {(() => {
                     const myKpis = kpis.filter(
-                      k => k.do_person === loggedInUser?.name && (!k.kpi_type || k.kpi_type === "activity")
+                      k => (role === "admin" || k.do_person === loggedInUser?.name) && (!k.kpi_type || k.kpi_type === "activity")
                     );
                     const currentMonthName = MONTHS_LIST[new Date().getMonth()];
 
@@ -3690,7 +3688,9 @@ export default function App() {
                         <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
                           <span className="text-4xl">📝</span>
                           <h3 className="text-sm font-black text-slate-800 mt-3">No activity KPIs assigned</h3>
-                          <p className="text-xs font-semibold text-slate-450 mt-1">You are not marked as the DO Person on any activity KPIs.</p>
+                          <p className="text-xs font-semibold text-slate-450 mt-1">
+                            {role === "admin" ? "No activity KPIs exist in the database." : "You are not marked as the DO Person on any activity KPIs."}
+                          </p>
                         </div>
                       );
                     }
