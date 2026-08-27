@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./supabaseClient";
 import {
-  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone
+  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList
 } from "lucide-react";
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -569,6 +569,139 @@ function CampaignModal({ campaign, isOpen, onClose, onSave }) {
   );
 }
 
+function NewRequestModal({ isOpen, onClose, onSave, campaigns }) {
+  const [formData, setFormData] = useState({
+    title: "",
+    content_type: "testimonial_video",
+    campaign: "",
+    planned_post_date: "",
+    brief: ""
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        title: "",
+        content_type: "testimonial_video",
+        campaign: "",
+        planned_post_date: "",
+        brief: ""
+      });
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({
+      title: formData.title.trim(),
+      content_type: formData.content_type,
+      campaign: formData.campaign,
+      planned_post_date: formData.planned_post_date,
+      brief: formData.brief.trim()
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-orange-100 flex flex-col">
+        <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between">
+          <h3 className="font-black text-slate-800 text-sm">New Content Request</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 text-xs font-semibold text-slate-650">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Request Title</label>
+            <input required type="text" value={formData.title} onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Content Type</label>
+              <select value={formData.content_type} onChange={e => setFormData(prev => ({ ...prev, content_type: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-teal-500">
+                <option value="testimonial_video">testimonial video</option>
+                <option value="branding_video">branding video</option>
+                <option value="poster">poster</option>
+                <option value="campaign_poster">campaign poster</option>
+                <option value="festival_poster">festival poster</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Campaign (Optional)</label>
+              <select value={formData.campaign} onChange={e => setFormData(prev => ({ ...prev, campaign: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs bg-white text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-teal-500">
+                <option value="">None</option>
+                {campaigns.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Planned Post Date</label>
+            <input required type="date" value={formData.planned_post_date} onChange={e => setFormData(prev => ({ ...prev, planned_post_date: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-mono" />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Brief / Description</label>
+            <textarea rows="4" value={formData.brief} onChange={e => setFormData(prev => ({ ...prev, brief: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold resize-none" placeholder="Provide request details..."></textarea>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+          <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Submit Request</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function PostLinkModal({ isOpen, onClose, onSave }) {
+  const [link, setLink] = useState("");
+
+  useEffect(() => {
+    if (isOpen) setLink("");
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(link.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden border border-orange-100 flex flex-col">
+        <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between">
+          <h3 className="font-black text-slate-800 text-sm">Mark as Posted</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-3 text-xs font-semibold text-slate-650">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Live Post Link</label>
+            <input required type="url" placeholder="https://instagram.com/... or https://youtube.com/..." value={link} onChange={e => setLink(e.target.value)} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+          </div>
+        </div>
+
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-100 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+          <button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 font-bold rounded-xl text-xs shadow-sm transition-colors">Confirm Posted</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function App() {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [role, setRole] = useState("employee");
@@ -594,6 +727,14 @@ export default function App() {
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
+
+  const [contentRequests, setContentRequests] = useState([]);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [selectedRequestForPost, setSelectedRequestForPost] = useState(null);
+  const [postLinkModalOpen, setPostLinkModalOpen] = useState(false);
+  const [postLinkValue, setPostLinkValue] = useState("");
+  const [requestFilterStatus, setRequestFilterStatus] = useState("all");
+  const [requestFilterTeam, setRequestFilterTeam] = useState("all");
 
   const [membersMap, setMembersMap] = useState({});
 
@@ -681,6 +822,9 @@ export default function App() {
       if (teamName === "Digital Marketing" || role === "admin") {
         await fetchCampaignsData();
       }
+      if (role === "admin" || ["Digital Marketing", "Video Production", "Graphic Designing"].includes(teamName)) {
+        await fetchContentRequestsData();
+      }
     } catch (err) {
       console.error("Error loading team data:", err);
     }
@@ -696,6 +840,19 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error loading campaigns:", err);
+    }
+  };
+
+  const fetchContentRequestsData = async () => {
+    try {
+      const { data, error } = await supabase.from("content_requests").select("*");
+      if (error) {
+        console.error("Error fetching content requests from Supabase:", error.message);
+      } else if (data) {
+        setContentRequests(data);
+      }
+    } catch (err) {
+      console.error("Error loading content requests:", err);
     }
   };
 
@@ -725,6 +882,7 @@ export default function App() {
         const { data: projsData } = await supabase.from("projects").select("*");
         if (projsData) setProjects(projsData);
         await fetchCampaignsData();
+        await fetchContentRequestsData();
       } catch (e) {}
       return;
     }
@@ -777,6 +935,7 @@ export default function App() {
     setKpis([]);
     setProjects([]);
     setCampaigns([]);
+    setContentRequests([]);
     setTeamInfo(null);
     setMembersMap({});
     localStorage.removeItem("persistent_user");
@@ -925,9 +1084,112 @@ export default function App() {
     }
   };
 
+  const handleSaveContentRequest = async (payload) => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const prefix = `CR-${currentYear}-`;
+      const sameYearRequests = contentRequests.filter(r => r.request_number && r.request_number.startsWith(prefix));
+      let maxNum = 0;
+      sameYearRequests.forEach(r => {
+        const parts = r.request_number.split("-");
+        if (parts.length === 3) {
+          const num = parseInt(parts[2], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      const newNum = String(maxNum + 1).padStart(4, "0");
+      const requestNumber = `${prefix}${newNum}`;
+
+      const plannedDate = new Date(payload.planned_post_date);
+      plannedDate.setDate(plannedDate.getDate() - 5);
+      const requiredByDate = plannedDate.toISOString().split("T")[0];
+
+      const assignedTeam = payload.content_type.includes("video") ? "Video Production" : "Graphic Designing";
+
+      const newRecord = {
+        request_number: requestNumber,
+        title: payload.title,
+        content_type: payload.content_type,
+        planned_post_date: payload.planned_post_date,
+        required_by_date: requiredByDate,
+        brief: payload.campaign ? `Campaign: ${payload.campaign}\n\nBrief: ${payload.brief}` : payload.brief,
+        requested_by: loggedInUser.name,
+        assigned_team: assignedTeam,
+        status: "pending"
+      };
+
+      const { data, error } = await supabase
+        .from("content_requests")
+        .insert(newRecord)
+        .select();
+
+      if (error) {
+        console.error("Error inserting content request:", error.message);
+        alert("Failed to insert content request: " + error.message);
+      } else if (data && data[0]) {
+        setContentRequests(prev => [...prev, data[0]]);
+        setIsRequestModalOpen(false);
+      }
+    } catch (err) {
+      console.error("Error saving content request:", err);
+    }
+  };
+
+  const handleAcceptContentRequest = async (requestId) => {
+    try {
+      const { error } = await supabase
+        .from("content_requests")
+        .update({ status: "in_progress" })
+        .eq("id", requestId);
+
+      if (error) {
+        console.error("Error accepting request:", error.message);
+      } else {
+        setContentRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "in_progress" } : r));
+      }
+    } catch (err) {
+      console.error("Error accepting request:", err);
+    }
+  };
+
+  const handlePostContentRequest = async (requestId, postLink) => {
+    try {
+      const req = contentRequests.find(r => r.id === requestId);
+      if (!req) return;
+
+      const updatedBrief = req.brief 
+        ? `${req.brief}\n\nPost Link: ${postLink}` 
+        : `Post Link: ${postLink}`;
+
+      const { error } = await supabase
+        .from("content_requests")
+        .update({ status: "posted", brief: updatedBrief })
+        .eq("id", requestId);
+
+      if (error) {
+        console.error("Error marking request as posted:", error.message);
+      } else {
+        setContentRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "posted", brief: updatedBrief } : r));
+        setPostLinkModalOpen(false);
+        setSelectedRequestForPost(null);
+        setPostLinkValue("");
+      }
+    } catch (err) {
+      console.error("Error marking request as posted:", err);
+    }
+  };
+
   const currentMonthKey = useMemo(() => {
     return new Date().toLocaleString("en-US", { month: "short" }); // e.g. "Aug"
   }, []);
+
+  const filteredRequests = useMemo(() => {
+    return contentRequests.filter(r => {
+      const matchStatus = requestFilterStatus === "all" || r.status === requestFilterStatus;
+      const matchTeam = requestFilterTeam === "all" || r.assigned_team === requestFilterTeam;
+      return matchStatus && matchTeam;
+    });
+  }, [contentRequests, requestFilterStatus, requestFilterTeam]);
 
   // Group KPIs by team
   const groupedKpis = useMemo(() => {
@@ -1130,6 +1392,18 @@ export default function App() {
                 >
                   <Megaphone className="h-4 w-4" />
                   <span>Campaigns</span>
+                </button>
+              )}
+
+              {(role === "admin" || ["Digital Marketing", "Video Production", "Graphic Designing"].includes(loggedInUser?.team)) && (
+                <button
+                  onClick={() => { setScreen("content_requests"); setMobileMenuOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                    screen === "content_requests" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                  }`}
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  <span>Content Requests</span>
                 </button>
               )}
             </nav>
@@ -1734,6 +2008,135 @@ export default function App() {
                 </div>
               )}
 
+              {screen === "content_requests" && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center pb-2">
+                    <div>
+                      <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Content Requests</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Manage assets requests, assignments, and publishing pipeline</p>
+                    </div>
+                    {(role === "admin" || loggedInUser?.team === "Digital Marketing") && (
+                      <button
+                        onClick={() => setIsRequestModalOpen(true)}
+                        className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 shadow-sm transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>New Request</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter controls */}
+                  <div className="flex flex-wrap gap-3 bg-white border border-slate-150 p-4 rounded-2xl shadow-xs text-xs font-bold text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase text-slate-400">Status:</span>
+                      <select
+                        value={requestFilterStatus}
+                        onChange={e => setRequestFilterStatus(e.target.value)}
+                        className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="pending">pending</option>
+                        <option value="in_progress">in progress</option>
+                        <option value="ready">ready</option>
+                        <option value="posted">posted</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase text-slate-400">Assigned Team:</span>
+                      <select
+                        value={requestFilterTeam}
+                        onChange={e => setRequestFilterTeam(e.target.value)}
+                        className="border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                      >
+                        <option value="all">All Teams</option>
+                        <option value="Video Production">Video Production</option>
+                        <option value="Graphic Designing">Graphic Designing</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {filteredRequests.length === 0 ? (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                      <span className="text-4xl">📋</span>
+                      <h3 className="text-sm font-black text-slate-800 mt-3">No content requests found</h3>
+                      <p className="text-xs font-semibold text-slate-450 mt-1">Try relaxing filters or submit a request.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
+                      <table className="w-full text-[11px] border-collapse text-left">
+                        <thead>
+                          <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                            <th className="px-4 py-2.5">Req #</th>
+                            <th className="px-4 py-2.5">Title</th>
+                            <th className="px-4 py-2.5">Type</th>
+                            <th className="px-4 py-2.5">Assigned Team</th>
+                            <th className="px-4 py-2.5">Required By</th>
+                            <th className="px-4 py-2.5">Requested By</th>
+                            <th className="px-4 py-2.5">Status</th>
+                            <th className="px-4 py-2.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                          {filteredRequests.map(r => {
+                            const isOverdue = 
+                              r.required_by_date && 
+                              new Date(r.required_by_date) < new Date() && 
+                              (r.status === "pending" || r.status === "in_progress");
+
+                            const statusColor = 
+                              r.status === "posted" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                              r.status === "ready" ? "bg-teal-50 text-teal-750 border-teal-100 animate-pulse" :
+                              r.status === "in_progress" ? "bg-sky-50 text-sky-700 border-sky-100" :
+                              "bg-amber-50 text-amber-700 border-amber-100";
+
+                            const isAssignedToUserTeam = 
+                              role === "admin" || loggedInUser?.team === r.assigned_team;
+
+                            return (
+                              <tr key={r.id} className="hover:bg-slate-50/40 transition-colors">
+                                <td className="px-4 py-3 font-bold text-slate-800">{r.request_number}</td>
+                                <td className="px-4 py-3 max-w-[150px] truncate" title={r.title}>{r.title}</td>
+                                <td className="px-4 py-3 capitalize">{r.content_type?.replace("_", " ")}</td>
+                                <td className="px-4 py-3">{r.assigned_team}</td>
+                                <td className={`px-4 py-3 font-mono ${isOverdue ? "text-rose-600 font-bold bg-rose-50/50" : ""}`}>
+                                  {r.required_by_date || "-"}
+                                </td>
+                                <td className="px-4 py-3">{r.requested_by}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${statusColor}`}>
+                                    {r.status || "pending"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  {r.status === "pending" && isAssignedToUserTeam && (
+                                    <button
+                                      onClick={() => handleAcceptContentRequest(r.id)}
+                                      className="bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
+                                    >
+                                      Accept
+                                    </button>
+                                  )}
+                                  {r.status === "ready" && (role === "admin" || loggedInUser?.team === "Digital Marketing") && (
+                                    <button
+                                      onClick={() => { setSelectedRequestForPost(r); setPostLinkModalOpen(true); }}
+                                      className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1 rounded-lg text-[10px] transition-colors"
+                                    >
+                                      Mark Posted
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
           </main>
           
@@ -1758,6 +2161,19 @@ export default function App() {
             isOpen={isCampaignModalOpen}
             onClose={() => { setIsCampaignModalOpen(false); setSelectedCampaign(null); }}
             onSave={handleSaveCampaign}
+          />
+
+          <NewRequestModal
+            isOpen={isRequestModalOpen}
+            onClose={() => setIsRequestModalOpen(false)}
+            onSave={handleSaveContentRequest}
+            campaigns={campaigns}
+          />
+
+          <PostLinkModal
+            isOpen={postLinkModalOpen}
+            onClose={() => { setPostLinkModalOpen(false); setSelectedRequestForPost(null); }}
+            onSave={(link) => { if (selectedRequestForPost) handlePostContentRequest(selectedRequestForPost.id, link); }}
           />
           
         </div>

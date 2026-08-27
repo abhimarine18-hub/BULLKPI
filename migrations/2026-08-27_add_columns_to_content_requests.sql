@@ -1,0 +1,2 @@
+ALTER TABLE content_requests ADD COLUMN IF NOT EXISTS post_link VARCHAR(1024);
+ALTER TABLE content_requests ADD COLUMN IF NOT EXISTS campaign VARCHAR(255);
