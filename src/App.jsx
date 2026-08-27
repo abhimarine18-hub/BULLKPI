@@ -2794,7 +2794,7 @@ export default function App() {
                             className="fixed z-50 bg-white border border-orange-100 rounded-2xl shadow-xl p-3 w-56 text-xs text-slate-700 font-semibold flex flex-col"
                             style={{
                               left: `${Math.min(activePopup.x, window.innerWidth - 240)}px`,
-                              top: `${Math.min(activePopup.y, window.innerHeight - 380)}px`
+                              top: `${Math.min(activePopup.y, window.innerHeight - (activePopup.step === "form" ? (recurringEnabled ? 540 : 420) : 380))}px`
                             }}
                           >
                             {activePopup.step === "menu" && (
