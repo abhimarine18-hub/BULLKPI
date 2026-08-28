@@ -1784,6 +1784,7 @@ export default function App() {
       fetchHolidaysData();
       fetchAgentLeavesData();
       fetchMonthlyFocusPlans();
+      fetchTeamTasks();
       if (isAdm) {
         supabase.from("kpis").select("*").then(({ data, error }) => {
           if (error) handleFetchError("kpis", error);
@@ -1802,15 +1803,10 @@ export default function App() {
         fetchCampaignsData();
         fetchAdPerformanceData();
         fetchContentRequestsData();
-        // Fetch all team tasks for admin — filtered in UI by activeDashboardTeam
-        supabase.from("team_tasks").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
-          if (!error && data) setTeamTasks(data);
-        });
       } else {
         if (u.team) {
           setActiveDashboardTeam(u.team);
           fetchTeamData(u.team);
-          fetchTeamTasks(u.team);
         }
       }
     }
@@ -2749,13 +2745,14 @@ export default function App() {
   };
 
   const fetchTeamTasks = async (teamName) => {
-    if (!teamName) return;
     try {
-      const { data, error } = await supabase
-        .from("team_tasks")
-        .select("*")
-        .eq("team", teamName)
-        .order("created_at", { ascending: false });
+      let query = supabase.from("team_tasks").select("*").order("created_at", { ascending: false });
+      if (role !== "admin") {
+        // If employee, fetch all tasks so they can see tasks they raised (which might be to other teams)
+        // or tasks assigned to them, or tasks in their team.
+        // For simplicity, fetch all so frontend tabs work fully.
+      }
+      const { data, error } = await query;
       if (error) handleFetchError("team_tasks", error);
       else if (data) { setTeamTasks(data); clearFetchError("team_tasks"); }
     } catch (err) { console.error(err); }
@@ -3421,6 +3418,26 @@ export default function App() {
               >
                 <FolderGit2 className="h-4 w-4" />
                 <span>Projects</span>
+              </button>
+
+              <button
+                onClick={() => { setScreen("tasks"); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                  screen === "tasks" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <CheckSquare className="h-4 w-4" />
+                  <span>Tasks</span>
+                </div>
+                {(() => {
+                  const pendingCount = teamTasks.filter(t => t.assigned_to === loggedInUser?.name && (t.status === "open" || t.status === "in_progress" || t.status === "pending")).length;
+                  return pendingCount > 0 ? (
+                    <span className="bg-rose-500 text-white font-black px-2 py-0.5 rounded-full text-[9px] min-w-[18px] text-center">
+                      {pendingCount}
+                    </span>
+                  ) : null;
+                })()}
               </button>
 
               <button
@@ -4167,89 +4184,6 @@ export default function App() {
                       )}
                     </div>
                   </div>
-
-                  {/* ─── Team Tasks ─── */}
-                  {(() => {
-                    const taskTeam = activeDashboardTeam || loggedInUser?.team;
-                    if (!taskTeam) return null;
-                    const teamLeadName = teams.find(t => t.name === taskTeam)?.lead_name;
-                    const visibleTasks = teamTasks.filter(t => t.team === taskTeam);
-                    const taskMembers = teamMembers.filter(m => m.team === taskTeam);
-                    const today = new Date().toISOString().split("T")[0];
-                    return (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                            ✅ Team Tasks <span className="text-slate-400 font-semibold normal-case">({visibleTasks.length})</span>
-                          </h3>
-                          <button onClick={() => { setIsRaiseTaskOpen(v => !v); setNewTaskForm({ title: "", description: "", assigned_to: "", due_date: "" }); }} className="bg-teal-500 hover:bg-teal-600 text-white text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider transition-colors flex items-center gap-1">
-                            <span className="text-sm leading-none">+</span> Raise Task
-                          </button>
-                        </div>
-                        {isRaiseTaskOpen && (
-                          <form onSubmit={handleRaiseTask} className="bg-teal-50 border border-teal-100 rounded-2xl p-4 space-y-3">
-                            <h4 className="text-[10px] font-black text-teal-800 uppercase tracking-wider">New Task</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="sm:col-span-2 space-y-1">
-                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Title *</label>
-                                <input required type="text" value={newTaskForm.title} onChange={e => setNewTaskForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Update client report" className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 bg-white" />
-                              </div>
-                              <div className="sm:col-span-2 space-y-1">
-                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Description</label>
-                                <textarea rows={2} value={newTaskForm.description} onChange={e => setNewTaskForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional details..." className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 bg-white resize-none" />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Assign To</label>
-                                <select value={newTaskForm.assigned_to} onChange={e => setNewTaskForm(p => ({ ...p, assigned_to: e.target.value }))} className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500 text-slate-800">
-                                  <option value="">— Unassigned —</option>
-                                  {taskMembers.map(m => <option key={m.name} value={m.name}>{m.name}</option>)}
-                                </select>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Due Date</label>
-                                <input type="date" value={newTaskForm.due_date} onChange={e => setNewTaskForm(p => ({ ...p, due_date: e.target.value }))} className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 bg-white" />
-                              </div>
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                              <button type="button" onClick={() => setIsRaiseTaskOpen(false)} className="text-[10px] font-black text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 bg-white">Cancel</button>
-                              <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-wider transition-colors">Save Task</button>
-                            </div>
-                          </form>
-                        )}
-                        {visibleTasks.length === 0 ? (
-                          <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center text-slate-400 text-[11px] font-semibold">No tasks yet — raise one above.</div>
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {visibleTasks.map(task => {
-                              const isOverdue = task.due_date && task.due_date < today && task.status !== "done";
-                              const canUpdate = role === "admin" || loggedInUser?.name === teamLeadName || loggedInUser?.name === task.assigned_to;
-                              const sc = { open: "bg-slate-100 text-slate-600 border-slate-200", in_progress: "bg-amber-50 text-amber-700 border-amber-200", done: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-                              return (
-                                <div key={task.id} className={`bg-white border rounded-2xl p-4 space-y-2 shadow-xs ${isOverdue ? "border-rose-300 bg-rose-50/30" : "border-slate-150"} ${task.status === "done" ? "opacity-60" : ""}`}>
-                                  <div className="flex items-start justify-between gap-2">
-                                    <p className={`text-[11px] font-black text-slate-800 leading-snug flex-1 ${task.status === "done" ? "line-through text-slate-500" : ""}`}>{task.title}</p>
-                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide shrink-0 ${sc[task.status] || sc.open}`}>{task.status?.replace("_", " ")}</span>
-                                  </div>
-                                  {task.description && <p className="text-[10px] text-slate-500 font-semibold leading-snug">{task.description}</p>}
-                                  <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-wide flex-wrap">
-                                    {task.assigned_to && <span>→ {task.assigned_to}</span>}
-                                    {task.due_date && <span className={isOverdue ? "text-rose-600 font-black" : ""}>{isOverdue ? "⚠ " : ""}Due {task.due_date}</span>}
-                                    <span>by {task.raised_by}</span>
-                                  </div>
-                                  {canUpdate && task.status !== "done" && (
-                                    <div className="flex gap-1.5 pt-1">
-                                      {task.status === "open" && <button onClick={() => handleUpdateTaskStatus(task.id, "in_progress")} className="text-[9px] font-black px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg uppercase tracking-wide">Start</button>}
-                                      <button onClick={() => handleUpdateTaskStatus(task.id, "done")} className="text-[9px] font-black px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg uppercase tracking-wide">Mark Done ✓</button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
                 </div>
               )}
 
@@ -5982,6 +5916,212 @@ export default function App() {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {screen === "tasks" && (
+                <div className="space-y-6">
+                  {(() => {
+                    const [tasksTab, setTasksTab] = useState("assigned");
+                    const [raiseFormOpen, setRaiseFormOpen] = useState(false);
+                    const [taskForm, setTaskForm] = useState({ title: "", description: "", team: "", assigned_to: "", due_date: "" });
+                    const today = new Date().toISOString().split("T")[0];
+
+                    const currentSelectedTeam = role === "admin" ? activeDashboardTeam : loggedInUser?.team;
+                    const membersForTeam = teamMembers.filter(m => m.team === (taskForm.team || currentSelectedTeam));
+
+                    let filtered = teamTasks;
+                    if (role === "admin" && activeDashboardTeam) {
+                      filtered = filtered.filter(t => t.team === activeDashboardTeam);
+                    } else if (role !== "admin") {
+                      filtered = filtered.filter(t => t.team === loggedInUser?.team || t.assigned_to === loggedInUser?.name || t.raised_by === loggedInUser?.name);
+                    }
+
+                    const assignedToMe = filtered.filter(t => t.assigned_to === loggedInUser?.name);
+                    const raisedByMe = filtered.filter(t => t.raised_by === loggedInUser?.name);
+                    const activeList = tasksTab === "assigned" ? assignedToMe : raisedByMe;
+
+                    const handleCreateTask = async (e) => {
+                      e.preventDefault();
+                      if (!taskForm.title.trim() || !taskForm.assigned_to) {
+                        alert("Title and Assignee are required!");
+                        return;
+                      }
+                      const assigneeObj = teamMembers.find(m => m.name === taskForm.assigned_to);
+                      const targetTeam = assigneeObj ? assigneeObj.team : (taskForm.team || currentSelectedTeam);
+
+                      const payload = {
+                        title: taskForm.title.trim(),
+                        description: taskForm.description.trim() || null,
+                        team: targetTeam,
+                        raised_by: loggedInUser?.name || "Admin",
+                        assigned_to: taskForm.assigned_to,
+                        due_date: taskForm.due_date || null,
+                        status: "pending"
+                      };
+
+                      const { data, error } = await supabase.from("team_tasks").insert(payload).select();
+                      if (error) {
+                        alert("Failed to raise task: " + error.message);
+                      } else {
+                        if (data) setTeamTasks(prev => [data[0], ...prev]);
+                        setRaiseFormOpen(false);
+                        setTaskForm({ title: "", description: "", team: "", assigned_to: "", due_date: "" });
+                      }
+                    };
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center flex-wrap gap-3">
+                          <div>
+                            <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Tasks Management</h2>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Raise, assign, and update lightweight ad-hoc tasks</p>
+                          </div>
+                          <button
+                            onClick={() => { setRaiseFormOpen(v => !v); setTaskForm({ title: "", description: "", team: "", assigned_to: "", due_date: "" }); }}
+                            className="bg-teal-500 hover:bg-teal-650 text-white text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-wider transition-colors shadow-xs"
+                          >
+                            + Raise Task
+                          </button>
+                        </div>
+
+                        <div className="flex border-b border-orange-100 text-xs font-bold text-slate-500">
+                          <button
+                            onClick={() => setTasksTab("assigned")}
+                            className={`px-4 py-2 border-b-2 transition-all ${
+                              tasksTab === "assigned"
+                                ? "border-orange-500 text-orange-600 font-black"
+                                : "border-transparent hover:text-slate-700"
+                            }`}
+                          >
+                            Assigned to Me ({assignedToMe.length})
+                          </button>
+                          <button
+                            onClick={() => setTasksTab("raised")}
+                            className={`px-4 py-2 border-b-2 transition-all ${
+                              tasksTab === "raised"
+                                ? "border-orange-500 text-orange-600 font-black"
+                                : "border-transparent hover:text-slate-700"
+                            }`}
+                          >
+                            Raised by Me ({raisedByMe.length})
+                          </button>
+                        </div>
+
+                        {raiseFormOpen && (
+                          <form onSubmit={handleCreateTask} className="bg-orange-50/40 border border-orange-100 rounded-3xl p-5 space-y-4 max-w-xl">
+                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Raise New Task</h3>
+                            <div className="space-y-3 text-xs font-semibold text-slate-650">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">Title *</label>
+                                <input
+                                  required
+                                  type="text"
+                                  placeholder="What needs to be done?"
+                                  value={taskForm.title}
+                                  onChange={e => setTaskForm(p => ({ ...p, title: e.target.value }))}
+                                  className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white text-slate-855"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">Description</label>
+                                <textarea
+                                  rows={2}
+                                  placeholder="Add details or links..."
+                                  value={taskForm.description}
+                                  onChange={e => setTaskForm(p => ({ ...p, description: e.target.value }))}
+                                  className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white text-slate-855 resize-none"
+                                />
+                              </div>
+                              {role === "admin" && (
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">Select Team</label>
+                                  <select
+                                    value={taskForm.team || currentSelectedTeam}
+                                    onChange={e => setTaskForm(p => ({ ...p, team: e.target.value, assigned_to: "" }))}
+                                    className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                  >
+                                    <option value="">Select Team...</option>
+                                    {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                  </select>
+                                </div>
+                              )}
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">Assignee *</label>
+                                <select
+                                  required
+                                  value={taskForm.assigned_to}
+                                  onChange={e => setTaskForm(p => ({ ...p, assigned_to: e.target.value }))}
+                                  className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                >
+                                  <option value="">— Select Member —</option>
+                                  {(role === "admin" ? membersForTeam : teamMembers.filter(m => m.team === loggedInUser?.team)).map(m => (
+                                    <option key={m.name} value={m.name}>{m.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">Due Date</label>
+                                <input
+                                  type="date"
+                                  value={taskForm.due_date}
+                                  onChange={e => setTaskForm(p => ({ ...p, due_date: e.target.value }))}
+                                  className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white text-slate-855"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                              <button type="button" onClick={() => setRaiseFormOpen(false)} className="text-[10px] font-black text-slate-500 hover:text-slate-700 px-3.5 py-2 rounded-xl border border-slate-200 bg-white">Cancel</button>
+                              <button type="submit" className="bg-teal-500 hover:bg-teal-650 text-white text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-wider transition-colors shadow-xs">Save Task</button>
+                            </div>
+                          </form>
+                        )}
+
+                        {activeList.length === 0 ? (
+                          <div className="bg-white border border-slate-150 rounded-3xl p-12 text-center text-slate-400 font-semibold shadow-xs">No tasks found.</div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {activeList.map(task => {
+                              const currentStatus = (task.status === "open" || task.status === "pending") ? "pending" : task.status;
+                              const isOverdue = task.due_date && task.due_date < today && currentStatus !== "done";
+                              const bgColors = { pending: "bg-slate-100 text-slate-600 border-slate-200", in_progress: "bg-amber-50 text-amber-700 border-amber-200", done: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+
+                              return (
+                                <div key={task.id} className={`bg-white border rounded-2xl p-5 space-y-3 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${isOverdue ? "border-rose-300 bg-rose-50/20" : "border-slate-150"} ${currentStatus === "done" ? "opacity-60" : ""}`}>
+                                  <div className="space-y-2">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <h4 className={`font-black text-slate-800 text-xs leading-snug flex-1 ${currentStatus === "done" ? "line-through text-slate-400" : ""}`}>{task.title}</h4>
+                                      <span className={`text-[8px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider shrink-0 ${bgColors[currentStatus] || bgColors.pending}`}>{currentStatus}</span>
+                                    </div>
+                                    {task.description && <p className="text-[10.5px] text-slate-500 font-semibold leading-relaxed">{task.description}</p>}
+                                    <div className="text-[9.5px] font-bold text-slate-455 uppercase tracking-wide space-y-0.5">
+                                      {tasksTab === "assigned" ? (
+                                        <div>Raised by: <span className="text-slate-700">{task.raised_by}</span></div>
+                                      ) : (
+                                        <div>Assigned to: <span className="text-slate-700">{task.assigned_to} ({task.team})</span></div>
+                                      )}
+                                      {task.due_date && <div className={isOverdue ? "text-rose-600 font-black" : ""}>Due: <span className="font-mono">{task.due_date}</span></div>}
+                                    </div>
+                                  </div>
+                                  {tasksTab === "assigned" && currentStatus !== "done" && (
+                                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-sans">Status:</span>
+                                      <div className="flex gap-1.5">
+                                        {currentStatus === "pending" && (
+                                          <button onClick={() => handleUpdateTaskStatus(task.id, "in_progress")} className="text-[9px] font-black px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg uppercase tracking-wide">Start</button>
+                                        )}
+                                        <button onClick={() => handleUpdateTaskStatus(task.id, "done")} className="text-[9px] font-black px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg uppercase tracking-wide">Done ✓</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
