@@ -1425,7 +1425,7 @@ export default function App() {
 
   const fetchMemberDesignations = async () => {
     try {
-      const { data, error } = await supabase.from("team_members").select("name, designation, team");
+      const { data, error } = await supabase.from("team_members").select("name, designation, team, sub_team");
       if (error) {
         console.error("Error loading team member designations:", error.message);
       } else if (data) {
@@ -2777,8 +2777,24 @@ export default function App() {
                     const leadName = TEAM_LEADS[activeDashboardTeam];
                     const members = teamMembers.filter(m => m.team === activeDashboardTeam && m.name !== leadName);
                     
+                    // Group members by sub_team
+                    const flatMembers = [];
+                    const groupedMembers = {};
+                    
+                    members.forEach(m => {
+                      if (m.sub_team && m.sub_team.trim()) {
+                        const subName = m.sub_team.trim();
+                        if (!groupedMembers[subName]) {
+                          groupedMembers[subName] = [];
+                        }
+                        groupedMembers[subName].push(m);
+                      } else {
+                        flatMembers.push(m);
+                      }
+                    });
+                    
                     return (
-                      <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs space-y-3.5">
+                      <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
                           <div>
                             <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider">Team Vertical</h3>
@@ -2792,23 +2808,47 @@ export default function App() {
                           )}
                         </div>
 
-                        <div>
-                          <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block mb-2">Team Members ({members.length})</span>
-                          {members.length === 0 ? (
-                            <p className="text-[10.5px] text-slate-455 font-bold italic py-1">No other team members assigned to this vertical.</p>
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {members.map(m => (
-                                <div key={m.name} className="bg-slate-50 border border-slate-150 rounded-2xl px-3 py-1.5 flex flex-col justify-start text-left shadow-2xs">
-                                  <span className="text-[11px] font-bold text-slate-800">{m.name}</span>
-                                  {m.designation && (
-                                    <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">{m.designation}</span>
-                                  )}
+                        {members.length === 0 ? (
+                          <p className="text-[10.5px] text-slate-455 font-bold italic py-1">No other team members assigned to this vertical.</p>
+                        ) : (
+                          <div className="space-y-4">
+                            {/* Flat Members (no sub_team) */}
+                            {flatMembers.length > 0 && (
+                              <div className="space-y-1.5">
+                                {Object.keys(groupedMembers).length > 0 && (
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">General Members</span>
+                                )}
+                                <div className="flex flex-wrap gap-2">
+                                  {flatMembers.map(m => (
+                                    <div key={m.name} className="bg-slate-50 border border-slate-150 rounded-2xl px-3 py-1.5 flex flex-col justify-start text-left shadow-2xs">
+                                      <span className="text-[11px] font-bold text-slate-850">{m.name}</span>
+                                      {m.designation && (
+                                        <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">{m.designation}</span>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                              </div>
+                            )}
+
+                            {/* Grouped Members (with sub_team) */}
+                            {Object.entries(groupedMembers).map(([subTeamName, subMembers]) => (
+                              <div key={subTeamName} className="space-y-2 pt-2 first:pt-0 border-t border-slate-50 first:border-0">
+                                <span className="text-[9.5px] font-black text-teal-650 uppercase tracking-wider block">📂 {subTeamName} ({subMembers.length})</span>
+                                <div className="flex flex-wrap gap-2">
+                                  {subMembers.map(m => (
+                                    <div key={m.name} className="bg-slate-50 border border-slate-150 rounded-2xl px-3 py-1.5 flex flex-col justify-start text-left shadow-2xs">
+                                      <span className="text-[11px] font-bold text-slate-850">{m.name}</span>
+                                      {m.designation && (
+                                        <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">{m.designation}</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
