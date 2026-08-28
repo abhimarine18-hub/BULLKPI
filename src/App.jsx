@@ -21,12 +21,42 @@ export const formatKeyToLabel = (key) => {
   return `${monthNames[month]} ${year}`;
 };
 
-function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = [], agentLeaves = [] }) {
+export const getKpiActual = (kpi, monthKey, allKpis = []) => {
+  if (!kpi) return 0;
+  if (kpi.kpi_type === "report") {
+    const config = kpi.report_config;
+    if (config && config.sourceType === "kpiIds" && Array.isArray(config.kpiIds)) {
+      const sourceKpis = allKpis.filter(sk => config.kpiIds.includes(sk.id));
+      if (sourceKpis.length === 0) return 0;
+      
+      const values = sourceKpis.map(sk => {
+        if (sk.id === kpi.id) return 0;
+        return getKpiActual(sk, monthKey, allKpis);
+      });
+      
+      if (config.method === "average") {
+        const sum = values.reduce((acc, v) => acc + v, 0);
+        return sum / values.length;
+      } else {
+        return values.reduce((acc, v) => acc + v, 0);
+      }
+    }
+    return 0;
+  }
+  return kpi.monthly_actual?.[monthKey] ?? 0;
+};
+
+function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = [], agentLeaves = [], kpis = [] }) {
   const [previewMonthKey, setPreviewMonthKey] = useState(() => {
     const d = new Date();
     const currentK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     return FY_KEYS.includes(currentK) ? currentK : "2026-08";
   });
+  const [kpiType, setKpiType] = useState("activity");
+  const [computationMethod, setComputationMethod] = useState("sum");
+  const [selectedSourceKpiIds, setSelectedSourceKpiIds] = useState([]);
+  const [sourceSearchQuery, setSourceSearchQuery] = useState("");
+
   const isEdit = !!kpi;
   const [formData, setFormData] = useState({
     name: "",
@@ -68,6 +98,9 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
           monthly_target: kpi.monthly_target || {},
           monthly_actual: kpi.monthly_actual || {}
         });
+        setKpiType(kpi.kpi_type || "activity");
+        setComputationMethod(kpi.report_config?.method || "sum");
+        setSelectedSourceKpiIds(kpi.report_config?.kpiIds || []);
       } else {
         setFormData({
           name: "",
@@ -87,7 +120,11 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
           monthly_target: {},
           monthly_actual: {}
         });
+        setKpiType("activity");
+        setComputationMethod("sum");
+        setSelectedSourceKpiIds([]);
       }
+      setSourceSearchQuery("");
     }
   }, [isOpen, kpi, isEdit]);
 
@@ -99,7 +136,9 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
       ...formData,
       cy_target: formData.cy_target.trim() ? parseFloat(formData.cy_target) : null,
       daily_target: formData.daily_target.trim() ? parseFloat(formData.daily_target) : null,
-      has_daily_target: formData.has_daily_target
+      has_daily_target: formData.has_daily_target,
+      kpi_type: kpiType,
+      report_config: kpiType === "report" ? { sourceType: "kpiIds", method: computationMethod, kpiIds: selectedSourceKpiIds } : null
     });
   };
 
@@ -136,9 +175,17 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
         <div className="p-6 space-y-5 text-xs font-semibold text-slate-650 flex-1 overflow-y-auto">
           {/* Basic Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <div className="space-y-1 sm:col-span-2 md:col-span-3 lg:col-span-5">
+            <div className="space-y-1 sm:col-span-2 md:col-span-2 lg:col-span-3">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">KPI Name</label>
               <input required type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+            </div>
+
+            <div className="space-y-1 sm:col-span-2 md:col-span-1 lg:col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">KPI Type</label>
+              <select value={kpiType} onChange={e => setKpiType(e.target.value)} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-bold bg-white">
+                <option value="activity">Manual Entry</option>
+                <option value="report">Computed (Aggregate of other KPIs)</option>
+              </select>
             </div>
 
             <div className="space-y-1">
@@ -184,28 +231,115 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
               <input type="number" step="any" value={formData.cy_target} onChange={e => setFormData(prev => ({ ...prev, cy_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
             </div>
 
-            <div className="flex items-center gap-2 sm:col-span-2 md:col-span-3 lg:col-span-5 py-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 select-none">
-              <input
-                type="checkbox"
-                id="enable_daily_target"
-                checked={formData.has_daily_target}
-                onChange={e => setFormData(prev => ({ ...prev, has_daily_target: e.target.checked }))}
-                className="w-4 h-4 text-teal-600 border-orange-200 rounded focus:ring-teal-500 accent-teal-600 cursor-pointer"
-              />
-              <label htmlFor="enable_daily_target" className="text-[10px] font-black text-slate-700 uppercase tracking-wider cursor-pointer">
-                Enable Daily Target (Paced)
-              </label>
-            </div>
+            {kpiType === "activity" && (
+              <>
+                <div className="flex items-center gap-2 sm:col-span-2 md:col-span-3 lg:col-span-5 py-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 select-none">
+                  <input
+                    type="checkbox"
+                    id="enable_daily_target"
+                    checked={formData.has_daily_target}
+                    onChange={e => setFormData(prev => ({ ...prev, has_daily_target: e.target.checked }))}
+                    className="w-4 h-4 text-teal-600 border-orange-200 rounded focus:ring-teal-500 accent-teal-600 cursor-pointer"
+                  />
+                  <label htmlFor="enable_daily_target" className="text-[10px] font-black text-slate-700 uppercase tracking-wider cursor-pointer">
+                    Enable Daily Target (Paced)
+                  </label>
+                </div>
 
-            {formData.has_daily_target ? (
-              <div className="space-y-1 sm:col-span-2 md:col-span-3 lg:col-span-5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (per working day)</label>
-                <input type="number" step="any" value={formData.daily_target} onChange={e => setFormData(prev => ({ ...prev, daily_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
-                <span className="text-[9.5px] text-slate-400 font-medium block mt-0.5">Excludes Sundays, holidays, and agent leave automatically.</span>
-              </div>
-            ) : (
-              <div className="bg-slate-100/50 border border-slate-200 border-dashed rounded-xl p-3 text-center text-slate-455 font-semibold text-[10px] sm:col-span-2 md:col-span-3 lg:col-span-5 select-none">
-                ℹ️ This KPI is tracked monthly only — must be completed by month end.
+                {formData.has_daily_target ? (
+                  <div className="space-y-1 sm:col-span-2 md:col-span-3 lg:col-span-5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (per working day)</label>
+                    <input type="number" step="any" value={formData.daily_target} onChange={e => setFormData(prev => ({ ...prev, daily_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
+                    <span className="text-[9.5px] text-slate-400 font-medium block mt-0.5">Excludes Sundays, holidays, and agent leave automatically.</span>
+                  </div>
+                ) : (
+                  <div className="bg-slate-100/50 border border-slate-200 border-dashed rounded-xl p-3 text-center text-slate-455 font-semibold text-[10px] sm:col-span-2 md:col-span-3 lg:col-span-5 select-none">
+                    ℹ️ This KPI is tracked monthly only — must be completed by month end.
+                  </div>
+                )}
+              </>
+            )}
+
+            {kpiType === "report" && (
+              <div className="sm:col-span-2 md:col-span-3 lg:col-span-5 bg-slate-50 border border-slate-150 rounded-2xl p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
+                  <div>
+                    <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-wider">Computation Setup</h4>
+                    <p className="text-[9.5px] text-slate-400 font-semibold uppercase mt-0.5">Define aggregate inputs for this computed KPI</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700">
+                    <span>Method:</span>
+                    <select
+                      value={computationMethod}
+                      onChange={e => setComputationMethod(e.target.value)}
+                      className="border border-orange-200 rounded-lg px-2.5 py-1 text-[10.5px] font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    >
+                      <option value="sum">Sum</option>
+                      <option value="average">Average</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Source KPIs Checklist</label>
+                    <span className="text-[9.5px] bg-teal-50 text-teal-700 font-black px-2 py-0.5 rounded-full border border-teal-100">
+                      {selectedSourceKpiIds.length} Selected
+                    </span>
+                  </div>
+                  
+                  <input
+                    type="text"
+                    placeholder="Search KPIs..."
+                    value={sourceSearchQuery}
+                    onChange={e => setSourceSearchQuery(e.target.value)}
+                    className="w-full border border-orange-200 rounded-xl px-3 py-1.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-850 bg-white"
+                  />
+
+                  <div className="border border-slate-200 rounded-xl p-2.5 bg-white max-h-48 overflow-y-auto space-y-1.5">
+                    {(() => {
+                      const filtered = kpis.filter(otherK => {
+                        if (isEdit && otherK.id === kpi.id) return false;
+                        if (otherK.kpi_type === "report") return false;
+                        if (sourceSearchQuery.trim()) {
+                          return otherK.name.toLowerCase().includes(sourceSearchQuery.toLowerCase()) ||
+                            (otherK.team && otherK.team.toLowerCase().includes(sourceSearchQuery.toLowerCase()));
+                        }
+                        return true;
+                      });
+
+                      if (filtered.length === 0) {
+                        return <p className="text-[10.5px] text-slate-400 font-bold text-center py-4">No matching manual entry KPIs found.</p>;
+                      }
+
+                      return filtered.map(otherK => {
+                        const isChecked = selectedSourceKpiIds.includes(otherK.id);
+                        return (
+                          <label key={otherK.id} className="flex items-start gap-2.5 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer select-none text-[10.5px]">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setSelectedSourceKpiIds(prev => [...prev, otherK.id]);
+                                } else {
+                                  setSelectedSourceKpiIds(prev => prev.filter(id => id !== otherK.id));
+                                }
+                              }}
+                              className="mt-0.5 w-3.5 h-3.5 text-teal-600 border-orange-200 rounded focus:ring-teal-500 accent-teal-600 cursor-pointer"
+                            />
+                            <div className="flex-1 text-left">
+                              <span className="font-bold text-slate-800 block leading-tight">{otherK.name}</span>
+                              <span className="text-[8.5px] text-slate-450 font-black uppercase tracking-wider mt-0.5 block">
+                                {otherK.team || "No Team"} · {otherK.do_person || "Unassigned"}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2352,7 +2486,7 @@ export default function App() {
     let offTrack = 0;
     dashboardKpis.forEach(k => {
       const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
-      const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
+      const actualVal = getKpiActual(k, currentMonthKey, kpis);
       if (targetVal === 0) {
         onTrack++;
       } else {
@@ -2362,7 +2496,7 @@ export default function App() {
       }
     });
     return { total, onTrack, atRisk, offTrack };
-  }, [dashboardKpis, currentMonthKey]);
+  }, [dashboardKpis, currentMonthKey, kpis]);
 
   const personalKpis = useMemo(() => {
     return kpis.filter(k => k.do_person === loggedInUser?.name);
@@ -2642,10 +2776,17 @@ export default function App() {
                             <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1">
                               {personalKpis.map(k => {
                                 const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
-                                const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
+                                const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                 return (
                                   <div key={k.id} className="py-2.5 flex items-center justify-between gap-4 text-[11px]">
-                                    <span className="font-bold text-slate-800 truncate">{k.name}</span>
+                                    <span className="font-bold text-slate-800 truncate flex items-center gap-1.5">
+                                      {k.name}
+                                      {k.kpi_type === "report" && (
+                                        <span className="bg-teal-50 text-teal-700 text-[8px] font-black px-1.5 py-0.5 rounded border border-teal-100 uppercase tracking-wider select-none shrink-0">
+                                          Σ Computed
+                                        </span>
+                                      )}
+                                    </span>
                                     <div className="flex gap-4 shrink-0 font-mono font-bold">
                                       <div className="text-slate-500">TGT: {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}</div>
                                       <div className="text-emerald-600">ACT: {actualVal ? new Intl.NumberFormat('en-IN').format(actualVal) : "-"}</div>
@@ -2714,14 +2855,21 @@ export default function App() {
                             ) : (
                               dashboardKpis.map(k => {
                                 const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
-                                const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
+                                const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                 return (
                                   <tr
                                     key={k.id}
                                     onClick={() => { if (role === "admin") { setSelectedKpi(k); setIsKpiModalOpen(true); } }}
                                     className={`hover:bg-slate-50/40 transition-colors ${role === "admin" ? "cursor-pointer" : ""}`}
                                   >
-                                    <td className="px-4 py-3 font-bold text-slate-850">{k.name}</td>
+                                    <td className="px-4 py-3 font-bold text-slate-850 flex items-center gap-1.5">
+                                      <span>{k.name}</span>
+                                      {k.kpi_type === "report" && (
+                                        <span className="bg-teal-50 text-teal-700 text-[8px] font-black px-1.5 py-0.5 rounded border border-teal-100 uppercase tracking-wider select-none shrink-0">
+                                          Σ Computed
+                                        </span>
+                                      )}
+                                    </td>
                                     <td className="px-4 py-3">{k.market || "-"}</td>
                                     <td className="px-4 py-3 font-mono">
                                       {k.do_person || "-"}
@@ -2851,14 +2999,21 @@ export default function App() {
                             <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                               {list.map(k => {
                                 const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
-                                const actualVal = k.monthly_actual?.[currentMonthKey] ?? 0;
+                                const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                 return (
                                   <tr
                                     key={k.id}
                                     onClick={() => { if (role === "admin") { setSelectedKpi(k); setIsKpiModalOpen(true); } }}
                                     className={`hover:bg-slate-50/40 transition-colors ${role === "admin" ? "cursor-pointer" : ""}`}
                                   >
-                                    <td className="px-4 py-3 font-bold text-slate-800">{k.name}</td>
+                                    <td className="px-4 py-3 font-bold text-slate-800 flex items-center gap-1.5">
+                                      <span>{k.name}</span>
+                                      {k.kpi_type === "report" && (
+                                        <span className="bg-teal-50 text-teal-700 text-[8px] font-black px-1.5 py-0.5 rounded border border-teal-100 uppercase tracking-wider select-none shrink-0">
+                                          Σ Computed
+                                        </span>
+                                      )}
+                                    </td>
                                     <td className="px-4 py-3">{k.market || "-"}</td>
                                     <td className="px-4 py-3 font-mono">
                                       {k.do_person || "-"}
@@ -4054,7 +4209,7 @@ export default function App() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {myKpis.map(k => {
                           const monthTarget = k.monthly_target?.[monthKey] ?? 0;
-                          const monthActual = k.monthly_actual?.[monthKey] ?? 0;
+                          const monthActual = getKpiActual(k, monthKey, kpis);
                           const progressPercent = monthTarget > 0 ? Math.min(100, Math.round((monthActual / monthTarget) * 100)) : 0;
                           const logs = todayLogs[k.id] || [];
 
@@ -4367,6 +4522,7 @@ export default function App() {
             membersMap={membersMap}
             holidays={holidays}
             agentLeaves={agentLeaves}
+            kpis={kpis}
           />
 
           <ProjectModal
