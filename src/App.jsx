@@ -152,6 +152,46 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
     });
   };
 
+  // --- Annual Target Split ---
+  const [splitMethod, setSplitMethod] = useState("manual");
+  const [annualSplitInput, setAnnualSplitInput] = useState("");
+  const [quarterlyInputs, setQuarterlyInputs] = useState({ Q1: "", Q2: "", Q3: "", Q4: "" });
+
+  // Reset split state when modal opens for a new KPI
+  useEffect(() => {
+    if (isOpen) {
+      setSplitMethod("manual");
+      setAnnualSplitInput(isEdit && kpi?.cy_target != null ? String(kpi.cy_target) : "");
+      setQuarterlyInputs({ Q1: "", Q2: "", Q3: "", Q4: "" });
+    }
+  }, [isOpen, kpi, isEdit]);
+
+  const handleApplySplit = () => {
+    // FY_KEYS: indices 0-2 = Q1(Apr-Jun), 3-5 = Q2(Jul-Sep), 6-8 = Q3(Oct-Dec), 9-11 = Q4(Jan-Mar)
+    let computed = {};
+    if (splitMethod === "even") {
+      const annual = parseFloat(annualSplitInput);
+      if (!annual || isNaN(annual)) { alert("Please enter a valid Annual Target first."); return; }
+      const perMonth = Math.round((annual / 12) * 100) / 100;
+      FY_KEYS.forEach(mKey => { computed[mKey] = perMonth; });
+    } else if (splitMethod === "quarterly") {
+      const qVals = [
+        parseFloat(quarterlyInputs.Q1) || 0,
+        parseFloat(quarterlyInputs.Q2) || 0,
+        parseFloat(quarterlyInputs.Q3) || 0,
+        parseFloat(quarterlyInputs.Q4) || 0,
+      ];
+      if (qVals.every(v => v === 0)) { alert("Please enter at least one quarterly figure."); return; }
+      FY_KEYS.forEach((mKey, idx) => {
+        const qIdx = Math.floor(idx / 3); // 0→Q1, 1→Q2, 2→Q3, 3→Q4
+        computed[mKey] = Math.round((qVals[qIdx] / 3) * 100) / 100;
+      });
+    } else {
+      return; // manual — nothing to apply
+    }
+    setFormData(prev => ({ ...prev, monthly_target: { ...prev.monthly_target, ...computed } }));
+  };
+
   const handleMonthTargetChange = (m, val) => {
     setFormData(prev => ({
       ...prev,
@@ -420,9 +460,113 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
 
           <hr className="border-orange-100" />
 
-          {/* Monthly Targets */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Monthly Targets</h4>
+          {/* Monthly Targets — Annual Target Setting */}
+          <div className="space-y-3">
+            {/* Header row with split controls */}
+            <div className="flex flex-wrap items-center gap-3">
+              <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Monthly Targets</h4>
+              <div className="flex items-center gap-2 ml-auto flex-wrap">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Split Method:</label>
+                <select
+                  value={splitMethod}
+                  onChange={e => setSplitMethod(e.target.value)}
+                  className="border border-orange-200 rounded-lg px-2.5 py-1 text-[10.5px] font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                  <option value="manual">Manual (enter each month)</option>
+                  <option value="even">Even Split (annual ÷ 12)</option>
+                  <option value="quarterly">Quarterly Ramp (Q1/Q2/Q3/Q4)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Even Split inputs */}
+            {splitMethod === "even" && (
+              <div className="bg-teal-50 border border-teal-100 rounded-2xl p-4 flex flex-wrap items-end gap-4">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Annual Target</label>
+                  <input
+                    type="number" step="any"
+                    value={annualSplitInput}
+                    onChange={e => {
+                      setAnnualSplitInput(e.target.value);
+                      setFormData(prev => ({ ...prev, cy_target: e.target.value }));
+                    }}
+                    placeholder="e.g. 1200"
+                    className="border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 w-40 bg-white"
+                  />
+                </div>
+                {annualSplitInput && !isNaN(parseFloat(annualSplitInput)) && (
+                  <div className="text-[9.5px] font-bold text-teal-700 bg-teal-100 rounded-xl px-3 py-1.5 self-end">
+                    = {Math.round((parseFloat(annualSplitInput) / 12) * 100) / 100} / month
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleApplySplit}
+                  className="ml-auto bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-wider transition-colors"
+                >
+                  Apply Split →
+                </button>
+              </div>
+            )}
+
+            {/* Quarterly Ramp inputs */}
+            {splitMethod === "quarterly" && (
+              <div className="bg-violet-50 border border-violet-100 rounded-2xl p-4 space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { key: "Q1", label: "Q1 (Apr–Jun)" },
+                    { key: "Q2", label: "Q2 (Jul–Sep)" },
+                    { key: "Q3", label: "Q3 (Oct–Dec)" },
+                    { key: "Q4", label: "Q4 (Jan–Mar)" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-[9px] font-black text-violet-700 uppercase tracking-wider block">{label}</label>
+                      <div className="space-y-0.5">
+                        <input
+                          type="number" step="any"
+                          value={quarterlyInputs[key]}
+                          onChange={e => setQuarterlyInputs(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="Quarterly total"
+                          className="border border-violet-200 rounded-xl px-2 py-1.5 text-[11px] font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 w-full bg-white"
+                        />
+                        {quarterlyInputs[key] && !isNaN(parseFloat(quarterlyInputs[key])) && (
+                          <span className="text-[9px] text-violet-600 font-bold block text-center">
+                            ≈ {Math.round((parseFloat(quarterlyInputs[key]) / 3) * 100) / 100}/mo
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  {Object.values(quarterlyInputs).some(v => v && !isNaN(parseFloat(v))) && (
+                    <span className="text-[9.5px] font-bold text-violet-700">
+                      Annual total: {Object.values(quarterlyInputs).reduce((sum, v) => sum + (parseFloat(v) || 0), 0)}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Also sync cy_target to the sum of all 4 quarters
+                      const total = Object.values(quarterlyInputs).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+                      if (total > 0) setFormData(prev => ({ ...prev, cy_target: String(total) }));
+                      handleApplySplit();
+                    }}
+                    className="ml-auto bg-violet-600 hover:bg-violet-700 text-white text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-wider transition-colors"
+                  >
+                    Apply Quarterly Ramp →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 12-month editable grid — always shown */}
+            {splitMethod !== "manual" && (
+              <p className="text-[9px] text-slate-400 font-semibold">
+                ↓ Fine-tune individual months below after applying the split
+              </p>
+            )}
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
               {FY_KEYS.map(mKey => {
                 const val = formData.monthly_target?.[mKey] ?? "";
