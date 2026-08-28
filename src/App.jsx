@@ -1416,6 +1416,11 @@ export default function App() {
   const [holidays, setHolidays] = useState([]);
   const [agentLeaves, setAgentLeaves] = useState([]);
 
+  // Team Tasks
+  const [teamTasks, setTeamTasks] = useState([]);
+  const [isRaiseTaskOpen, setIsRaiseTaskOpen] = useState(false);
+  const [newTaskForm, setNewTaskForm] = useState({ title: "", description: "", assigned_to: "", due_date: "" });
+
   const [selectedHolidayDate, setSelectedHolidayDate] = useState("");
   const [holidayName, setHolidayName] = useState("");
   const [holidayAppliesTo, setHolidayAppliesTo] = useState("all");
@@ -1797,10 +1802,15 @@ export default function App() {
         fetchCampaignsData();
         fetchAdPerformanceData();
         fetchContentRequestsData();
+        // Fetch all team tasks for admin — filtered in UI by activeDashboardTeam
+        supabase.from("team_tasks").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
+          if (!error && data) setTeamTasks(data);
+        });
       } else {
         if (u.team) {
           setActiveDashboardTeam(u.team);
           fetchTeamData(u.team);
+          fetchTeamTasks(u.team);
         }
       }
     }
@@ -2736,6 +2746,49 @@ export default function App() {
       console.error(err);
       handleFetchError("monthly_focus_plans", err);
     }
+  };
+
+  const fetchTeamTasks = async (teamName) => {
+    if (!teamName) return;
+    try {
+      const { data, error } = await supabase
+        .from("team_tasks")
+        .select("*")
+        .eq("team", teamName)
+        .order("created_at", { ascending: false });
+      if (error) handleFetchError("team_tasks", error);
+      else if (data) { setTeamTasks(data); clearFetchError("team_tasks"); }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleRaiseTask = async (e) => {
+    e.preventDefault();
+    if (!newTaskForm.title.trim()) return;
+    const team = activeDashboardTeam || loggedInUser?.team;
+    const payload = {
+      team,
+      title: newTaskForm.title.trim(),
+      description: newTaskForm.description.trim() || null,
+      assigned_to: newTaskForm.assigned_to || null,
+      due_date: newTaskForm.due_date || null,
+      raised_by: loggedInUser?.name || "Admin",
+      status: "open",
+    };
+    const { data, error } = await supabase.from("team_tasks").insert(payload).select();
+    if (error) { alert("Failed to raise task: " + error.message); return; }
+    if (data) setTeamTasks(prev => [data[0], ...prev]);
+    setIsRaiseTaskOpen(false);
+    setNewTaskForm({ title: "", description: "", assigned_to: "", due_date: "" });
+  };
+
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    const { data, error } = await supabase
+      .from("team_tasks")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", taskId)
+      .select();
+    if (error) { alert("Failed to update task: " + error.message); return; }
+    if (data) setTeamTasks(prev => prev.map(t => t.id === taskId ? data[0] : t));
   };
 
   const getNextMonthInfo = () => {
@@ -4114,6 +4167,89 @@ export default function App() {
                       )}
                     </div>
                   </div>
+
+                  {/* ─── Team Tasks ─── */}
+                  {(() => {
+                    const taskTeam = activeDashboardTeam || loggedInUser?.team;
+                    if (!taskTeam) return null;
+                    const teamLeadName = teams.find(t => t.name === taskTeam)?.lead_name;
+                    const visibleTasks = teamTasks.filter(t => t.team === taskTeam);
+                    const taskMembers = teamMembers.filter(m => m.team === taskTeam);
+                    const today = new Date().toISOString().split("T")[0];
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                            ✅ Team Tasks <span className="text-slate-400 font-semibold normal-case">({visibleTasks.length})</span>
+                          </h3>
+                          <button onClick={() => { setIsRaiseTaskOpen(v => !v); setNewTaskForm({ title: "", description: "", assigned_to: "", due_date: "" }); }} className="bg-teal-500 hover:bg-teal-600 text-white text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider transition-colors flex items-center gap-1">
+                            <span className="text-sm leading-none">+</span> Raise Task
+                          </button>
+                        </div>
+                        {isRaiseTaskOpen && (
+                          <form onSubmit={handleRaiseTask} className="bg-teal-50 border border-teal-100 rounded-2xl p-4 space-y-3">
+                            <h4 className="text-[10px] font-black text-teal-800 uppercase tracking-wider">New Task</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="sm:col-span-2 space-y-1">
+                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Title *</label>
+                                <input required type="text" value={newTaskForm.title} onChange={e => setNewTaskForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Update client report" className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 bg-white" />
+                              </div>
+                              <div className="sm:col-span-2 space-y-1">
+                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Description</label>
+                                <textarea rows={2} value={newTaskForm.description} onChange={e => setNewTaskForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional details..." className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 bg-white resize-none" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Assign To</label>
+                                <select value={newTaskForm.assigned_to} onChange={e => setNewTaskForm(p => ({ ...p, assigned_to: e.target.value }))} className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-bold bg-white focus:outline-none focus:ring-1 focus:ring-teal-500 text-slate-800">
+                                  <option value="">— Unassigned —</option>
+                                  {taskMembers.map(m => <option key={m.name} value={m.name}>{m.name}</option>)}
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Due Date</label>
+                                <input type="date" value={newTaskForm.due_date} onChange={e => setNewTaskForm(p => ({ ...p, due_date: e.target.value }))} className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 bg-white" />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                              <button type="button" onClick={() => setIsRaiseTaskOpen(false)} className="text-[10px] font-black text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 bg-white">Cancel</button>
+                              <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-wider transition-colors">Save Task</button>
+                            </div>
+                          </form>
+                        )}
+                        {visibleTasks.length === 0 ? (
+                          <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-6 text-center text-slate-400 text-[11px] font-semibold">No tasks yet — raise one above.</div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {visibleTasks.map(task => {
+                              const isOverdue = task.due_date && task.due_date < today && task.status !== "done";
+                              const canUpdate = role === "admin" || loggedInUser?.name === teamLeadName || loggedInUser?.name === task.assigned_to;
+                              const sc = { open: "bg-slate-100 text-slate-600 border-slate-200", in_progress: "bg-amber-50 text-amber-700 border-amber-200", done: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+                              return (
+                                <div key={task.id} className={`bg-white border rounded-2xl p-4 space-y-2 shadow-xs ${isOverdue ? "border-rose-300 bg-rose-50/30" : "border-slate-150"} ${task.status === "done" ? "opacity-60" : ""}`}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className={`text-[11px] font-black text-slate-800 leading-snug flex-1 ${task.status === "done" ? "line-through text-slate-500" : ""}`}>{task.title}</p>
+                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide shrink-0 ${sc[task.status] || sc.open}`}>{task.status?.replace("_", " ")}</span>
+                                  </div>
+                                  {task.description && <p className="text-[10px] text-slate-500 font-semibold leading-snug">{task.description}</p>}
+                                  <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-wide flex-wrap">
+                                    {task.assigned_to && <span>→ {task.assigned_to}</span>}
+                                    {task.due_date && <span className={isOverdue ? "text-rose-600 font-black" : ""}>{isOverdue ? "⚠ " : ""}Due {task.due_date}</span>}
+                                    <span>by {task.raised_by}</span>
+                                  </div>
+                                  {canUpdate && task.status !== "done" && (
+                                    <div className="flex gap-1.5 pt-1">
+                                      {task.status === "open" && <button onClick={() => handleUpdateTaskStatus(task.id, "in_progress")} className="text-[9px] font-black px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg uppercase tracking-wide">Start</button>}
+                                      <button onClick={() => handleUpdateTaskStatus(task.id, "done")} className="text-[9px] font-black px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg uppercase tracking-wide">Mark Done ✓</button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -5448,6 +5584,61 @@ export default function App() {
                       );
                     }
                     return null;
+                  })()}
+
+                  {/* ─── My Tasks (Daily Log View) ─── */}
+                  {(() => {
+                    if (!loggedInUser?.name) return null;
+                    const myOpenTasks = teamTasks.filter(t => t.assigned_to === loggedInUser.name && t.status !== "done");
+                    if (myOpenTasks.length === 0) return null;
+                    const today = new Date().toISOString().split("T")[0];
+
+                    return (
+                      <div className="bg-orange-50/30 border border-orange-100 rounded-3xl p-5 space-y-3">
+                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                          📋 My Pending Tasks ({myOpenTasks.length})
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {myOpenTasks.map(task => {
+                            const isOverdue = task.due_date && task.due_date < today;
+                            const sc = {
+                              open: "bg-slate-100 text-slate-600 border-slate-200",
+                              in_progress: "bg-amber-50 text-amber-700 border-amber-200",
+                            };
+
+                            return (
+                              <div key={task.id} className={`bg-white border rounded-2xl p-4 space-y-2 shadow-2xs hover:shadow-xs transition-shadow ${isOverdue ? "border-rose-350 bg-rose-50/20" : "border-slate-150"}`}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-[11px] font-black text-slate-850 leading-snug flex-1">{task.title}</p>
+                                  <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide shrink-0 ${sc[task.status] || sc.open}`}>
+                                    {task.status?.replace("_", " ")}
+                                  </span>
+                                </div>
+                                {task.description && <p className="text-[10px] text-slate-500 font-semibold leading-snug">{task.description}</p>}
+                                <div className="flex items-center gap-3 text-[9px] font-bold text-slate-450 uppercase tracking-wide flex-wrap">
+                                  {task.due_date && (
+                                    <span className={isOverdue ? "text-rose-600 font-black" : ""}>
+                                      {isOverdue ? "⚠ " : ""}Due {task.due_date}
+                                    </span>
+                                  )}
+                                  <span>by {task.raised_by}</span>
+                                </div>
+                                <div className="flex gap-1.5 pt-1">
+                                  {task.status === "open" && (
+                                    <button onClick={() => handleUpdateTaskStatus(task.id, "in_progress")} className="text-[9px] font-black px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg uppercase tracking-wide transition-colors">
+                                      Start
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleUpdateTaskStatus(task.id, "done")} className="text-[9px] font-black px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg uppercase tracking-wide transition-colors">
+                                    Done ✓
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
                   })()}
 
                   {(() => {
