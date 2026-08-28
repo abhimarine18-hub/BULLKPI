@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import {
-  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen, Calendar
+  Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen, Calendar, CheckSquare
 } from "lucide-react";
 
 
@@ -1209,13 +1209,20 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Connection & Health check states
+  const [connectionChecking, setConnectionChecking] = useState(true);
+  const [connectionError, setConnectionError] = useState(false);
+  const [connectionErrorMessage, setConnectionErrorMessage] = useState("");
+  const [fetchErrors, setFetchErrors] = useState([]);
+
   // App state
   const [kpis, setKpis] = useState([]);
   const [projects, setProjects] = useState([]);
   const [teamInfo, setTeamInfo] = useState(null);
   const [screen, setScreen] = useState("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeDashboardTeam, setActiveDashboardTeam] = useState("CRM and Coordinator");
+  const [activeDashboardTeam, setActiveDashboardTeam] = useState("");
+  const [activeDashboardPerson, setActiveDashboardPerson] = useState("");
 
   const [selectedKpi, setSelectedKpi] = useState(null);
   const [isKpiModalOpen, setIsKpiModalOpen] = useState(false);
@@ -1241,6 +1248,10 @@ export default function App() {
   const [contentRequestsError, setContentRequestsError] = useState("");
   const [todayLogs, setTodayLogs] = useState({});
   const [submitStatus, setSubmitStatus] = useState({});
+
+  // Monthly Focus/Shoot Plan feature states
+  const [monthlyFocusPlans, setMonthlyFocusPlans] = useState([]);
+  const [shootPlanStateEdits, setShootPlanStateEdits] = useState({});
   const [logInputs, setLogInputs] = useState({});
   const [holidays, setHolidays] = useState([]);
   const [agentLeaves, setAgentLeaves] = useState([]);
@@ -1309,6 +1320,11 @@ export default function App() {
     }
   };
 
+  const handleTeamChange = (teamName) => {
+    setActiveDashboardTeam(teamName);
+    setActiveDashboardPerson("");
+  };
+
   const handleMarkLeave = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!leaveAgentName || !leaveDate) return;
@@ -1345,23 +1361,50 @@ export default function App() {
     }
   };
 
+  const handleFetchError = (tableName, error) => {
+    if (error) {
+      setFetchErrors(prev => {
+        if (prev.some(e => e.table === tableName && e.message === error.message)) {
+          return prev;
+        }
+        return [...prev, { table: tableName, message: error.message }];
+      });
+    }
+  };
+
+  const clearFetchError = (tableName) => {
+    setFetchErrors(prev => prev.filter(e => e.table !== tableName));
+  };
+
   const fetchHolidaysData = async () => {
     try {
       const { data, error } = await supabase.from("holidays").select("*");
-      if (error) console.error("Error loading holidays:", error.message);
-      else if (data) setHolidays(data);
+      if (error) {
+        console.error("Error loading holidays:", error.message);
+        handleFetchError("holidays", error);
+      } else if (data) {
+        setHolidays(data);
+        clearFetchError("holidays");
+      }
     } catch (e) {
       console.error(e);
+      handleFetchError("holidays", e);
     }
   };
 
   const fetchAgentLeavesData = async () => {
     try {
       const { data, error } = await supabase.from("agent_leaves").select("*");
-      if (error) console.error("Error loading agent leaves:", error.message);
-      else if (data) setAgentLeaves(data);
+      if (error) {
+        console.error("Error loading agent leaves:", error.message);
+        handleFetchError("agent_leaves", error);
+      } else if (data) {
+        setAgentLeaves(data);
+        clearFetchError("agent_leaves");
+      }
     } catch (e) {
       console.error(e);
+      handleFetchError("agent_leaves", e);
     }
   };
 
@@ -1375,43 +1418,86 @@ export default function App() {
     try {
       const d = new Date();
       const currentMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const currentActuals = kpi.monthly_actual || {};
-      const oldVal = parseFloat(currentActuals[currentMonthKey]) || 0;
-      const newVal = oldVal + amount;
       
-      const updatedActuals = {
-        ...currentActuals,
-        [currentMonthKey]: newVal
-      };
-      
-      const { data, error } = await supabase
-        .from("kpis")
-        .update({ monthly_actual: updatedActuals })
-        .eq("id", kpi.id)
-        .select();
+      if (kpi.checker || kpi.approver) {
+        // Approval flow
+        const entry = {
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          kpi_id: kpi.id,
+          kpi_name: kpi.name,
+          amount: amount,
+          submitted_by: loggedInUser?.name || "Unknown",
+          submitted_at: new Date().toISOString(),
+          month_key: currentMonthKey,
+          status: kpi.checker ? "pending_checker" : "pending_approver",
+          checker: kpi.checker || null,
+          approver: kpi.approver || null
+        };
         
-      if (error) {
-        console.error("Error logging work:", error.message);
-        alert("Failed to save to database: " + error.message);
+        const updatedHistory = [...(kpi.history || []), entry];
+        
+        const { data, error } = await supabase
+          .from("kpis")
+          .update({ history: updatedHistory })
+          .eq("id", kpi.id)
+          .select();
+          
+        if (error) {
+          console.error("Error submitting log for review:", error.message);
+          alert("Failed to submit log: " + error.message);
+        } else {
+          // Update local state
+          setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, history: updatedHistory } : k));
+          
+          // Clear input
+          setLogInputs(prev => ({ ...prev, [kpi.id]: "" }));
+          
+          // Set success message
+          setSubmitStatus(prev => ({
+            ...prev,
+            [kpi.id]: `Submitted ${amount} for review/approval.`
+          }));
+        }
       } else {
-        // Update local state
-        setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, monthly_actual: updatedActuals } : k));
+        // Direct logging flow
+        const currentActuals = kpi.monthly_actual || {};
+        const oldVal = parseFloat(currentActuals[currentMonthKey]) || 0;
+        const newVal = oldVal + amount;
         
-        // Update today's logs for feedback
-        setTodayLogs(prev => ({
-          ...prev,
-          [kpi.id]: [...(prev[kpi.id] || []), amount]
-        }));
+        const updatedActuals = {
+          ...currentActuals,
+          [currentMonthKey]: newVal
+        };
         
-        // Set success message
-        const targetVal = kpi.monthly_target?.[currentMonthKey] || 0;
-        setSubmitStatus(prev => ({
-          ...prev,
-          [kpi.id]: `Added ${amount} — month total now ${newVal}/${targetVal}.`
-        }));
-        
-        // Clear input
-        setLogInputs(prev => ({ ...prev, [kpi.id]: "" }));
+        const { data, error } = await supabase
+          .from("kpis")
+          .update({ monthly_actual: updatedActuals })
+          .eq("id", kpi.id)
+          .select();
+          
+        if (error) {
+          console.error("Error logging work:", error.message);
+          alert("Failed to save to database: " + error.message);
+        } else {
+          // Update local state
+          setKpis(prev => prev.map(k => k.id === kpi.id ? { ...k, monthly_actual: updatedActuals } : k));
+          
+          // Update today's logs for feedback
+          setTodayLogs(prev => ({
+            ...prev,
+            [kpi.id]: [...(prev[kpi.id] || []), amount]
+          }));
+          
+          // Set success message
+          const targetVal = kpi.monthly_target?.[currentMonthKey] || 0;
+          setSubmitStatus(prev => ({
+            ...prev,
+            [kpi.id]: `Added ${amount} — month total now ${newVal}/${targetVal}.`
+          }));
+          
+          // Clear input
+          setLogInputs(prev => ({ ...prev, [kpi.id]: "" }));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -1440,6 +1526,7 @@ export default function App() {
       const { data, error } = await supabase.from("teams").select("id, name, lead_name");
       if (error) {
         console.error("Error loading teams:", error.message);
+        handleFetchError("teams", error);
       } else if (data) {
         const order = [
           "Digital Marketing",
@@ -1451,9 +1538,11 @@ export default function App() {
         ];
         const sorted = data.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
         setTeams(sorted);
+        clearFetchError("teams");
       }
     } catch (e) {
       console.error(e);
+      handleFetchError("teams", e);
     }
   };
 
@@ -1462,6 +1551,7 @@ export default function App() {
       const { data, error } = await supabase.from("team_members").select("name, designation, team, sub_team");
       if (error) {
         console.error("Error loading team member designations:", error.message);
+        handleFetchError("team_members", error);
       } else if (data) {
         const map = {};
         data.forEach(m => {
@@ -1471,12 +1561,50 @@ export default function App() {
         });
         setMembersMap(map);
         setTeamMembers(data);
+        clearFetchError("team_members");
       }
       fetchTeams();
     } catch (e) {
       console.error(e);
+      handleFetchError("team_members", e);
     }
   };
+
+  // Startup Health Check
+  useEffect(() => {
+    const runHealthCheck = async () => {
+      try {
+        setConnectionChecking(true);
+        const [kCount, pCount, tmCount, crCount] = await Promise.all([
+          supabase.from("kpis").select("*", { count: "exact", head: true }),
+          supabase.from("projects").select("*", { count: "exact", head: true }),
+          supabase.from("team_members").select("*", { count: "exact", head: true }),
+          supabase.from("content_requests").select("*", { count: "exact", head: true })
+        ]);
+
+        const failed = [];
+        if (kCount.error) failed.push(`kpis: ${kCount.error.message}`);
+        if (pCount.error) failed.push(`projects: ${pCount.error.message}`);
+        if (tmCount.error) failed.push(`team_members: ${tmCount.error.message}`);
+        if (crCount.error) failed.push(`content_requests: ${crCount.error.message}`);
+
+        if (failed.length > 0) {
+          setConnectionError(true);
+          setConnectionErrorMessage(failed.join(" | "));
+        } else {
+          setConnectionError(false);
+          setConnectionErrorMessage("");
+        }
+      } catch (err) {
+        setConnectionError(true);
+        setConnectionErrorMessage(err.message || String(err));
+      } finally {
+        setConnectionChecking(false);
+      }
+    };
+
+    runHealthCheck();
+  }, []);
 
   // Restore session
   useEffect(() => {
@@ -1490,9 +1618,22 @@ export default function App() {
       fetchMemberDesignations();
       fetchHolidaysData();
       fetchAgentLeavesData();
+      fetchMonthlyFocusPlans();
       if (isAdm) {
-        supabase.from("kpis").select("*").then(({ data }) => { if (data) setKpis(data); });
-        supabase.from("projects").select("*").then(({ data }) => { if (data) setProjects(data); });
+        supabase.from("kpis").select("*").then(({ data, error }) => {
+          if (error) handleFetchError("kpis", error);
+          else if (data) {
+            setKpis(data);
+            clearFetchError("kpis");
+          }
+        });
+        supabase.from("projects").select("*").then(({ data, error }) => {
+          if (error) handleFetchError("projects", error);
+          else if (data) {
+            setProjects(data);
+            clearFetchError("projects");
+          }
+        });
         fetchCampaignsData();
         fetchAdPerformanceData();
         fetchContentRequestsData();
@@ -1509,20 +1650,27 @@ export default function App() {
     try {
       setTeamInfo({ name: teamName });
 
-      // Fetch KPIs for this team; DM also needs VP + GD KPIs for capacity tracking
+      // Fetch KPIs for this team
       let kpisQuery = supabase.from("kpis").select("*").eq("team", teamName);
       const { data: kpisData, error: kpisError } = await kpisQuery;
 
       if (kpisError) {
-        console.error("Error fetching KPIs from Supabase:", kpisError.message, kpisError.details);
+        console.error("Error fetching KPIs from Supabase:", kpisError.message);
+        handleFetchError("kpis", kpisError);
       } else if (kpisData) {
+        clearFetchError("kpis");
         if (teamName === "Digital Marketing") {
           // Also load Video Production + Graphic Designing KPIs for capacity panel
-          const { data: prodKpisData } = await supabase
+          const { data: prodKpisData, error: prodKpisError } = await supabase
             .from("kpis")
             .select("*")
             .in("team", ["Video Production", "Graphic Designing"]);
-          setKpis([...kpisData, ...(prodKpisData || [])]);
+          
+          if (prodKpisError) {
+            handleFetchError("kpis", prodKpisError);
+          } else {
+            setKpis([...kpisData, ...(prodKpisData || [])]);
+          }
         } else {
           setKpis(kpisData);
         }
@@ -1535,26 +1683,32 @@ export default function App() {
         .eq("team", teamName);
 
       if (projsError) {
-        console.error("Error fetching Projects from Supabase:", projsError.message, projsError.details);
-      } else if (projsData && projsData.length > 0) {
-        const projIds = projsData.map(p => p.id);
-        // Fetch stages
-        const { data: stagesData, error: stagesError } = await supabase
-          .from("project_stages")
-          .select("*")
-          .in("project_id", projIds);
-        
-        if (stagesError) {
-          console.error("Error fetching project stages from Supabase:", stagesError.message);
+        console.error("Error fetching Projects from Supabase:", projsError.message);
+        handleFetchError("projects", projsError);
+      } else if (projsData) {
+        clearFetchError("projects");
+        if (projsData.length > 0) {
+          const projIds = projsData.map(p => p.id);
+          // Fetch stages
+          const { data: stagesData, error: stagesError } = await supabase
+            .from("project_stages")
+            .select("*")
+            .in("project_id", projIds);
+          
+          if (stagesError) {
+            console.error("Error fetching project stages from Supabase:", stagesError.message);
+            handleFetchError("project_stages", stagesError);
+          } else {
+            clearFetchError("project_stages");
+            const mappedProjects = projsData.map(p => ({
+              ...p,
+              stages: (stagesData || []).filter(s => s.project_id === p.id)
+            }));
+            setProjects(mappedProjects);
+          }
+        } else {
+          setProjects([]);
         }
-        
-        const mappedProjects = projsData.map(p => ({
-          ...p,
-          stages: (stagesData || []).filter(s => s.project_id === p.id)
-        }));
-        setProjects(mappedProjects);
-      } else {
-        setProjects([]);
       }
       if (teamName === "Digital Marketing" || role === "admin") {
         await fetchCampaignsData();
@@ -1565,6 +1719,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error loading team data:", err);
+      handleFetchError("team_data", err);
     }
   }
 
@@ -1694,11 +1849,14 @@ export default function App() {
       const { data, error } = await supabase.from("campaigns").select("*");
       if (error) {
         console.error("Error fetching campaigns from Supabase:", error.message);
+        handleFetchError("campaigns", error);
       } else if (data) {
         setCampaigns(data);
+        clearFetchError("campaigns");
       }
     } catch (err) {
       console.error("Error loading campaigns:", err);
+      handleFetchError("campaigns", err);
     }
   };
 
@@ -1707,11 +1865,14 @@ export default function App() {
       const { data, error } = await supabase.from("ad_performance").select("*");
       if (error) {
         console.error("Error fetching ad performance from Supabase:", error.message);
+        handleFetchError("ad_performance", error);
       } else if (data) {
         setAdPerformance(data);
+        clearFetchError("ad_performance");
       }
     } catch (err) {
       console.error("Error loading ad performance:", err);
+      handleFetchError("ad_performance", err);
     }
   };
 
@@ -1722,13 +1883,16 @@ export default function App() {
       if (error) {
         console.error("Error fetching content requests from Supabase:", error.message);
         setContentRequestsError(error.message);
+        handleFetchError("content_requests", error);
       } else if (data) {
         setContentRequests(data);
         generateUpcomingRecurrences(data);
+        clearFetchError("content_requests");
       }
     } catch (err) {
       console.error("Error loading content requests:", err);
       setContentRequestsError(err.message || String(err));
+      handleFetchError("content_requests", err);
     }
   };
 
@@ -2270,6 +2434,154 @@ export default function App() {
     }
   };
 
+  const handleRejectContentRequest = async (requestId) => {
+    try {
+      const { error } = await supabase
+        .from("content_requests")
+        .update({
+          status: "in_progress",
+          approved_by: null,
+          approved_at: null
+        })
+        .eq("id", requestId);
+
+      if (error) {
+        console.error("Error rejecting request:", error.message);
+        alert("Failed to reject request: " + error.message);
+      } else {
+        setContentRequests(prev => prev.map(r => r.id === requestId ? {
+          ...r,
+          status: "in_progress",
+          approved_by: null,
+          approved_at: null
+        } : r));
+      }
+    } catch (err) {
+      console.error("Error rejecting request:", err);
+    }
+  };
+
+  const handleKpiApproval = async (item, action) => {
+    const k = item.kpi;
+    const entryId = item.id;
+    
+    try {
+      let nextStatus = "approved";
+      if (action === "reject") {
+        nextStatus = "rejected";
+      } else {
+        if (item.status === "pending_checker" && k.approver) {
+          nextStatus = "pending_approver";
+        }
+      }
+
+      // Update history entry in the array
+      const updatedHistory = (k.history || []).map(entry => {
+        if (entry.id === entryId) {
+          return { ...entry, status: nextStatus };
+        }
+        return entry;
+      });
+
+      const updatePayload = { history: updatedHistory };
+
+      // If approved, update monthly_actual
+      if (action === "approve" && nextStatus === "approved") {
+        const currentActuals = k.monthly_actual || {};
+        const oldVal = parseFloat(currentActuals[item.month_key]) || 0;
+        const newVal = oldVal + parseFloat(item.amount);
+        updatePayload.monthly_actual = {
+          ...currentActuals,
+          [item.month_key]: newVal
+        };
+      }
+
+      const { error } = await supabase
+        .from("kpis")
+        .update(updatePayload)
+        .eq("id", k.id);
+
+      if (error) {
+        console.error("Error updating KPI approval:", error.message);
+        alert("Failed to update approval: " + error.message);
+      } else {
+        // Update local state
+        setKpis(prev => prev.map(pk => {
+          if (pk.id === k.id) {
+            const updatedKpi = { ...pk, history: updatedHistory };
+            if (updatePayload.monthly_actual) {
+              updatedKpi.monthly_actual = updatePayload.monthly_actual;
+            }
+            return updatedKpi;
+          }
+          return pk;
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred: " + err.message);
+    }
+  };
+
+  const fetchMonthlyFocusPlans = async () => {
+    try {
+      const { data, error } = await supabase.from("monthly_focus_plans").select("*");
+      if (error) {
+        handleFetchError("monthly_focus_plans", error);
+      } else if (data) {
+        setMonthlyFocusPlans(data);
+        clearFetchError("monthly_focus_plans");
+      }
+    } catch (err) {
+      console.error(err);
+      handleFetchError("monthly_focus_plans", err);
+    }
+  };
+
+  const getNextMonthInfo = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    const nextMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const nextMonthName = MONTHS_LIST[d.getMonth()] + " " + d.getFullYear();
+    return { key: nextMonthKey, name: nextMonthName };
+  };
+
+  const handleSaveShootPlan = async (personName, stateVal, langVal) => {
+    if (!stateVal || !stateVal.trim()) {
+      alert("Please select or enter a state.");
+      return;
+    }
+    if (!langVal || !langVal.trim()) {
+      alert("Please select a language.");
+      return;
+    }
+    const nextMo = getNextMonthInfo();
+    try {
+      const { error } = await supabase
+        .from("monthly_focus_plans")
+        .upsert({
+          person_name: personName,
+          team: "Video Production",
+          month_key: nextMo.key,
+          state: stateVal.trim(),
+          language: langVal.trim(),
+          assigned_by: loggedInUser?.name || "Lead",
+          assigned_at: new Date().toISOString()
+        }, { onConflict: "person_name,month_key" });
+
+      if (error) {
+        console.error("Error saving shoot plan:", error.message);
+        alert("Failed to save plan: " + error.message);
+      } else {
+        alert(`Shoot plan saved for ${personName}!`);
+        fetchMonthlyFocusPlans();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred: " + err.message);
+    }
+  };
+
   const handleUpdateDriveLink = async (requestId) => {
     const currentLink = contentRequests.find(r => r.id === requestId)?.drive_link || "";
     const newLink = prompt("Enter new Google Drive Link:", currentLink);
@@ -2325,12 +2637,81 @@ export default function App() {
   }, []);
 
   const filteredRequests = useMemo(() => {
-    return contentRequests.filter(r => {
+    let list = contentRequests;
+    if (role === "admin") {
+      if (!activeDashboardTeam) return [];
+      list = list.filter(r => r.assigned_team === activeDashboardTeam);
+      if (activeDashboardPerson) {
+        list = list.filter(r => r.accepted_by === activeDashboardPerson || r.requested_by === activeDashboardPerson);
+      }
+    } else {
+      list = list.filter(r => r.assigned_team === loggedInUser?.team);
+    }
+    return list.filter(r => {
       const matchStatus = requestFilterStatus === "all" || r.status === requestFilterStatus;
       const matchTeam = requestFilterTeam === "all" || r.assigned_team === requestFilterTeam;
       return matchStatus && matchTeam;
     });
-  }, [contentRequests, requestFilterStatus, requestFilterTeam]);
+  }, [contentRequests, requestFilterStatus, requestFilterTeam, activeDashboardTeam, activeDashboardPerson, role, loggedInUser]);
+
+  const approvalsQueue = useMemo(() => {
+    const list = [];
+    if (!loggedInUser) return list;
+
+    // 1. KPI history entries
+    kpis.forEach(k => {
+      if (Array.isArray(k.history)) {
+        k.history.forEach(entry => {
+          if (entry.status === "pending_checker" && entry.checker === loggedInUser.name) {
+            list.push({
+              type: "kpi",
+              id: entry.id,
+              kpi_id: k.id,
+              title: k.name,
+              submitted_by: entry.submitted_by,
+              submitted_at: entry.submitted_at,
+              amount: entry.amount,
+              month_key: entry.month_key,
+              status: entry.status,
+              entry: entry,
+              kpi: k
+            });
+          } else if (entry.status === "pending_approver" && entry.approver === loggedInUser.name) {
+            list.push({
+              type: "kpi",
+              id: entry.id,
+              kpi_id: k.id,
+              title: k.name,
+              submitted_by: entry.submitted_by,
+              submitted_at: entry.submitted_at,
+              amount: entry.amount,
+              month_key: entry.month_key,
+              status: entry.status,
+              entry: entry,
+              kpi: k
+            });
+          }
+        });
+      }
+    });
+
+    // 2. Content Requests
+    contentRequests.forEach(r => {
+      if (r.status === "in_review" && (role === "admin" || loggedInUser.team === r.assigned_team)) {
+        list.push({
+          type: "content_request",
+          id: r.id,
+          title: r.title,
+          submitted_by: r.accepted_by || r.requested_by,
+          submitted_at: r.accepted_at || r.created_at,
+          status: r.status,
+          request: r
+        });
+      }
+    });
+
+    return list;
+  }, [kpis, contentRequests, loggedInUser, role]);
 
   const calendarDays = useMemo(() => {
     const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
@@ -2475,9 +2856,17 @@ export default function App() {
   }, [currentYear, currentMonth, contentRequests, kpis]);
 
   // Group KPIs by team
-  const groupedKpis = useMemo(() => {
+  const filteredGroupedKpis = useMemo(() => {
+    let list = kpis;
+    if (role === "admin") {
+      if (!activeDashboardTeam) return {};
+      list = list.filter(k => k.team === activeDashboardTeam);
+      if (activeDashboardPerson) {
+        list = list.filter(k => k.do_person === activeDashboardPerson);
+      }
+    }
     const groups = {};
-    kpis.forEach(k => {
+    list.forEach(k => {
       const teamName = k.team || "Unassigned";
       if (!groups[teamName]) {
         groups[teamName] = [];
@@ -2485,11 +2874,21 @@ export default function App() {
       groups[teamName].push(k);
     });
     return groups;
-  }, [kpis]);
+  }, [kpis, activeDashboardTeam, activeDashboardPerson, role]);
 
-  const groupedProjects = useMemo(() => {
+  const filteredGroupedProjects = useMemo(() => {
+    let list = projects;
+    if (role === "admin") {
+      if (!activeDashboardTeam) return {};
+      list = list.filter(p => p.team === activeDashboardTeam);
+      if (activeDashboardPerson) {
+        list = list.filter(p => p.do_person === activeDashboardPerson);
+      }
+    } else {
+      list = list.filter(p => p.team === loggedInUser?.team);
+    }
     const groups = {};
-    projects.forEach(p => {
+    list.forEach(p => {
       const teamName = p.team || "Unassigned";
       if (!groups[teamName]) {
         groups[teamName] = [];
@@ -2497,7 +2896,7 @@ export default function App() {
       groups[teamName].push(p);
     });
     return groups;
-  }, [projects]);
+  }, [projects, activeDashboardTeam, activeDashboardPerson, role, loggedInUser]);
 
   const myProjectTasks = useMemo(() => {
     const list = [];
@@ -2518,12 +2917,29 @@ export default function App() {
   }, [projects, loggedInUser]);
 
   const dashboardKpis = useMemo(() => {
-    return kpis.filter(k => k.team === activeDashboardTeam);
-  }, [kpis, activeDashboardTeam]);
+    let list = kpis.filter(k => k.team === activeDashboardTeam);
+    if (activeDashboardPerson) {
+      list = list.filter(k => k.do_person === activeDashboardPerson);
+    }
+    return list;
+  }, [kpis, activeDashboardTeam, activeDashboardPerson]);
 
   const dashboardProjects = useMemo(() => {
-    return projects.filter(p => p.team === activeDashboardTeam);
-  }, [projects, activeDashboardTeam]);
+    let list = projects.filter(p => p.team === activeDashboardTeam);
+    if (activeDashboardPerson) {
+      list = list.filter(p => p.do_person === activeDashboardPerson);
+    }
+    return list;
+  }, [projects, activeDashboardTeam, activeDashboardPerson]);
+
+  const filteredCampaigns = useMemo(() => {
+    if (role === "admin") {
+      if (!activeDashboardTeam) return [];
+      return campaigns.filter(c => c.team === activeDashboardTeam);
+    } else {
+      return campaigns.filter(c => c.team === loggedInUser?.team);
+    }
+  }, [campaigns, activeDashboardTeam, role, loggedInUser]);
 
   const dashboardStats = useMemo(() => {
     let total = dashboardKpis.length;
@@ -2547,6 +2963,69 @@ export default function App() {
   const personalKpis = useMemo(() => {
     return kpis.filter(k => k.do_person === loggedInUser?.name);
   }, [kpis, loggedInUser]);
+
+  const currentMonthLabel = useMemo(() => {
+    const d = new Date();
+    return `${MONTHS_LIST[d.getMonth()]} ${d.getFullYear()}`;
+  }, []);
+
+  const userCurrentFocusPlan = useMemo(() => {
+    if (!loggedInUser) return null;
+    const d = new Date();
+    const currentMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return monthlyFocusPlans.find(p => p.person_name === loggedInUser.name && p.month_key === currentMonthKey);
+  }, [monthlyFocusPlans, loggedInUser]);
+
+  const isNearMonthEnd = useMemo(() => {
+    const d = new Date();
+    const today = d.getDate();
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return (lastDay - today) < 5;
+  }, []);
+
+  const isNextMonthPlanIncomplete = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    const nextMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const vpShooters = teamMembers.filter(m => m.team === "Video Production");
+    const nextMonthPlans = monthlyFocusPlans.filter(p => p.month_key === nextMonthKey);
+    return vpShooters.some(s => !nextMonthPlans.some(p => p.person_name === s.name));
+  }, [teamMembers, monthlyFocusPlans]);
+
+  if (connectionChecking) {
+    return (
+      <div className="h-screen w-screen bg-slate-50 flex flex-col items-center justify-center gap-4" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-orange-500 border-t-transparent" />
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest animate-pulse">Running Database Health Check...</p>
+      </div>
+    );
+  }
+
+  if (connectionError) {
+    return (
+      <div className="h-screen w-screen bg-rose-50 flex items-center justify-center p-4" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+        <div className="w-full max-w-lg bg-white border border-rose-100 rounded-3xl p-8 shadow-xl text-center space-y-5">
+          <span className="text-5xl">⚡</span>
+          <h1 className="text-xl font-black text-rose-900 uppercase tracking-wider">Database Connection Issue</h1>
+          <p className="text-xs font-semibold text-slate-500 mt-2">
+            The application is unable to reach the Supabase backend tables. Please verify your internet connection or wake up your database project.
+          </p>
+          <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 text-left">
+            <span className="text-[9px] uppercase font-black tracking-wider text-rose-500 block mb-1">Error Diagnostic Info:</span>
+            <code className="text-xs font-bold font-mono text-rose-800 break-all select-all">
+              {connectionErrorMessage}
+            </code>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl transition-all shadow-md active:scale-[0.98]"
+          >
+            🔄 Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!loggedInUser) {
     return (
@@ -2607,6 +3086,21 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen bg-orange-50 sm:p-4 flex flex-col overflow-hidden relative" style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+      {fetchErrors.length > 0 && (
+        <div className="bg-rose-600 text-white text-[11px] font-bold px-4 py-2.5 rounded-xl mb-2 flex flex-col gap-1.5 z-50 shadow-md shrink-0 border border-rose-700">
+          {fetchErrors.map((err, idx) => (
+            <div key={idx} className="flex justify-between items-center">
+              <span className="flex items-center gap-1.5">⚠️ <span><strong>Table query failed:</strong> <code className="bg-rose-750 px-1 py-0.5 rounded font-mono font-black">{err.table}</code> - {err.message}</span></span>
+              <button
+                onClick={() => clearFetchError(err.table)}
+                className="bg-rose-700 hover:bg-rose-800 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-lg transition-colors border border-rose-850"
+              >
+                Dismiss
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex-1 w-full h-full flex flex-col min-h-0">
         <div className="flex bg-orange-50 rounded-2xl overflow-hidden border border-orange-100 flex-1 w-full h-full relative">
           
@@ -2674,6 +3168,23 @@ export default function App() {
               >
                 <FolderGit2 className="h-4 w-4" />
                 <span>Projects</span>
+              </button>
+
+              <button
+                onClick={() => { setScreen("approvals"); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                  screen === "approvals" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <CheckSquare className="h-4 w-4" />
+                  <span>Approvals</span>
+                </div>
+                {approvalsQueue.length > 0 && (
+                  <span className="bg-rose-500 text-white font-black px-2 py-0.5 rounded-full text-[9px] min-w-[18px] text-center">
+                    {approvalsQueue.length}
+                  </span>
+                )}
               </button>
 
               {(role === "admin" || loggedInUser?.team === "Digital Marketing") && (
@@ -2764,18 +3275,39 @@ export default function App() {
                   <span>Add KPI</span>
                 </button>
               )}
-              {(screen === "dashboard" || screen === "content_requests") && role === "admin" && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase text-slate-400">Team Switcher:</span>
-                  <select
-                    value={activeDashboardTeam}
-                    onChange={(e) => setActiveDashboardTeam(e.target.value)}
-                    className="border border-orange-200 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  >
-                    {teams.map(t => (
-                      <option key={t.id} value={t.name}>{t.name} — {t.lead_name || "No Lead"}</option>
-                    ))}
-                  </select>
+              {role === "admin" && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-black uppercase text-slate-400">Team:</span>
+                    <select
+                      value={activeDashboardTeam}
+                      onChange={(e) => handleTeamChange(e.target.value)}
+                      className="border border-orange-200 rounded-xl px-2.5 py-1.5 text-[11px] font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    >
+                      <option value="">Select Team...</option>
+                      {teams.map(t => (
+                        <option key={t.id} value={t.name}>{t.name} — {t.lead_name || "No Lead"}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-black uppercase text-slate-400">Person:</span>
+                    <select
+                      value={activeDashboardPerson}
+                      onChange={(e) => setActiveDashboardPerson(e.target.value)}
+                      disabled={!activeDashboardTeam}
+                      className="border border-orange-200 rounded-xl px-2.5 py-1.5 text-[11px] font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:opacity-50"
+                    >
+                      <option value="">All KPIs</option>
+                      {teamMembers
+                        .filter(m => m.team === activeDashboardTeam)
+                        .map(m => (
+                          <option key={m.name} value={m.name}>{m.name}</option>
+                        ))
+                      }
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
@@ -2896,6 +3428,272 @@ export default function App() {
                       </div>
                     );
                   })()}
+
+                  {activeDashboardTeam === "Video Production" && (
+                    <div className="space-y-4">
+                      {/* Month-end warning reminder */}
+                      {isNearMonthEnd && isNextMonthPlanIncomplete && (
+                        <div className="bg-orange-50 border border-orange-200 text-orange-850 text-xs font-bold px-4 py-3 rounded-2xl flex items-center gap-2 shadow-2xs select-none">
+                          <span>⚠️</span>
+                          <span><strong>Reminder:</strong> Next month's shoot plan not yet assigned.</span>
+                        </div>
+                      )}
+
+                      {/* Shoot Plan Editor (only visible to lead or admin) */}
+                      {(() => {
+                        const leadName = teams.find(t => t.name === "Video Production")?.lead_name;
+                        const isLead = loggedInUser?.name === leadName;
+                        const hasEditAccess = role === "admin" || isLead;
+
+                        const nextMo = getNextMonthInfo();
+                        const vpShooters = teamMembers.filter(m => m.team === "Video Production");
+                        const nextMonthPlans = monthlyFocusPlans.filter(p => p.month_key === nextMo.key);
+
+                        const statesList = [
+                          "Maharashtra", "Tamil Nadu", "Karnataka", "Andhra Pradesh", "Telangana", 
+                          "Kerala", "Gujarat", "West Bengal", "Uttar Pradesh", "Bihar", "Rajasthan", "Delhi"
+                        ];
+                        const languagesList = [
+                          "Hindi", "Tamil", "Kannada", "Telugu", "Bengali", "Gujarati", "Malayalam", 
+                          "Odia", "Marathi", "Punjabi"
+                        ];
+
+                        if (!hasEditAccess) {
+                          // For normal team members/shooters, display a read-only list of current month assignments
+                          const d = new Date();
+                          const currentMonthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                          const currentPlans = monthlyFocusPlans.filter(p => p.month_key === currentMonthKey);
+
+                          return (
+                            <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs space-y-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                                <div>
+                                  <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider">🎯 Team Shoot Focus Plans</h3>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Declared monthly focus assignments for {currentMonthLabel}</p>
+                                </div>
+                              </div>
+                              {currentPlans.length === 0 ? (
+                                <p className="text-[10.5px] text-slate-450 font-bold italic py-1">No monthly shoot assignments set for this month.</p>
+                              ) : (
+                                <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-2xs">
+                                  <table className="w-full text-[11px] border-collapse text-left">
+                                    <thead>
+                                      <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                                        <th className="px-4 py-2">Shooter</th>
+                                        <th className="px-4 py-2">State Target</th>
+                                        <th className="px-4 py-2">Language</th>
+                                        <th className="px-4 py-2">Assigned By</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                                      {currentPlans.map(p => (
+                                        <tr key={p.id} className="hover:bg-slate-50/40 transition-colors">
+                                          <td className="px-4 py-2.5 font-bold text-slate-800">{p.person_name}</td>
+                                          <td className="px-4 py-2.5">{p.state}</td>
+                                          <td className="px-4 py-2.5 font-mono text-orange-700">{p.language}</td>
+                                          <td className="px-4 py-2.5 text-[10px] text-slate-400">{p.assigned_by}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Lead / Admin layout: Editable table for the NEXT month
+                        return (
+                          <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                              <div>
+                                <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider">🎯 Assign Shoot Plans ({nextMo.name})</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Assign target state and language focus for the upcoming month</p>
+                              </div>
+                            </div>
+                            {vpShooters.length === 0 ? (
+                              <p className="text-[10.5px] text-slate-450 font-bold italic py-1">No shooters found in Video Production vertical roster.</p>
+                            ) : (
+                              <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-2xs">
+                                <table className="w-full text-[11px] border-collapse text-left">
+                                  <thead>
+                                    <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                                      <th className="px-4 py-2">Shooter</th>
+                                      <th className="px-4 py-2">State Target</th>
+                                      <th className="px-4 py-2">Language</th>
+                                      <th className="px-4 py-2 text-right">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                                    {vpShooters.map(s => {
+                                      const currentAssigned = nextMonthPlans.find(p => p.person_name === s.name);
+                                      const stateVal = shootPlanStateEdits[`${s.name}-state`] ?? currentAssigned?.state ?? "";
+                                      const langVal = shootPlanStateEdits[`${s.name}-lang`] ?? currentAssigned?.language ?? "";
+
+                                      return (
+                                        <tr key={s.name} className="hover:bg-slate-50/40 transition-colors">
+                                          <td className="px-4 py-2.5 font-bold text-slate-800">{s.name}</td>
+                                          <td className="px-4 py-2.5">
+                                            <select
+                                              value={stateVal}
+                                              onChange={e => setShootPlanStateEdits(prev => ({ ...prev, [`${s.name}-state`]: e.target.value }))}
+                                              className="border border-slate-200 bg-white rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                            >
+                                              <option value="">Select State</option>
+                                              {statesList.map(st => (
+                                                <option key={st} value={st}>{st}</option>
+                                              ))}
+                                            </select>
+                                          </td>
+                                          <td className="px-4 py-2.5">
+                                            <select
+                                              value={langVal}
+                                              onChange={e => setShootPlanStateEdits(prev => ({ ...prev, [`${s.name}-lang`]: e.target.value }))}
+                                              className="border border-slate-200 bg-white rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                            >
+                                              <option value="">Select Language</option>
+                                              {languagesList.map(lg => (
+                                                <option key={lg} value={lg}>{lg}</option>
+                                              ))}
+                                            </select>
+                                          </td>
+                                          <td className="px-4 py-2.5 text-right">
+                                            <button
+                                              onClick={() => handleSaveShootPlan(s.name, stateVal, langVal)}
+                                              className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                            >
+                                              Save Plan
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Team Progress Section */}
+                      {(() => {
+                        const leadName = teams.find(t => t.name === "Video Production")?.lead_name;
+                        const isLead = loggedInUser?.name === leadName;
+                        const hasAccess = role === "admin" || isLead;
+                        if (!hasAccess) return null;
+
+                        const reportKpis = kpis.filter(k => 
+                          k.team === "Video Production" && 
+                          k.kpi_type === "report" && 
+                          k.name.toLowerCase().includes("videos done by")
+                        );
+
+                        if (reportKpis.length === 0) return null;
+
+                        const d = new Date();
+                        const currentYear = d.getFullYear();
+                        const elapsedMonths = [];
+                        for (let m = 0; m <= d.getMonth(); m++) {
+                          elapsedMonths.push(`${currentYear}-${String(m + 1).padStart(2, "0")}`);
+                        }
+                        const currentMonthIndex = d.getMonth();
+
+                        const rows = reportKpis.map(rk => {
+                          const shooterName = rk.name.replace(/Videos done by\s+/i, "").trim();
+                          const shooterKpis = kpis.filter(k => 
+                            k.team === "Video Production" && 
+                            k.do_person === shooterName && 
+                            k.kpi_type !== "report"
+                          );
+                          const annualTarget = shooterKpis.reduce((sum, k) => sum + (k.cy_target ?? 0), 0);
+                          const doneSoFar = elapsedMonths.reduce((sum, monthKey) => {
+                            return sum + getKpiActual(rk, monthKey, kpis);
+                          }, 0);
+
+                          const balance = annualTarget - doneSoFar;
+                          const percent = annualTarget > 0 ? Math.min(100, Math.round((doneSoFar / annualTarget) * 100)) : 0;
+
+                          const expectedPace = (annualTarget / 12) * (currentMonthIndex + 1);
+                          let paceColor = "bg-emerald-500";
+                          let paceText = "On Track";
+                          let paceTextColor = "text-emerald-700 bg-emerald-50 border-emerald-100";
+                          if (annualTarget > 0) {
+                            if (doneSoFar < 0.8 * expectedPace) {
+                              paceColor = "bg-rose-500";
+                              paceText = "Behind";
+                              paceTextColor = "text-rose-700 bg-rose-50 border-rose-100 animate-pulse";
+                            } else if (doneSoFar < 0.95 * expectedPace) {
+                              paceColor = "bg-amber-500";
+                              paceText = "At Risk";
+                              paceTextColor = "text-amber-700 bg-amber-50 border-amber-100";
+                            }
+                          }
+
+                          return {
+                            name: shooterName,
+                            annualTarget,
+                            doneSoFar,
+                            balance,
+                            percent,
+                            paceText,
+                            paceColor,
+                            paceTextColor
+                          };
+                        });
+
+                        rows.sort((a, b) => b.balance - a.balance);
+
+                        return (
+                          <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                              <div>
+                                <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider">📊 Team Progress (YTD)</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Year-to-date performance vs annual shooter targets</p>
+                              </div>
+                            </div>
+                            <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-2xs">
+                              <table className="w-full text-[11px] border-collapse text-left">
+                                <thead>
+                                  <tr className="bg-slate-50/80 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider select-none">
+                                    <th className="px-4 py-2">Shooter</th>
+                                    <th className="px-4 py-2 text-right">Annual Target</th>
+                                    <th className="px-4 py-2 text-right">Done YTD</th>
+                                    <th className="px-4 py-2 text-right">Balance Remaining</th>
+                                    <th className="px-4 py-2">Pace Status</th>
+                                    <th className="px-4 py-2">Progress</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                                  {rows.map(r => (
+                                    <tr key={r.name} className="hover:bg-slate-50/40 transition-colors">
+                                      <td className="px-4 py-2.5 font-bold text-slate-800">{r.name}</td>
+                                      <td className="px-4 py-2.5 text-right font-mono">{r.annualTarget}</td>
+                                      <td className="px-4 py-2.5 text-right font-mono text-teal-650">{r.doneSoFar}</td>
+                                      <td className="px-4 py-2.5 text-right font-mono text-slate-500">{r.balance}</td>
+                                      <td className="px-4 py-2.5">
+                                        <span className={`text-[8.5px] px-2 py-0.5 rounded-full border font-black uppercase tracking-wider ${r.paceTextColor}`}>
+                                          {r.paceText}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-2.5 min-w-[120px]">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-150">
+                                            <div className={`h-full ${r.paceColor} rounded-full transition-all`} style={{ width: `${r.percent}%` }} />
+                                          </div>
+                                          <span className="font-mono text-[10px] text-slate-400 shrink-0 font-bold">{r.percent}%</span>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   {/* Personal Dashboard Section for non-admin */}
                   {role !== "admin" && (
@@ -3109,24 +3907,102 @@ export default function App() {
 
               {screen === "kpis" && (
                 <div className="space-y-6">
-                  {Object.keys(groupedKpis).length === 0 ? (
-                    <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xs">
-                      <span className="text-3xl">📊</span>
-                      <p className="text-xs font-semibold text-slate-500 mt-2">No KPIs loaded for this team.</p>
-                    </div>
-                  ) : (
-                    Object.entries(groupedKpis).map(([teamName, list]) => (
-                      <div key={teamName} className="space-y-3">
-                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">{teamName}</h3>
+                  {role === "admin" ? (
+                    !activeDashboardTeam ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                        <span className="text-4xl">📊</span>
+                        <h3 className="text-sm font-black text-slate-800 mt-3">Select a team to view its data</h3>
+                        <p className="text-xs font-semibold text-slate-450 mt-1">Please select a team from the header dropdown to filter and view KPIs.</p>
+                      </div>
+                    ) : Object.keys(filteredGroupedKpis).length === 0 ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xs">
+                        <span className="text-3xl">📊</span>
+                        <p className="text-xs font-semibold text-slate-500 mt-2">No KPIs loaded for this team.</p>
+                      </div>
+                    ) : (
+                      Object.entries(filteredGroupedKpis).map(([teamName, list]) => (
+                        <div key={teamName} className="space-y-3">
+                          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">{teamName}</h3>
+                          <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
+                            <table className="w-full text-[11px] border-collapse">
+                              <thead>
+                                <tr className="bg-slate-50/80 border-b border-slate-150 text-left font-bold text-slate-500 uppercase tracking-wider select-none">
+                                  <th className="px-4 py-2">Name</th>
+                                  <th className="px-4 py-2">Market</th>
+                                  <th className="px-4 py-2">Do</th>
+                                  <th className="px-4 py-2">Drive</th>
+                                  <th className="px-4 py-2">Monitor</th>
+                                  <th className="px-4 py-2">CY Target</th>
+                                  <th className="px-4 py-2 text-right">Target ({formatKeyToLabel(currentMonthKey)})</th>
+                                  <th className="px-4 py-2 text-right">Actual ({formatKeyToLabel(currentMonthKey)})</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                                {list.map(k => {
+                                  const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+                                  const actualVal = getKpiActual(k, currentMonthKey, kpis);
+                                  return (
+                                    <tr
+                                      key={k.id}
+                                      onClick={() => { setSelectedKpi(k); setIsKpiModalOpen(true); }}
+                                      className="hover:bg-slate-50/40 transition-colors cursor-pointer"
+                                    >
+                                      <td className="px-4 py-3 font-bold text-slate-800 flex items-center gap-1.5">
+                                        <span>{k.name}</span>
+                                        {k.kpi_type === "report" && (
+                                          <span className="bg-teal-50 text-teal-700 text-[8px] font-black px-1.5 py-0.5 rounded border border-teal-100 uppercase tracking-wider select-none shrink-0">
+                                            Σ Computed
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3">{k.market || "-"}</td>
+                                      <td className="px-4 py-3 font-mono">
+                                        {k.do_person || "-"}
+                                        {k.do_person && membersMap[k.do_person] && (
+                                          <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.do_person]}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 font-mono">
+                                        {k.drive_person || "-"}
+                                        {k.drive_person && membersMap[k.drive_person] && (
+                                          <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.drive_person]}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 font-mono">
+                                        {k.monitor_person || "-"}
+                                        {k.monitor_person && membersMap[k.monitor_person] && (
+                                          <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.monitor_person]}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 font-mono font-bold text-slate-650">{k.cy_target ?? "-"}</td>
+                                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-600">
+                                        {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}
+                                      </td>
+                                      <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
+                                        {actualVal ? new Intl.NumberFormat('en-IN').format(actualVal) : "-"}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))
+                    )
+                  ) : (() => {
+                    const myKpis = kpis.filter(k => k.do_person === loggedInUser?.name);
+                    const driveKpis = kpis.filter(k => k.drive_person === loggedInUser?.name && k.do_person !== loggedInUser?.name);
+                    const monitorKpis = kpis.filter(k => k.monitor_person === loggedInUser?.name && k.do_person !== loggedInUser?.name && k.drive_person !== loggedInUser?.name);
+
+                    const renderKpiTable = (list) => {
+                      return (
                         <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
                           <table className="w-full text-[11px] border-collapse">
                             <thead>
                               <tr className="bg-slate-50/80 border-b border-slate-150 text-left font-bold text-slate-500 uppercase tracking-wider select-none">
                                 <th className="px-4 py-2">Name</th>
                                 <th className="px-4 py-2">Market</th>
-                                <th className="px-4 py-2">Do</th>
-                                <th className="px-4 py-2">Drive</th>
-                                <th className="px-4 py-2">Monitor</th>
                                 <th className="px-4 py-2">CY Target</th>
                                 <th className="px-4 py-2 text-right">Target ({formatKeyToLabel(currentMonthKey)})</th>
                                 <th className="px-4 py-2 text-right">Actual ({formatKeyToLabel(currentMonthKey)})</th>
@@ -3137,11 +4013,7 @@ export default function App() {
                                 const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
                                 const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                 return (
-                                  <tr
-                                    key={k.id}
-                                    onClick={() => { if (role === "admin") { setSelectedKpi(k); setIsKpiModalOpen(true); } }}
-                                    className={`hover:bg-slate-50/40 transition-colors ${role === "admin" ? "cursor-pointer" : ""}`}
-                                  >
+                                  <tr key={k.id} className="hover:bg-slate-50/40 transition-colors">
                                     <td className="px-4 py-3 font-bold text-slate-800 flex items-center gap-1.5">
                                       <span>{k.name}</span>
                                       {k.kpi_type === "report" && (
@@ -3151,24 +4023,6 @@ export default function App() {
                                       )}
                                     </td>
                                     <td className="px-4 py-3">{k.market || "-"}</td>
-                                    <td className="px-4 py-3 font-mono">
-                                      {k.do_person || "-"}
-                                      {k.do_person && membersMap[k.do_person] && (
-                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.do_person]}</span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3 font-mono">
-                                      {k.drive_person || "-"}
-                                      {k.drive_person && membersMap[k.drive_person] && (
-                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.drive_person]}</span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3 font-mono">
-                                      {k.monitor_person || "-"}
-                                      {k.monitor_person && membersMap[k.monitor_person] && (
-                                        <span className="text-[9px] text-slate-400 font-semibold font-sans ml-1">· {membersMap[k.monitor_person]}</span>
-                                      )}
-                                    </td>
                                     <td className="px-4 py-3 font-mono font-bold text-slate-650">{k.cy_target ?? "-"}</td>
                                     <td className="px-4 py-3 text-right font-mono font-bold text-slate-600">
                                       {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}
@@ -3182,9 +4036,41 @@ export default function App() {
                             </tbody>
                           </table>
                         </div>
+                      );
+                    };
+
+                    if (myKpis.length === 0 && driveKpis.length === 0 && monitorKpis.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xs">
+                          <span className="text-3xl">📊</span>
+                          <p className="text-xs font-semibold text-slate-500 mt-2">No KPIs loaded.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-6">
+                        {myKpis.length > 0 && (
+                          <div className="space-y-3">
+                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">My KPIs</h3>
+                            {renderKpiTable(myKpis)}
+                          </div>
+                        )}
+                        {driveKpis.length > 0 && (
+                          <div className="space-y-3">
+                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">Team I Drive</h3>
+                            {renderKpiTable(driveKpis)}
+                          </div>
+                        )}
+                        {monitorKpis.length > 0 && (
+                          <div className="space-y-3">
+                            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">Team I Monitor</h3>
+                            {renderKpiTable(monitorKpis)}
+                          </div>
+                        )}
                       </div>
-                    ))
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 
@@ -3281,13 +4167,19 @@ export default function App() {
                       </div>
                     )
                   ) : (
-                    Object.keys(groupedProjects).length === 0 ? (
+                    role === "admin" && !activeDashboardTeam ? (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                        <span className="text-4xl">🚀</span>
+                        <h3 className="text-sm font-black text-slate-800 mt-3">Select a team to view its data</h3>
+                        <p className="text-xs font-semibold text-slate-450 mt-1">Please select a team from the header dropdown to filter and view projects.</p>
+                      </div>
+                    ) : Object.keys(filteredGroupedProjects).length === 0 ? (
                       <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xs">
                         <span className="text-3xl">🚀</span>
                         <p className="text-xs font-semibold text-slate-500 mt-2">No projects loaded for this team.</p>
                       </div>
                     ) : (
-                      Object.entries(groupedProjects).map(([teamName, list]) => (
+                      Object.entries(filteredGroupedProjects).map(([teamName, list]) => (
                         <div key={teamName} className="space-y-3 pt-2">
                           <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">{teamName}</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3378,7 +4270,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  {campaigns.length === 0 ? (
+                   {role === "admin" && !activeDashboardTeam ? (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                      <span className="text-4xl">📣</span>
+                      <h3 className="text-sm font-black text-slate-800 mt-3">Select a team to view its data</h3>
+                      <p className="text-xs font-semibold text-slate-450 mt-1">Please select a team from the header dropdown to filter and view campaigns.</p>
+                    </div>
+                  ) : filteredCampaigns.length === 0 ? (
                     <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
                       <span className="text-4xl">📣</span>
                       <h3 className="text-sm font-black text-slate-800 mt-3">No campaigns loaded</h3>
@@ -3386,7 +4284,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {campaigns.map((c) => {
+                      {filteredCampaigns.map((c) => {
                         const statusColor = 
                           c.status === "completed" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
                           c.status === "active" ? "bg-sky-50 text-sky-700 border-sky-100" :
@@ -4050,7 +4948,13 @@ export default function App() {
                         </button>
                       </div>
 
-                      {filteredRequests.length === 0 ? (
+                       {role === "admin" && !activeDashboardTeam ? (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                          <span className="text-4xl">📅</span>
+                          <h3 className="text-sm font-black text-slate-800 mt-3">Select a team to view its data</h3>
+                          <p className="text-xs font-semibold text-slate-450 mt-1">Please select a team from the header dropdown to filter and view content requests.</p>
+                        </div>
+                      ) : filteredRequests.length === 0 ? (
                         <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
                           <span className="text-4xl">📋</span>
                           <h3 className="text-sm font-black text-slate-800 mt-3">No content requests found</h3>
@@ -4296,6 +5200,18 @@ export default function App() {
                     </button>
                   </div>
 
+                  {loggedInUser?.team === "Video Production" && (
+                    userCurrentFocusPlan ? (
+                      <div className="bg-teal-50/50 border border-teal-100 rounded-2xl p-3 flex items-center justify-between text-xs text-teal-800 font-bold mb-2">
+                        <span className="flex items-center gap-1.5">🎯 This month's assignment: <span className="font-extrabold text-teal-900 bg-white border border-teal-200 px-2 py-0.5 rounded-lg ml-1">{userCurrentFocusPlan.state} — {userCurrentFocusPlan.language}</span> <span className="text-[10px] text-slate-400 font-bold ml-2">assigned by {userCurrentFocusPlan.assigned_by}</span></span>
+                      </div>
+                    ) : (
+                      <div className="bg-orange-50/60 border border-orange-100 rounded-2xl p-3 text-xs text-orange-850 font-bold mb-2">
+                        ⚠️ No shoot plan assigned yet — contact your lead
+                      </div>
+                    )
+                  )}
+
                   {(() => {
                     const currentMonthNum = new Date().getMonth();
                     const currentYearNum = new Date().getFullYear();
@@ -4323,156 +5239,333 @@ export default function App() {
                   })()}
 
                   {(() => {
-                    const myKpis = kpis.filter(
-                      k => (role === "admin" || k.do_person === loggedInUser?.name) && (!k.kpi_type || k.kpi_type === "activity")
-                    );
-                    const d = new Date();
-                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-
-                    if (myKpis.length === 0) {
+                    if (role === "admin" && !activeDashboardTeam) {
                       return (
                         <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
                           <span className="text-4xl">📝</span>
-                          <h3 className="text-sm font-black text-slate-800 mt-3">No activity KPIs assigned</h3>
-                          <p className="text-xs font-semibold text-slate-450 mt-1">
-                            {role === "admin" ? "No activity KPIs exist in the database." : "You are not marked as the DO Person on any activity KPIs."}
-                          </p>
+                          <h3 className="text-sm font-black text-slate-800 mt-3">Select a team to view its data</h3>
+                          <p className="text-xs font-semibold text-slate-450 mt-1">Please select a team from the header dropdown to filter and view the Daily Log.</p>
                         </div>
                       );
                     }
 
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {myKpis.map(k => {
-                          const monthTarget = k.monthly_target?.[monthKey] ?? 0;
-                          const monthActual = getKpiActual(k, monthKey, kpis);
-                          const progressPercent = monthTarget > 0 ? Math.min(100, Math.round((monthActual / monthTarget) * 100)) : 0;
-                          const logs = todayLogs[k.id] || [];
+                    const d = new Date();
+                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-                          const localTodayStr = (() => {
-                            const dObj = new Date();
-                            const y = dObj.getFullYear();
-                            const m = String(dObj.getMonth() + 1).padStart(2, "0");
-                            const dy = String(dObj.getDate()).padStart(2, "0");
-                            return `${y}-${m}-${dy}`;
-                          })();
-                          const isSunday = new Date().getDay() === 0;
-                          const matchingHoliday = holidays.find(h => 
-                            h.holiday_date === localTodayStr && 
-                            (h.applies_to === "all" || h.applies_to === k.team)
-                          );
-                          const hasLeave = agentLeaves.some(l => 
-                            l.leave_date === localTodayStr && 
-                            l.agent_name === k.do_person
-                          );
-                          const isOffToday = isSunday || !!matchingHoliday || hasLeave;
-                          const offReason = isSunday ? "Sunday" : (matchingHoliday ? `Holiday: ${matchingHoliday.name}` : "On Leave");
+                    const renderKpiGrid = (list, isReadOnly = false) => {
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {list.map(k => {
+                            const monthTarget = k.monthly_target?.[monthKey] ?? 0;
+                            const monthActual = getKpiActual(k, monthKey, kpis);
+                            const progressPercent = monthTarget > 0 ? Math.min(100, Math.round((monthActual / monthTarget) * 100)) : 0;
+                            const logs = todayLogs[k.id] || [];
 
-                          return (
-                            <div key={k.id} className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4">
-                              <div>
-                                <h3 className="text-xs font-black text-slate-800 leading-snug">{k.name}</h3>
-                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-0.5">UOM: {k.unit || "Nos"}</p>
-                                
-                                <div className="grid grid-cols-2 gap-4 mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100 text-[10px] font-bold text-slate-600">
-                                  <div>
-                                    {k.has_daily_target ? (
-                                      isOffToday ? (
-                                        <>
-                                          <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
-                                          <span className="text-orange-700 text-xs font-black">Off today — no target</span>
-                                        </>
+                            const localTodayStr = (() => {
+                              const dObj = new Date();
+                              const y = dObj.getFullYear();
+                              const m = String(dObj.getMonth() + 1).padStart(2, "0");
+                              const dy = String(dObj.getDate()).padStart(2, "0");
+                              return `${y}-${m}-${dy}`;
+                            })();
+                            const isSunday = new Date().getDay() === 0;
+                            const matchingHoliday = holidays.find(h => 
+                              h.holiday_date === localTodayStr && 
+                              (h.applies_to === "all" || h.applies_to === k.team)
+                            );
+                            const hasLeave = agentLeaves.some(l => 
+                              l.leave_date === localTodayStr && 
+                              l.agent_name === k.do_person
+                            );
+                            const isOffToday = isSunday || !!matchingHoliday || hasLeave;
+                            const offReason = isSunday ? "Sunday" : (matchingHoliday ? `Holiday: ${matchingHoliday.name}` : "On Leave");
+
+                            return (
+                              <div key={k.id} className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+                                <div>
+                                  <h3 className="text-xs font-black text-slate-800 leading-snug">{k.name}</h3>
+                                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-0.5">UOM: {k.unit || "Nos"} | Team: {k.team || "-"}</p>
+                                  
+                                  <div className="grid grid-cols-2 gap-4 mt-3 bg-slate-50 rounded-xl p-3 border border-slate-100 text-[10px] font-bold text-slate-600">
+                                    <div>
+                                      {k.has_daily_target ? (
+                                        isOffToday ? (
+                                          <>
+                                            <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
+                                            <span className="text-orange-700 text-xs font-black">Off today — no target</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
+                                            <span className="text-orange-700 text-xs font-black">{k.daily_target ?? "Not set"}</span>
+                                          </>
+                                        )
                                       ) : (
                                         <>
-                                          <span className="text-orange-500 block uppercase tracking-wider text-[8px] mb-0.5">Today's Target</span>
-                                          <span className="text-orange-700 text-xs font-black">{k.daily_target ?? "Not set"}</span>
+                                          <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">This Month's Target</span>
+                                          <span className="text-slate-800 text-xs font-black">{monthTarget}</span>
                                         </>
-                                      )
-                                    ) : (
-                                      <>
-                                        <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">This Month's Target</span>
-                                        <span className="text-slate-800 text-xs font-black">{monthTarget}</span>
-                                      </>
-                                    )}
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">{k.has_daily_target ? "Month Actual" : "This Month's Actual"}</span>
+                                      <span className="text-slate-800 text-xs font-black">{monthActual}</span>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">{k.has_daily_target ? "Month Actual" : "This Month's Actual"}</span>
-                                    <span className="text-slate-800 text-xs font-black">{monthActual}</span>
-                                  </div>
+
+                                  {/* Progress Bar */}
+                                  {(!k.has_daily_target || (!isOffToday && (k.daily_target === null || k.daily_target === undefined))) && (
+                                    <div className="mt-3 space-y-1">
+                                      <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
+                                        <span>Month Progress</span>
+                                        <span className="text-slate-700">{progressPercent}%</span>
+                                      </div>
+                                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div 
+                                          className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-350"
+                                          style={{ width: `${progressPercent}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
 
-                                {/* Progress Bar */}
-                                {(!k.has_daily_target || (!isOffToday && (k.daily_target === null || k.daily_target === undefined))) && (
-                                  <div className="mt-3 space-y-1">
-                                    <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
-                                      <span>Month Progress</span>
-                                      <span className="text-slate-700">{progressPercent}%</span>
-                                    </div>
-                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                      <div 
-                                        className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-350"
-                                        style={{ width: `${progressPercent}%` }}
-                                      />
-                                    </div>
+                                {!isReadOnly && (
+                                  <div className="space-y-3 pt-2 border-t border-slate-50">
+                                    {k.has_daily_target && isOffToday ? (
+                                      <div className="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-center text-xs font-black text-orange-700 uppercase tracking-wider select-none">
+                                        🌴 Off Today ({offReason})
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1">
+                                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+                                            {k.has_daily_target ? "Enter today's achievement" : "Enter progress to add"}
+                                          </label>
+                                          <input
+                                            type="number"
+                                            step="any"
+                                            placeholder="0"
+                                            value={logInputs[k.id] || ""}
+                                            onChange={e => setLogInputs(prev => ({ ...prev, [k.id]: e.target.value }))}
+                                            className="w-full border border-orange-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                          />
+                                        </div>
+                                        <button
+                                          onClick={() => handleLogWork(k, logInputs[k.id] || "")}
+                                          className="bg-teal-500 hover:bg-teal-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors self-end h-[34px] flex items-center justify-center"
+                                        >
+                                          Submit
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {submitStatus[k.id] && (
+                                      <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-[10px] py-1.5 px-3 rounded-lg font-bold flex items-center gap-1">
+                                        <span>✅</span>
+                                        <span>{submitStatus[k.id]}</span>
+                                      </div>
+                                    )}
+
+                                    {logs.length > 0 && (
+                                      <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-[9.5px] font-bold text-slate-600">
+                                        <span className="text-[8px] uppercase text-slate-400 block mb-1">Today's Submissions:</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {logs.map((log, idx) => (
+                                            <span key={idx} className="bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-slate-800 font-mono">
+                                              +{log}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    };
 
-                              <div className="space-y-3 pt-2 border-t border-slate-50">
-                                {k.has_daily_target && isOffToday ? (
-                                  <div className="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-center text-xs font-black text-orange-700 uppercase tracking-wider select-none">
-                                    🌴 Off Today ({offReason})
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex-1">
-                                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                                        {k.has_daily_target ? "Enter today's achievement" : "Enter progress to add"}
-                                      </label>
-                                      <input
-                                        type="number"
-                                        step="any"
-                                        placeholder="0"
-                                        value={logInputs[k.id] || ""}
-                                        onChange={e => setLogInputs(prev => ({ ...prev, [k.id]: e.target.value }))}
-                                        className="w-full border border-orange-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500"
-                                      />
-                                    </div>
-                                    <button
-                                      onClick={() => handleLogWork(k, logInputs[k.id] || "")}
-                                      className="bg-teal-500 hover:bg-teal-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs transition-colors self-end h-[34px] flex items-center justify-center"
-                                    >
-                                      Submit
-                                    </button>
-                                  </div>
-                                )}
+                    if (role === "admin") {
+                      const myKpis = kpis.filter(k => {
+                        if (k.kpi_type && k.kpi_type !== "activity") return false;
+                        if (k.team !== activeDashboardTeam) return false;
+                        if (activeDashboardPerson && k.do_person !== activeDashboardPerson) return false;
+                        return true;
+                      });
 
-                                {submitStatus[k.id] && (
-                                  <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-[10px] py-1.5 px-3 rounded-lg font-bold flex items-center gap-1">
-                                    <span>✅</span>
-                                    <span>{submitStatus[k.id]}</span>
-                                  </div>
-                                )}
+                      if (myKpis.length === 0) {
+                        return (
+                          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                            <span className="text-4xl">📝</span>
+                            <h3 className="text-sm font-black text-slate-800 mt-3">No activity KPIs assigned</h3>
+                            <p className="text-xs font-semibold text-slate-450 mt-1">No activity KPIs exist for the selected team/member.</p>
+                          </div>
+                        );
+                      }
 
-                                {logs.length > 0 && (
-                                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-[9.5px] font-bold text-slate-600">
-                                    <span className="text-[8px] uppercase text-slate-400 block mb-1">Today's Submissions:</span>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {logs.map((log, idx) => (
-                                        <span key={idx} className="bg-white border border-slate-200 px-2 py-0.5 rounded-lg text-slate-800 font-mono">
-                                          +{log}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                      return renderKpiGrid(myKpis, false);
+                    } else {
+                      const myKpis = kpis.filter(k => k.do_person === loggedInUser?.name && (!k.kpi_type || k.kpi_type === "activity"));
+                      const driveKpis = kpis.filter(k => k.drive_person === loggedInUser?.name && k.do_person !== loggedInUser?.name && (!k.kpi_type || k.kpi_type === "activity"));
+                      const monitorKpis = kpis.filter(k => k.monitor_person === loggedInUser?.name && k.do_person !== loggedInUser?.name && k.drive_person !== loggedInUser?.name && (!k.kpi_type || k.kpi_type === "activity"));
+
+                      if (myKpis.length === 0 && driveKpis.length === 0 && monitorKpis.length === 0) {
+                        return (
+                          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                            <span className="text-4xl">📝</span>
+                            <h3 className="text-sm font-black text-slate-800 mt-3">No activity KPIs assigned</h3>
+                            <p className="text-xs font-semibold text-slate-450 mt-1">You do not have any KPIs assigned to log, drive, or monitor.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-8">
+                          {myKpis.length > 0 && (
+                            <div className="space-y-3">
+                              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">My KPIs</h3>
+                              {renderKpiGrid(myKpis, false)}
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
+                          )}
+                          {driveKpis.length > 0 && (
+                            <div className="space-y-3">
+                              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">Team I Drive</h3>
+                              {renderKpiGrid(driveKpis, true)}
+                            </div>
+                          )}
+                          {monitorKpis.length > 0 && (
+                            <div className="space-y-3">
+                              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider pl-1">Team I Monitor</h3>
+                              {renderKpiGrid(monitorKpis, true)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
                   })()}
+                </div>
+              )}
+
+              {screen === "approvals" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Approvals Queue</h2>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Review and action pending approvals assigned to you</p>
+                  </div>
+
+                  {approvalsQueue.length === 0 ? (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
+                      <span className="text-4xl">✅</span>
+                      <h3 className="text-sm font-black text-slate-800 mt-3">All caught up!</h3>
+                      <p className="text-xs font-semibold text-slate-450 mt-1">No pending approvals or reviews for you at this time.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {approvalsQueue.map((item) => (
+                        <div key={`${item.type}-${item.id}`} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+                          <div>
+                            <div className="flex justify-between items-start">
+                              <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                item.type === "kpi" ? "bg-orange-100 text-orange-700" : "bg-sky-100 text-sky-700"
+                              }`}>
+                                {item.type === "kpi" ? "KPI Submission" : "Content Review"}
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-mono">
+                                {new Date(item.submitted_at).toLocaleDateString()}
+                              </span>
+                            </div>
+
+                            <h3 className="text-xs font-black text-slate-800 mt-2 leading-snug">
+                              {item.title}
+                            </h3>
+
+                            {item.type === "kpi" ? (
+                              <div className="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-bold text-slate-600 space-y-1">
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400 uppercase text-[8px]">Submitted By:</span>
+                                  <span className="text-slate-800">{item.submitted_by}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400 uppercase text-[8px]">Amount:</span>
+                                  <span className="text-slate-800 font-mono">+{item.amount} ({item.kpi.unit || "Nos"})</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400 uppercase text-[8px]">Month:</span>
+                                  <span className="text-slate-800 font-mono">{item.month_key}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400 uppercase text-[8px]">Role:</span>
+                                  <span className="text-orange-600 uppercase text-[9px] font-black">
+                                    {item.status === "pending_checker" ? "Checker" : "Approver"}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-3 text-[10px] font-bold text-slate-600 space-y-1">
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400 uppercase text-[8px]">Assigned Team:</span>
+                                  <span className="text-slate-800">{item.request.assigned_team}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400 uppercase text-[8px]">Submitted By:</span>
+                                  <span className="text-slate-800">{item.submitted_by || "Unassigned"}</span>
+                                </div>
+                                {item.request.drive_link && (
+                                  <div className="mt-2 pt-2 border-t border-slate-200">
+                                    <a
+                                      href={item.request.drive_link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="bg-sky-50 hover:bg-sky-100 text-sky-700 font-black px-2.5 py-1 rounded-xl text-[9px] border border-sky-100 transition-colors inline-flex items-center gap-1.5"
+                                    >
+                                      <span>🔗 View Drive Deliverable</span>
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 pt-2 border-t border-slate-50">
+                            {item.type === "kpi" ? (
+                              <>
+                                <button
+                                  onClick={() => handleKpiApproval(item, "reject")}
+                                  className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-xs py-2 rounded-xl transition-colors border border-rose-100"
+                                >
+                                  Reject
+                                </button>
+                                <button
+                                  onClick={() => handleKpiApproval(item, "approve")}
+                                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs py-2 rounded-xl transition-colors shadow-xs"
+                                >
+                                  Approve
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleRejectContentRequest(item.id)}
+                                  className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black text-xs py-2 rounded-xl transition-colors border border-rose-100"
+                                >
+                                  Reject
+                                </button>
+                                <button
+                                  onClick={() => handleApproveContentRequest(item.id, loggedInUser.name)}
+                                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs py-2 rounded-xl transition-colors shadow-xs"
+                                >
+                                  Approve
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

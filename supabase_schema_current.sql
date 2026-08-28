@@ -1,144 +1,113 @@
--- Supabase Schema - Current State (As of 2026-08-24)
--- Contains the actual current structure of all tables, views, and schemas.
+-- Supabase Schema - Current State (Generated on 2026-08-28T17:45:55.557Z)
 
--- Enable UUID generation extension if not present
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- 1. Teams Table
+-- Table: teams
 CREATE TABLE IF NOT EXISTS teams (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL,
-    description TEXT,
-    lead VARCHAR(255),
-    employee_id VARCHAR(50)
+    id (type_unknown),
+    name (type_unknown),
+    lead_name (type_unknown)
 );
 
--- 2. Team Members Table
+-- Table: team_members
 CREATE TABLE IF NOT EXISTS team_members (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    employee_id VARCHAR(50) UNIQUE NOT NULL,
-    designation VARCHAR(255),
-    experience NUMERIC,
-    reporting_manager VARCHAR(255),
-    description TEXT, -- JSON configuration stored as text locally
-    login_id VARCHAR(255),
-    password VARCHAR(255)
+    id (type_unknown),
+    name (type_unknown),
+    team (type_unknown),
+    login_id (type_unknown),
+    password_hash (type_unknown),
+    designation (type_unknown),
+    sub_team (type_unknown)
 );
 
--- 3. KPIs Table
+-- Table: kpis
 CREATE TABLE IF NOT EXISTS kpis (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    unit VARCHAR(50) DEFAULT ' Nos',
-    target NUMERIC DEFAULT 0.0,
-    direction VARCHAR(50) DEFAULT 'higher',
-    team VARCHAR(255) NOT NULL,
-    owner VARCHAR(255) NOT NULL,
-    checker VARCHAR(255),
-    approver VARCHAR(255),
-    ai_check_enabled BOOLEAN DEFAULT FALSE,
-    drive_by VARCHAR(255) DEFAULT '',
-    monitor_by VARCHAR(255) DEFAULT '',
-    kra VARCHAR(255),
-    description TEXT DEFAULT '',
-    history JSONB DEFAULT '[]'::jsonb,
-    daily_actual JSONB DEFAULT '{}'::jsonb,
-    revised_alloc JSONB DEFAULT '{}'::jsonb,
-    custom_holidays JSONB DEFAULT '{}'::jsonb,
-    holidays_enabled BOOLEAN DEFAULT true,
-    target_type VARCHAR(50) DEFAULT 'daily',
-    targets_list JSONB DEFAULT '[]'::jsonb,
-    monthly_alloc JSONB DEFAULT '{}'::jsonb,
-    monthly_actual JSONB DEFAULT '{}'::jsonb,
-    weekly_alloc JSONB DEFAULT '{}'::jsonb,
-    weekly_actual JSONB DEFAULT '{}'::jsonb,
-    daily_alloc JSONB DEFAULT '{}'::jsonb,
-    kpi_type TEXT DEFAULT 'activity',
-    report_config JSONB DEFAULT '{}'::jsonb,
-    is_initiated_type BOOLEAN DEFAULT false,
-    initiated_at TIMESTAMPTZ,
-    initiated_by VARCHAR(255)
+    id (type_unknown),
+    name (type_unknown),
+    team (type_unknown),
+    market (type_unknown),
+    unit (type_unknown),
+    direction (type_unknown),
+    cy_target (type_unknown),
+    monthly_target (type_unknown),
+    monthly_actual (type_unknown),
+    do_person (type_unknown),
+    drive_person (type_unknown),
+    monitor_person (type_unknown),
+    checker (type_unknown),
+    approver (type_unknown),
+    kpi_type (type_unknown),
+    report_config (type_unknown),
+    category (type_unknown),
+    history (type_unknown),
+    created_at (type_unknown),
+    ai_checking_enabled (type_unknown),
+    daily_target (type_unknown),
+    has_daily_target (type_unknown)
 );
 
--- 4. Projects Table
+-- Table: projects
 CREATE TABLE IF NOT EXISTS projects (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    team VARCHAR(255) NOT NULL,
-    lead VARCHAR(255) NOT NULL,
-    stages JSONB DEFAULT '[]'::jsonb,
-    current_stage_idx INT DEFAULT 0
+    id (type_unknown),
+    title (type_unknown),
+    team (type_unknown),
+    do_person (type_unknown),
+    drive_person (type_unknown),
+    linked_kpi_id (type_unknown),
+    objective (type_unknown),
+    status (type_unknown),
+    created_at (type_unknown)
 );
 
--- 5. Client Projects Table
-CREATE TABLE IF NOT EXISTS client_projects (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    objective TEXT,
-    company_details TEXT,
-    attachments JSONB DEFAULT '[]'::jsonb,
-    stages JSONB DEFAULT '[]'::jsonb,
-    current_stage_idx INT DEFAULT 0,
-    ai_chats JSONB DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Table: holidays
+CREATE TABLE IF NOT EXISTS holidays (
+    -- no rows to inspect columns
 );
 
--- 6. Client Project Logs Table
-CREATE TABLE IF NOT EXISTS client_project_logs (
-    id SERIAL PRIMARY KEY,
-    project_id INTEGER REFERENCES client_projects(id) ON DELETE CASCADE,
-    log_text TEXT NOT NULL,
-    author VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Table: agent_leaves
+CREATE TABLE IF NOT EXISTS agent_leaves (
+    -- no rows to inspect columns
 );
 
--- 7. Notifications Table
-CREATE TABLE IF NOT EXISTS notifications (
-    id SERIAL PRIMARY KEY,
-    type VARCHAR(50) NOT NULL, -- 'date_mismatch', 'reminder'
-    title VARCHAR(100),
-    message TEXT NOT NULL,
-    related_kpi_id INT REFERENCES kpis(id) ON DELETE CASCADE,
-    related_project_id INT REFERENCES projects(id) ON DELETE CASCADE,
-    recipient VARCHAR(100) NOT NULL, -- employee name matching employee's name
-    status VARCHAR(20) DEFAULT 'unread', -- 'unread', 'read'
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+-- Table: campaigns
+CREATE TABLE IF NOT EXISTS campaigns (
+    -- no rows to inspect columns
 );
 
--- 8. Individual Tasks Table
-CREATE TABLE IF NOT EXISTS individual_tasks (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    team VARCHAR(255) NOT NULL,
-    assignee VARCHAR(255) NOT NULL,
-    due_date DATE,
-    status VARCHAR(50) DEFAULT 'pending',
-    priority VARCHAR(20) DEFAULT 'normal',
-    kpi_id INTEGER REFERENCES kpis(id) ON DELETE SET NULL,
-    is_recurring BOOLEAN DEFAULT false,
-    recurrence_type VARCHAR(50),
-    recurrence_value VARCHAR(50),
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 9. Ad Performance Table
+-- Table: ad_performance
 CREATE TABLE IF NOT EXISTS ad_performance (
-    id SERIAL PRIMARY KEY,
-    campaign_id INTEGER REFERENCES campaigns(id) ON DELETE CASCADE,
-    campaign_name VARCHAR(255),
-    adset_name VARCHAR(255),
-    ad_name VARCHAR(255),
-    spend NUMERIC DEFAULT 0.0,
-    reach BIGINT DEFAULT 0,
-    leads INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now()
+    -- no rows to inspect columns
 );
-ALTER TABLE ad_performance ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "app access" ON ad_performance FOR ALL USING (true) WITH CHECK (true);
+
+-- Table: content_requests
+CREATE TABLE IF NOT EXISTS content_requests (
+    id (type_unknown),
+    task_number (type_unknown),
+    campaign_id (type_unknown),
+    content_type (type_unknown),
+    requested_by (type_unknown),
+    assigned_team (type_unknown),
+    channel (type_unknown),
+    planned_post_date (type_unknown),
+    required_by_date (type_unknown),
+    status (type_unknown),
+    ai_suggestion (type_unknown),
+    drive_link (type_unknown),
+    posted_link (type_unknown),
+    linked_kpi_id (type_unknown),
+    title (type_unknown),
+    brief (type_unknown),
+    request_number (type_unknown),
+    is_recurring (type_unknown),
+    recurrence_type (type_unknown),
+    recurrence_end_date (type_unknown),
+    recurrence_parent_id (type_unknown),
+    accepted_by (type_unknown),
+    accepted_at (type_unknown),
+    approved_by (type_unknown),
+    approved_at (type_unknown)
+);
+
+-- Table: monthly_focus_plans
+CREATE TABLE IF NOT EXISTS monthly_focus_plans (
+    -- no rows to inspect columns
+);
 
