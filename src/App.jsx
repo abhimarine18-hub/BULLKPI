@@ -124,8 +124,8 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-orange-100 flex flex-col">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex flex-col">
+      <form onSubmit={handleSubmit} className="bg-white w-full h-full overflow-y-auto flex flex-col">
         <div className="bg-orange-50 px-6 py-4 border-b border-orange-100 flex items-center justify-between sticky top-0 z-10">
           <h3 className="font-black text-slate-800 text-sm">{isEdit ? "Edit KPI details" : "Create new KPI"}</h3>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-650 transition-colors">
@@ -135,8 +135,8 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
 
         <div className="p-6 space-y-5 text-xs font-semibold text-slate-650 flex-1 overflow-y-auto">
           {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1 md:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="space-y-1 sm:col-span-2 md:col-span-3 lg:col-span-5">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">KPI Name</label>
               <input required type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
             </div>
@@ -184,7 +184,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
               <input type="number" step="any" value={formData.cy_target} onChange={e => setFormData(prev => ({ ...prev, cy_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
             </div>
 
-            <div className="flex items-center gap-2 md:col-span-2 py-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 select-none">
+            <div className="flex items-center gap-2 sm:col-span-2 md:col-span-3 lg:col-span-5 py-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 select-none">
               <input
                 type="checkbox"
                 id="enable_daily_target"
@@ -198,13 +198,13 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
             </div>
 
             {formData.has_daily_target ? (
-              <div className="space-y-1 md:col-span-2">
+              <div className="space-y-1 sm:col-span-2 md:col-span-3 lg:col-span-5">
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Daily Target (per working day)</label>
                 <input type="number" step="any" value={formData.daily_target} onChange={e => setFormData(prev => ({ ...prev, daily_target: e.target.value }))} className="w-full border border-orange-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 font-semibold" />
                 <span className="text-[9.5px] text-slate-400 font-medium block mt-0.5">Excludes Sundays, holidays, and agent leave automatically.</span>
               </div>
             ) : (
-              <div className="bg-slate-100/50 border border-slate-200 border-dashed rounded-xl p-3 text-center text-slate-450 font-semibold text-[10px] md:col-span-2 select-none">
+              <div className="bg-slate-100/50 border border-slate-200 border-dashed rounded-xl p-3 text-center text-slate-455 font-semibold text-[10px] sm:col-span-2 md:col-span-3 lg:col-span-5 select-none">
                 ℹ️ This KPI is tracked monthly only — must be completed by month end.
               </div>
             )}
@@ -260,7 +260,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
             </div>
 
             {/* Checkbox for AI Checking Enabled */}
-            <div className="flex items-center gap-2 md:col-span-2 py-1 bg-slate-50 border border-slate-100 rounded-xl px-3 mt-1 select-none">
+            <div className="flex items-center gap-2 sm:col-span-2 md:col-span-3 lg:col-span-5 py-1.5 bg-slate-50 border border-slate-100 rounded-xl px-3 mt-1 select-none">
               <input
                 type="checkbox"
                 id="ai_checking"
@@ -279,7 +279,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
           {/* Monthly Targets */}
           <div className="space-y-2">
             <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Monthly Targets</h4>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
               {FY_KEYS.map(mKey => {
                 const val = formData.monthly_target?.[mKey] ?? "";
                 return (
@@ -300,7 +300,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
               <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider block">Monthly Actuals</h4>
               <span className="text-[9px] bg-amber-50 text-amber-700 font-black px-2 py-0.5 rounded-full border border-amber-100">Manual override (temporary)</span>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
               {FY_KEYS.map(mKey => {
                 const val = formData.monthly_actual?.[mKey] ?? "";
                 return (
