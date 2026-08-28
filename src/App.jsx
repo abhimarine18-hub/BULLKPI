@@ -4,14 +4,6 @@ import {
   Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen, Calendar
 } from "lucide-react";
 
-export const TEAM_LEADS = {
-  "Digital Marketing": "Anand Kumar",
-  "Video Production": "Sandeep",
-  "Graphic Designing": "Sandeep",
-  "Enquiry Management": "Malathi",
-  "CRM and Coordinator": "Abhilash",
-  "Expo and Events": "Anitha"
-};
 
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -1298,6 +1290,25 @@ export default function App() {
     }
   };
 
+  const handleSaveTeamLead = async (teamId, newLeadName) => {
+    try {
+      const { error } = await supabase
+        .from("teams")
+        .update({ lead_name: newLeadName.trim() })
+        .eq("id", teamId);
+      
+      if (error) {
+        alert("Error saving team lead: " + error.message);
+      } else {
+        setTeams(prev => prev.map(t => t.id === teamId ? { ...t, lead_name: newLeadName.trim() } : t));
+        alert("Team lead saved successfully!");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred: " + err.message);
+    }
+  };
+
   const handleMarkLeave = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!leaveAgentName || !leaveDate) return;
@@ -1422,6 +1433,29 @@ export default function App() {
 
   const [membersMap, setMembersMap] = useState({});
   const [teamMembers, setTeamMembers] = useState([]);
+  const [teams, setTeams] = useState([]);
+
+  const fetchTeams = async () => {
+    try {
+      const { data, error } = await supabase.from("teams").select("id, name, lead_name");
+      if (error) {
+        console.error("Error loading teams:", error.message);
+      } else if (data) {
+        const order = [
+          "Digital Marketing",
+          "Video Production",
+          "Graphic Designing",
+          "Enquiry Management",
+          "CRM and Coordinator",
+          "Expo and Events"
+        ];
+        const sorted = data.sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+        setTeams(sorted);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchMemberDesignations = async () => {
     try {
@@ -1438,6 +1472,7 @@ export default function App() {
         setMembersMap(map);
         setTeamMembers(data);
       }
+      fetchTeams();
     } catch (e) {
       console.error(e);
     }
@@ -2666,15 +2701,27 @@ export default function App() {
               )}
 
               {role === "admin" && (
-                <button
-                  onClick={() => { setScreen("holidays"); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-                    screen === "holidays" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
-                  }`}
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span>Holidays</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => { setScreen("holidays"); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                      screen === "holidays" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                    }`}
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Holidays</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setScreen("manage_teams"); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                      screen === "manage_teams" ? "bg-orange-100 text-orange-700 font-bold" : "text-slate-500 hover:bg-orange-50"
+                    }`}
+                  >
+                    <Menu className="h-4 w-4" />
+                    <span>Manage Teams</span>
+                  </button>
+                </>
               )}
             </nav>
 
@@ -2725,12 +2772,9 @@ export default function App() {
                     onChange={(e) => setActiveDashboardTeam(e.target.value)}
                     className="border border-orange-200 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   >
-                    <option value="Digital Marketing">Digital Marketing — Anand Kumar</option>
-                    <option value="Video Production">Video Production — Sandeep</option>
-                    <option value="Graphic Designing">Graphic Designing — Sandeep</option>
-                    <option value="Enquiry Management">Enquiry Management — Malathi</option>
-                    <option value="CRM and Coordinator">CRM and Coordinator — Abhilash</option>
-                    <option value="Expo and Events">Expo and Events — Anitha</option>
+                    {teams.map(t => (
+                      <option key={t.id} value={t.name}>{t.name} — {t.lead_name || "No Lead"}</option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -2774,7 +2818,7 @@ export default function App() {
 
                   {/* Team Members Section */}
                   {(() => {
-                    const leadName = TEAM_LEADS[activeDashboardTeam];
+                    const leadName = teams.find(t => t.name === activeDashboardTeam)?.lead_name;
                     const members = teamMembers.filter(m => m.team === activeDashboardTeam && m.name !== leadName);
                     
                     // Group members by sub_team
@@ -4432,7 +4476,7 @@ export default function App() {
                 </div>
               )}
 
-              {screen === "holidays" && role === "admin" && (
+                     {screen === "holidays" && role === "admin" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
                     <div>
@@ -4590,7 +4634,7 @@ export default function App() {
                                   </div>
                                   <button
                                     onClick={() => handleDeleteHoliday(h.id)}
-                                    className="text-red-500 hover:text-red-600 font-extrabold text-[10px] p-1 rounded hover:bg-red-50"
+                                    className="text-red-500 hover:text-red-650 font-extrabold text-[10px] p-1 rounded hover:bg-red-50"
                                   >
                                     Remove
                                   </button>
@@ -4599,6 +4643,51 @@ export default function App() {
                           </div>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {screen === "manage_teams" && role === "admin" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">Manage Teams & Leads</h2>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Update vertical department heads and managers dynamically</p>
+                  </div>
+
+                  <div className="bg-white border border-orange-100 rounded-3xl p-6 shadow-xs max-w-2xl space-y-4">
+                    <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider border-b border-slate-100 pb-2.5">Active Verticals</h3>
+                    
+                    <div className="divide-y divide-slate-100">
+                      {teams.map(t => {
+                        return (
+                          <div key={t.id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-0.5">
+                              <span className="text-xs font-black text-slate-800 block">{t.name}</span>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">ID: {t.id}</span>
+                            </div>
+
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                              <input
+                                type="text"
+                                defaultValue={t.lead_name || ""}
+                                id={`lead_input_${t.id}`}
+                                placeholder="Lead Name..."
+                                className="border border-orange-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white w-full sm:w-60"
+                              />
+                              <button
+                                onClick={() => {
+                                  const val = document.getElementById(`lead_input_${t.id}`).value;
+                                  handleSaveTeamLead(t.id, val);
+                                }}
+                                className="bg-teal-500 hover:bg-teal-650 text-white font-bold text-[10.5px] px-4 py-2 rounded-xl shrink-0 transition-colors shadow-xs"
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
