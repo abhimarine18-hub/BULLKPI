@@ -4,6 +4,15 @@ import {
   Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen, Calendar
 } from "lucide-react";
 
+export const TEAM_LEADS = {
+  "Digital Marketing": "Anand Kumar",
+  "Video Production": "Sandeep",
+  "Graphic Designing": "Sandeep",
+  "Enquiry Management": "Malathi",
+  "CRM and Coordinator": "Abhilash",
+  "Expo and Events": "Anitha"
+};
+
 export const MONTHS_LIST = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export const FY_KEYS = [
@@ -1412,10 +1421,11 @@ export default function App() {
   const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
 
   const [membersMap, setMembersMap] = useState({});
+  const [teamMembers, setTeamMembers] = useState([]);
 
   const fetchMemberDesignations = async () => {
     try {
-      const { data, error } = await supabase.from("team_members").select("name, designation");
+      const { data, error } = await supabase.from("team_members").select("name, designation, team");
       if (error) {
         console.error("Error loading team member designations:", error.message);
       } else if (data) {
@@ -1426,6 +1436,7 @@ export default function App() {
           }
         });
         setMembersMap(map);
+        setTeamMembers(data);
       }
     } catch (e) {
       console.error(e);
@@ -2714,12 +2725,12 @@ export default function App() {
                     onChange={(e) => setActiveDashboardTeam(e.target.value)}
                     className="border border-orange-200 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
                   >
-                    <option value="Digital Marketing">Digital Marketing</option>
-                    <option value="Video Production">Video Production</option>
-                    <option value="Graphic Designing">Graphic Designing</option>
-                    <option value="Enquiry Management">Enquiry Management</option>
-                    <option value="CRM and Coordinator">CRM and Coordinator</option>
-                    <option value="Expo and Events">Expo and Events</option>
+                    <option value="Digital Marketing">Digital Marketing — Anand Kumar</option>
+                    <option value="Video Production">Video Production — Sandeep</option>
+                    <option value="Graphic Designing">Graphic Designing — Sandeep</option>
+                    <option value="Enquiry Management">Enquiry Management — Malathi</option>
+                    <option value="CRM and Coordinator">CRM and Coordinator — Abhilash</option>
+                    <option value="Expo and Events">Expo and Events — Anitha</option>
                   </select>
                 </div>
               )}
@@ -2760,6 +2771,47 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Team Members Section */}
+                  {(() => {
+                    const leadName = TEAM_LEADS[activeDashboardTeam];
+                    const members = teamMembers.filter(m => m.team === activeDashboardTeam && m.name !== leadName);
+                    
+                    return (
+                      <div className="bg-white border border-orange-100 rounded-3xl p-5 shadow-xs space-y-3.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-850 uppercase tracking-wider">Team Vertical</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Directory & assignment roster</p>
+                          </div>
+                          {leadName && (
+                            <div className="bg-orange-50 border border-orange-150 text-orange-850 text-[10.5px] font-black px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5 self-start select-none shadow-xs">
+                              <span>👑</span>
+                              <span>Led by <strong className="font-extrabold text-orange-950">{leadName}</strong></span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block mb-2">Team Members ({members.length})</span>
+                          {members.length === 0 ? (
+                            <p className="text-[10.5px] text-slate-455 font-bold italic py-1">No other team members assigned to this vertical.</p>
+                          ) : (
+                            <div className="flex flex-wrap gap-2">
+                              {members.map(m => (
+                                <div key={m.name} className="bg-slate-50 border border-slate-150 rounded-2xl px-3 py-1.5 flex flex-col justify-start text-left shadow-2xs">
+                                  <span className="text-[11px] font-bold text-slate-800">{m.name}</span>
+                                  {m.designation && (
+                                    <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">{m.designation}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Personal Dashboard Section for non-admin */}
                   {role !== "admin" && (
