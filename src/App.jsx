@@ -1421,6 +1421,11 @@ export default function App() {
   const [isRaiseTaskOpen, setIsRaiseTaskOpen] = useState(false);
   const [newTaskForm, setNewTaskForm] = useState({ title: "", description: "", assigned_to: "", due_date: "" });
 
+  // Standalone Tasks Screen State
+  const [tasksTab, setTasksTab] = useState("assigned");
+  const [raiseFormOpen, setRaiseFormOpen] = useState(false);
+  const [taskForm, setTaskForm] = useState({ title: "", description: "", team: "", assigned_to: "", due_date: "" });
+
   const [selectedHolidayDate, setSelectedHolidayDate] = useState("");
   const [holidayName, setHolidayName] = useState("");
   const [holidayAppliesTo, setHolidayAppliesTo] = useState("all");
@@ -5922,9 +5927,6 @@ export default function App() {
               {screen === "tasks" && (
                 <div className="space-y-6">
                   {(() => {
-                    const [tasksTab, setTasksTab] = useState("assigned");
-                    const [raiseFormOpen, setRaiseFormOpen] = useState(false);
-                    const [taskForm, setTaskForm] = useState({ title: "", description: "", team: "", assigned_to: "", due_date: "" });
                     const today = new Date().toISOString().split("T")[0];
 
                     const currentSelectedTeam = role === "admin" ? activeDashboardTeam : loggedInUser?.team;
