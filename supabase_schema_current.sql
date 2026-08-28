@@ -1,4 +1,4 @@
--- Supabase Schema - Current State (Generated on 2026-08-28T17:45:55.557Z)
+-- Supabase Schema - Current State (Generated on 2026-08-28T18:51:16.974Z)
 
 -- Table: teams
 CREATE TABLE IF NOT EXISTS teams (
@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS kpis (
     created_at (type_unknown),
     ai_checking_enabled (type_unknown),
     daily_target (type_unknown),
-    has_daily_target (type_unknown)
+    has_daily_target (type_unknown),
+    monthly_target_revised (type_unknown)
 );
 
 -- Table: projects

@@ -47,6 +47,15 @@ export const getKpiActual = (kpi, monthKey, allKpis = []) => {
   return kpi.monthly_actual?.[monthKey] ?? 0;
 };
 
+export const getMonthlyTarget = (kpi, monthKey) => {
+  if (!kpi) return 0;
+  const rev = kpi.monthly_target_revised?.[monthKey];
+  if (rev !== undefined && rev !== null && rev !== "") {
+    return parseFloat(rev) || 0;
+  }
+  return parseFloat(kpi.monthly_target?.[monthKey]) || 0;
+};
+
 function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = [], agentLeaves = [], kpis = [] }) {
   const [previewMonthKey, setPreviewMonthKey] = useState(() => {
     const d = new Date();
@@ -417,10 +426,20 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
               {FY_KEYS.map(mKey => {
                 const val = formData.monthly_target?.[mKey] ?? "";
+                const originalVal = isEdit ? (kpi?.monthly_target?.[mKey] ?? null) : null;
+                const revisedVal = isEdit ? (kpi?.monthly_target_revised?.[mKey] ?? null) : null;
+                const hasRevision = revisedVal !== undefined && revisedVal !== null && revisedVal !== "";
                 return (
                   <div key={mKey} className="space-y-0.5">
                     <label className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider text-center">{formatKeyToLabel(mKey)}</label>
-                    <input type="number" step="any" value={val} onChange={e => handleMonthTargetChange(mKey, e.target.value)} className="w-full border border-orange-200 rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800" />
+                    {hasRevision && (
+                      <div className="flex flex-col items-center gap-0.5 mb-1">
+                        <span className="text-[9px] text-slate-400 line-through font-mono">{originalVal}</span>
+                        <span className="text-[9px] font-black text-orange-600 font-mono">{revisedVal}</span>
+                        <span className="text-[8px] bg-orange-50 text-orange-600 border border-orange-200 px-1 rounded font-black uppercase tracking-wide">Revised</span>
+                      </div>
+                    )}
+                    <input type="number" step="any" value={val} onChange={e => handleMonthTargetChange(mKey, e.target.value)} className={`w-full border rounded-xl px-2 py-1.5 text-[11px] text-center font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 ${hasRevision ? "border-orange-300 bg-orange-50/40" : "border-orange-200"}`} />
                   </div>
                 );
               })}
@@ -1489,7 +1508,7 @@ export default function App() {
           }));
           
           // Set success message
-          const targetVal = kpi.monthly_target?.[currentMonthKey] || 0;
+          const targetVal = getMonthlyTarget(kpi, currentMonthKey);
           setSubmitStatus(prev => ({
             ...prev,
             [kpi.id]: `Added ${amount} — month total now ${newVal}/${targetVal}.`
@@ -1994,6 +2013,46 @@ export default function App() {
   const handleSaveKpi = async (payload) => {
     try {
       if (selectedKpi) {
+        // Revision logic
+        const monthlyTarget = { ...(selectedKpi.monthly_target || {}) };
+        const monthlyTargetRevised = { ...(selectedKpi.monthly_target_revised || {}) };
+        const revisedTargetLog = [...(selectedKpi.revised_target_log || [])];
+
+        const allMonths = Array.from(new Set([
+          ...Object.keys(selectedKpi.monthly_target || {}),
+          ...Object.keys(payload.monthly_target || {})
+        ]));
+
+        allMonths.forEach(month => {
+          const oldVal = selectedKpi.monthly_target?.[month];
+          const newVal = payload.monthly_target?.[month];
+          
+          if (newVal !== oldVal) {
+            const hasOriginal = oldVal !== undefined && oldVal !== null && oldVal !== "";
+            if (hasOriginal) {
+              const currentRevVal = selectedKpi.monthly_target_revised?.[month];
+              const previousTarget = currentRevVal !== undefined && currentRevVal !== null && currentRevVal !== "" ? currentRevVal : oldVal;
+
+              if (newVal !== currentRevVal) {
+                monthlyTargetRevised[month] = newVal;
+                revisedTargetLog.push({
+                  month,
+                  old_value: previousTarget,
+                  new_value: newVal,
+                  changed_by: loggedInUser?.name || "Admin",
+                  changed_at: new Date().toISOString()
+                });
+              }
+            } else {
+              monthlyTarget[month] = newVal;
+            }
+          }
+        });
+
+        payload.monthly_target = monthlyTarget;
+        payload.monthly_target_revised = monthlyTargetRevised;
+        payload.revised_target_log = revisedTargetLog;
+
         // Update
         const { data, error } = await supabase
           .from("kpis")
@@ -2836,7 +2895,7 @@ export default function App() {
 
     return types.map(t => {
       const linkedKpi = getLinkedKpiForContentType(t.type);
-      const target = linkedKpi?.monthly_target?.[monthKey] ?? 0;
+      const target = linkedKpi ? getMonthlyTarget(linkedKpi, monthKey) : 0;
       
       const scheduled = monthlyRequests.filter(r => 
         (r.linked_kpi_id && linkedKpi && r.linked_kpi_id === linkedKpi.id) ||
@@ -2947,7 +3006,7 @@ export default function App() {
     let atRisk = 0;
     let offTrack = 0;
     dashboardKpis.forEach(k => {
-      const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+      const targetVal = getMonthlyTarget(k, currentMonthKey);
       const actualVal = getKpiActual(k, currentMonthKey, kpis);
       if (targetVal === 0) {
         onTrack++;
@@ -3709,7 +3768,7 @@ export default function App() {
                           ) : (
                             <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto pr-1">
                               {personalKpis.map(k => {
-                                const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+                                const targetVal = getMonthlyTarget(k, currentMonthKey);
                                 const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                 return (
                                   <div key={k.id} className="py-2.5 flex items-center justify-between gap-4 text-[11px]">
@@ -3788,7 +3847,7 @@ export default function App() {
                               </tr>
                             ) : (
                               dashboardKpis.map(k => {
-                                const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+                                const targetVal = getMonthlyTarget(k, currentMonthKey);
                                 const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                 return (
                                   <tr
@@ -3824,7 +3883,19 @@ export default function App() {
                                       )}
                                     </td>
                                     <td className="px-4 py-3 text-right font-mono font-bold text-slate-600">
-                                      {targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-"}
+                                      {(() => {
+                                        const origT = k.monthly_target?.[currentMonthKey];
+                                        const revT = k.monthly_target_revised?.[currentMonthKey];
+                                        const hasRev = revT !== undefined && revT !== null && revT !== "";
+                                        if (hasRev) return (
+                                          <span className="flex items-center justify-end gap-1.5">
+                                            <span className="text-slate-400 text-[10px] line-through">{new Intl.NumberFormat('en-IN').format(origT)}</span>
+                                            <span className="text-orange-600 font-black">{new Intl.NumberFormat('en-IN').format(revT)}</span>
+                                            <span className="text-[7px] bg-orange-50 text-orange-500 border border-orange-200 px-1 rounded font-black uppercase">R</span>
+                                          </span>
+                                        );
+                                        return targetVal ? new Intl.NumberFormat('en-IN').format(targetVal) : "-";
+                                      })()}
                                     </td>
                                     <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
                                       {actualVal ? new Intl.NumberFormat('en-IN').format(actualVal) : "-"}
@@ -3939,7 +4010,7 @@ export default function App() {
                               </thead>
                               <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                                 {list.map(k => {
-                                  const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+                                  const targetVal = getMonthlyTarget(k, currentMonthKey);
                                   const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                   return (
                                     <tr
@@ -4010,7 +4081,7 @@ export default function App() {
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
                               {list.map(k => {
-                                const targetVal = k.monthly_target?.[currentMonthKey] ?? 0;
+                                const targetVal = getMonthlyTarget(k, currentMonthKey);
                                 const actualVal = getKpiActual(k, currentMonthKey, kpis);
                                 return (
                                   <tr key={k.id} className="hover:bg-slate-50/40 transition-colors">
@@ -5256,7 +5327,7 @@ export default function App() {
                       return (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {list.map(k => {
-                            const monthTarget = k.monthly_target?.[monthKey] ?? 0;
+                            const monthTarget = getMonthlyTarget(k, monthKey);
                             const monthActual = getKpiActual(k, monthKey, kpis);
                             const progressPercent = monthTarget > 0 ? Math.min(100, Math.round((monthActual / monthTarget) * 100)) : 0;
                             const logs = todayLogs[k.id] || [];
@@ -5303,7 +5374,20 @@ export default function App() {
                                       ) : (
                                         <>
                                           <span className="text-slate-400 block uppercase tracking-wider text-[8px] mb-0.5">This Month's Target</span>
-                                          <span className="text-slate-800 text-xs font-black">{monthTarget}</span>
+                                          {(() => {
+                                            const origTarget = k.monthly_target?.[monthKey];
+                                            const revTarget = k.monthly_target_revised?.[monthKey];
+                                            const hasRev = revTarget !== undefined && revTarget !== null && revTarget !== "";
+                                            return hasRev ? (
+                                              <span className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-slate-400 text-[10px] font-mono line-through">{origTarget}</span>
+                                                <span className="text-orange-600 text-xs font-black font-mono">{revTarget}</span>
+                                                <span className="text-[7px] bg-orange-50 text-orange-500 border border-orange-200 px-1 py-0.5 rounded font-black uppercase tracking-wide">Revised</span>
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-800 text-xs font-black">{monthTarget || "—"}</span>
+                                            );
+                                          })()}
                                         </>
                                       )}
                                     </div>
