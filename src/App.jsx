@@ -57,6 +57,7 @@ export const getMonthlyTarget = (kpi, monthKey) => {
 };
 
 function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = [], agentLeaves = [], kpis = [] }) {
+  // ── All useState hooks (must be declared unconditionally, before any early return) ──
   const [previewMonthKey, setPreviewMonthKey] = useState(() => {
     const d = new Date();
     const currentK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -87,6 +88,12 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
     monthly_actual: {}
   });
 
+  // Annual Target Split state — declared here (before useEffect) to respect Rules of Hooks
+  const [splitMethod, setSplitMethod] = useState("manual");
+  const [annualSplitInput, setAnnualSplitInput] = useState("");
+  const [quarterlyInputs, setQuarterlyInputs] = useState({ Q1: "", Q2: "", Q3: "", Q4: "" });
+
+  // ── Single useEffect to reset all form + split state on open ──
   useEffect(() => {
     if (isOpen) {
       if (isEdit) {
@@ -135,9 +142,14 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
         setSelectedSourceKpiIds([]);
       }
       setSourceSearchQuery("");
+      // Reset split controls
+      setSplitMethod("manual");
+      setAnnualSplitInput(isEdit && kpi?.cy_target != null ? String(kpi.cy_target) : "");
+      setQuarterlyInputs({ Q1: "", Q2: "", Q3: "", Q4: "" });
     }
   }, [isOpen, kpi, isEdit]);
 
+  // ── Early return AFTER all hooks ──
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
@@ -152,22 +164,7 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
     });
   };
 
-  // --- Annual Target Split ---
-  const [splitMethod, setSplitMethod] = useState("manual");
-  const [annualSplitInput, setAnnualSplitInput] = useState("");
-  const [quarterlyInputs, setQuarterlyInputs] = useState({ Q1: "", Q2: "", Q3: "", Q4: "" });
-
-  // Reset split state when modal opens for a new KPI
-  useEffect(() => {
-    if (isOpen) {
-      setSplitMethod("manual");
-      setAnnualSplitInput(isEdit && kpi?.cy_target != null ? String(kpi.cy_target) : "");
-      setQuarterlyInputs({ Q1: "", Q2: "", Q3: "", Q4: "" });
-    }
-  }, [isOpen, kpi, isEdit]);
-
   const handleApplySplit = () => {
-    // FY_KEYS: indices 0-2 = Q1(Apr-Jun), 3-5 = Q2(Jul-Sep), 6-8 = Q3(Oct-Dec), 9-11 = Q4(Jan-Mar)
     let computed = {};
     if (splitMethod === "even") {
       const annual = parseFloat(annualSplitInput);
@@ -183,11 +180,11 @@ function KpiModal({ kpi, isOpen, onClose, onSave, membersMap = {}, holidays = []
       ];
       if (qVals.every(v => v === 0)) { alert("Please enter at least one quarterly figure."); return; }
       FY_KEYS.forEach((mKey, idx) => {
-        const qIdx = Math.floor(idx / 3); // 0→Q1, 1→Q2, 2→Q3, 3→Q4
+        const qIdx = Math.floor(idx / 3);
         computed[mKey] = Math.round((qVals[qIdx] / 3) * 100) / 100;
       });
     } else {
-      return; // manual — nothing to apply
+      return;
     }
     setFormData(prev => ({ ...prev, monthly_target: { ...prev.monthly_target, ...computed } }));
   };
