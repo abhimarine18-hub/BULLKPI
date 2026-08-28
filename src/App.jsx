@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import {
   Target, FolderGit2, Menu, X, Coffee, LogOut, LayoutDashboard, Monitor, Smartphone, Search, Plus, Megaphone, ClipboardList, BookOpen, Calendar
@@ -1272,6 +1272,7 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [activePopup, setActivePopup] = useState(null);
   const [showTestimonialSubmenu, setShowTestimonialSubmenu] = useState(false);
+  const testimonialSubmenuTimeoutRef = useRef(null);
   const [recurringEnabled, setRecurringEnabled] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState("same_date");
   const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
@@ -3334,39 +3335,59 @@ export default function App() {
 
                                 <div
                                   className="relative"
-                                  onMouseEnter={() => setShowTestimonialSubmenu(true)}
-                                  onMouseLeave={() => setShowTestimonialSubmenu(false)}
+                                  onMouseEnter={() => {
+                                    if (testimonialSubmenuTimeoutRef.current) clearTimeout(testimonialSubmenuTimeoutRef.current);
+                                    setShowTestimonialSubmenu(true);
+                                  }}
+                                  onMouseLeave={() => {
+                                    if (testimonialSubmenuTimeoutRef.current) clearTimeout(testimonialSubmenuTimeoutRef.current);
+                                    testimonialSubmenuTimeoutRef.current = setTimeout(() => {
+                                      setShowTestimonialSubmenu(false);
+                                    }, 1500);
+                                  }}
                                 >
                                   <button
                                     type="button"
-                                    className={`w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between ${showTestimonialSubmenu ? "bg-orange-50" : ""}`}
+                                    className={`w-full text-left px-2 py-1.5 hover:bg-orange-50 rounded-lg transition-colors font-bold flex items-center justify-between ${showTestimonialSubmenu ? "bg-orange-50 text-orange-700 font-black" : "text-slate-700"}`}
                                   >
                                     <span>Testimonial Video</span>
-                                    <span className="text-[9px] text-slate-450">&rarr;</span>
+                                    <span className="text-[9.5px] font-black">&rarr;</span>
                                   </button>
 
-                                  {showTestimonialSubmenu && (
-                                    <div className="absolute left-full top-0 ml-1 bg-white border border-orange-150 rounded-2xl shadow-xl p-1.5 w-36 space-y-0.5 z-55 divide-y divide-slate-55">
-                                      {["Hindi", "Tamil", "Kannada", "Telugu", "Bengali", "Gujarati", "Malayalam", "Odia", "Marathi", "Punjabi"].map(lang => (
-                                        <button
-                                          key={lang}
-                                          type="button"
-                                          onClick={() => {
-                                            setActivePopup(prev => ({
-                                              ...prev,
-                                              step: "form",
-                                              selectedType: `testimonial_video_${lang.toLowerCase()}`,
-                                              selectedLanguage: lang
-                                            }));
-                                            setShowTestimonialSubmenu(false);
-                                          }}
-                                          className="w-full text-left px-2 py-1 hover:bg-orange-50 rounded-lg font-bold text-[10px] transition-colors"
-                                        >
-                                          {lang}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
+                                  <div 
+                                    className={`absolute left-full top-0 ml-2 bg-white border border-orange-100 rounded-3xl shadow-xl p-3 w-40 space-y-0.5 z-55 transition-all duration-300 ease-in-out origin-top-left
+                                      ${showTestimonialSubmenu ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible pointer-events-none"}
+                                    `}
+                                    onMouseEnter={() => {
+                                      if (testimonialSubmenuTimeoutRef.current) clearTimeout(testimonialSubmenuTimeoutRef.current);
+                                      setShowTestimonialSubmenu(true);
+                                    }}
+                                    onMouseLeave={() => {
+                                      if (testimonialSubmenuTimeoutRef.current) clearTimeout(testimonialSubmenuTimeoutRef.current);
+                                      testimonialSubmenuTimeoutRef.current = setTimeout(() => {
+                                        setShowTestimonialSubmenu(false);
+                                      }, 1500);
+                                    }}
+                                  >
+                                    {["Hindi", "Tamil", "Kannada", "Telugu", "Bengali", "Gujarati", "Malayalam", "Odia", "Marathi", "Punjabi"].map(lang => (
+                                      <button
+                                        key={lang}
+                                        type="button"
+                                        onClick={() => {
+                                          setActivePopup(prev => ({
+                                            ...prev,
+                                            step: "form",
+                                            selectedType: `testimonial_video_${lang.toLowerCase()}`,
+                                            selectedLanguage: lang
+                                          }));
+                                          setShowTestimonialSubmenu(false);
+                                        }}
+                                        className="w-full text-left px-2 py-1 hover:bg-orange-50 rounded-lg font-bold text-[10px] text-slate-700 transition-colors"
+                                      >
+                                        {lang}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
 
                                 <button
